@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 from streamlit_calendar import calendar
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from supabase import create_client
 import os
+import re
 
 # --- DATENBANK VERBINDUNG ---
 url = st.secrets["SUPABASE_URL"]
@@ -25,13 +26,12 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. SEITENABSTAND: Noch weiter vergrößert für absolute Sichtbarkeit */
+    /* 1. SEITENABSTAND: Genug Platz für Toolbar */
     .block-container { 
         padding-top: 5.5rem !important; 
-        padding-bottom: 0rem !important;
     }
     
-    /* 2. ÜBERSCHRIFT STARTSEITE (einzeilig, schwarz/weiß) */
+    /* 2. STARTSEITE: ÜBERSCHRIFT (Größe optimiert) */
     .main-header {
         font-size: 2.0rem !important; 
         font-weight: 900 !important;
@@ -53,7 +53,7 @@ st.markdown("""
         display: block; border-radius: 10px;
     }
 
-    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen & extra Abstand nach oben */
+    /* 4. KALENDER-NAVIGATION */
     .fc-header-toolbar {
         margin-top: 35px !important;
         margin-bottom: 2.5rem !important;
@@ -81,7 +81,6 @@ st.markdown("""
         border-color: #B91D1D !important;
     }
 
-    /* Titel (Monat) & Einträge */
     .fc-toolbar-title { font-size: 1.3rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
     </style>
@@ -136,21 +135,23 @@ else:
     for d_row in data:
         calendar_events.append({"id": str(d_row["id"]), "title": d_row["titel"], "start": d_row["start_date"], "backgroundColor": d_row["color"], "allDay": True, "textColor": "black" if d_row["color"] == "#FFD700" else "white"})
 
-    # KALENDER OPTIONEN (Ohne Wochenende)
+    # KALENDER OPTIONEN (Monatsliste & kein Wochenende)
     cal_options = {
-        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listWeek"},
-        "buttonText": {"today": "Heute", "month": "Mon", "list": "Lis"},
+        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, # listMonth statt listWeek
+        "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
         "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True,
     }
     
     state = calendar(events=calendar_events + holidays, options=cal_options, key="main_calendar")
 
-    # LOGIK: DATE CLICK (Fix für Datums-Shift)
+    # LOGIK: DATE CLICK (Robust gegen Vortags-Shift)
     if state.get("dateClick"):
-        # Wir nehmen den Datums-String direkt und ignorieren alles nach dem 'T', um Verschiebungen zu vermeiden
-        raw_date = str(state["dateClick"]["date"])
-        st.session_state.selected_date = raw_date.split("T")[0]
-        st.session_state.edit_id = None 
+        # Extrahiere YYYY-MM-DD per Regex, um Timezone-Shifts im String zu ignorieren
+        click_str = state["dateClick"]["date"]
+        found = re.search(r'\d{4}-\d{2}-\d{2}', click_str)
+        if found:
+            st.session_state.selected_date = found.group(0)
+            st.session_state.edit_id = None 
 
     if state.get("eventClick"):
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
@@ -183,7 +184,7 @@ else:
                 new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY")
                 new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2, c3 = st.columns([2, 2, 1])
-                if c1.form_submit_button("Speichern"): # Geändert von Save
+                if c1.form_submit_button("Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": SUBJECTS[new_s], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.rerun()
                 if c2.form_submit_button("🗑️ Löschen"):
@@ -193,7 +194,7 @@ else:
                     st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
 
-    # Tabelle
+    # Tabelle ganz unten
     if not df.empty:
         st.divider()
         df_table = df.copy(); df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
