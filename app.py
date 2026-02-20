@@ -29,7 +29,7 @@ st.markdown("""
     
     /* Startseiten-Überschrift */
     .main-header {
-        font-size: 3.6rem !important;
+        font-size: 3.0rem !important;
         font-weight: 900 !important;
         text-align: center;
         margin-top: -10px;
@@ -43,14 +43,14 @@ st.markdown("""
 
     /* Startbild-Größe */
     [data-testid="stImage"] > img {
-        width: 80% !important;
+        width: 70% !important;
         margin-left: auto; margin-right: auto;
         display: block; border-radius: 10px;
     }
 
     /* Kalender-Zellen & Zeilenumbruch für Name/Fach */
     .fc-event-title {
-        font-size: 0.8rem !important;
+        font-size: 0.7rem !important;
         white-space: pre-wrap !important; /* Wichtig für Zeilenumbruch */
         line-height: 1.2 !important;
         font-weight: bold !important;
