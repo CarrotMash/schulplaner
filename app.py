@@ -20,13 +20,13 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. ALLES NACH OBEN RÜCKEN */
+    /* 1. SEITENABSTAND: Fix auf 2.0rem wie gewünscht */
     .block-container { 
-        padding-top: 1.0rem !important; 
+        padding-top: 2.0rem !important; 
         padding-bottom: 0rem !important;
     }
     
-    /* 2. ÜBERSCHRIFT STARTSEITE (2.2rem, schwarz/weiß) */
+    /* 2. STARTSEITE: ÜBERSCHRIFT (Wiederhergestellt auf 2.2rem) */
     .main-header {
         font-size: 2.2rem !important; 
         font-weight: 900 !important;
@@ -35,24 +35,22 @@ st.markdown("""
         margin-bottom: 10px;
         background-color: #000000; 
         color: #FFFFFF !important;
-        padding: 10px;
+        padding: 12px;
         border-radius: 10px;
-        line-height: 1.1;
         white-space: nowrap;
     }
 
-    /* 3. STARTBILD: 64% Breite, kompakte Abstände */
+    /* 3. STARTBILD: Wiederhergestellt auf 64% Breite */
     [data-testid="stImage"] > img {
         width: 64% !important;
         margin-left: auto; margin-right: auto;
         display: block; border-radius: 10px;
-        margin-top: 0px !important;
     }
 
-    /* 4. KALENDER-NAVIGATION: Kompakt & Sichtbar */
+    /* 4. KALENDER-NAVIGATION */
     .fc-header-toolbar {
         margin-top: 10px !important;
-        margin-bottom: 1.0rem !important;
+        margin-bottom: 1.5rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
@@ -86,20 +84,18 @@ if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 
-# --- LOGIK: WELCHE SEITE ANZEIGEN? ---
+# --- APP LOGIK STEUERUNG ---
 
-# A. KALENDERSEITE (Wenn gestartet)
 if st.session_state.started:
+    # --- KALENDER-ANSICHT ---
+    
     # Daten laden
-    try:
-        response = supabase.table("klausuren").select("*").execute()
-        data, df = response.data, pd.DataFrame(response.data)
-    except:
-        data, df = [], pd.DataFrame()
+    response = supabase.table("klausuren").select("*").execute()
+    data, df = response.data, pd.DataFrame(response.data)
 
     with st.sidebar:
         st.header("Menü")
-        if st.button("Abmelden / Startseite"):
+        if st.button("Abmelden"):
             st.session_state.started = False
             st.rerun()
         st.divider()
@@ -136,6 +132,7 @@ if st.session_state.started:
         "selectable": True, "timeZone": "UTC", "displayEventTime": False
     }
     
+    # Kalender-Widget
     state = calendar(events=calendar_events + holidays, options=cal_options, key=st.session_state.cal_key)
 
     if state.get("dateClick"):
@@ -153,7 +150,9 @@ if st.session_state.started:
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
             if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
-                st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
+                st.session_state.selected_date = None
+                st.session_state.cal_key = str(uuid.uuid4())
+                st.rerun()
 
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
@@ -167,12 +166,14 @@ if st.session_state.started:
                 new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY")
                 new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2, c3 = st.columns([2, 2, 1])
-                if c1.form_submit_button("Speichern"):
+                if c1.form_submit_button("💾 Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": CHILD_COLORS[new_c], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
                 if c2.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute()
-                    st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
+                    st.session_state.edit_id = None
+                    st.session_state.cal_key = str(uuid.uuid4()) # KEY ÄNDERN VOR RERUN
+                    st.rerun()
                 if c3.form_submit_button("X"):
                     st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
@@ -183,12 +184,12 @@ if st.session_state.started:
         df_final = df_table.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'})
         st.dataframe(df_final, hide_index=True, use_container_width=True)
 
-# B. STARTSEITE (Wenn nicht gestartet)
 else:
+    # --- STARTSEITE ---
     st.markdown('<p class="main-header">Klausuren-Planer</p>', unsafe_allow_html=True)
     if os.path.exists("startbild.jpg"): 
         st.image("startbild.jpg")
-    st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+    st.write("")
     if st.button("JETZT STARTEN", use_container_width=True, type="primary"):
         st.session_state.started = True
         st.rerun()
