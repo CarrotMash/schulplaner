@@ -10,27 +10,30 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-# --- KONFIGURATION: Namen & Fächer ---
-CHILDREN = ["Mila", "Jojo", "Mikko"]
-SUBJECTS = {
-    "Englisch": "#3399FF", "Französisch": "#FF66B2", "Mathematik": "#00CC66",
-    "Deutsch": "#FFD700", "Musik": "#FF9900", "Biologie": "#228B22",
-    "Chemie": "#00CCCC", "Kunst": "#9966FF", "Philosophie": "#A0A0A0",
-    "Geschichte": "#CC6600", "Physik": "#33CCFF", "Spanisch": "#FF3333",
-    "WiPo": "#008080"
+# --- KONFIGURATION: KINDER-FARBEN & FÄCHER ---
+CHILD_COLORS = {
+    "Mila": "#FF85A1",  # Rosa
+    "Jojo": "#8B0000",  # Dunkelrot
+    "Mikko": "#2E7D32"  # Grün
 }
+
+SUBJECTS = [
+    "Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", 
+    "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", 
+    "Physik", "Spanisch", "WiPo"
+]
 
 st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="centered")
 
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. SEITENABSTAND: Genug Platz für die Toolbar oben */
+    /* 1. SEITENABSTAND OBERHALB DES KALENDERS */
     .block-container { 
         padding-top: 5.5rem !important; 
     }
     
-    /* 2. STARTSEITE: ÜBERSCHRIFT (2.0rem, einzeilig, Schwarz/Weiß) */
+    /* 2. STARTSEITE: ÜBERSCHRIFT (Größe 2.0rem, einzeilig) */
     .main-header {
         font-size: 2.0rem !important; 
         font-weight: 900 !important;
@@ -52,7 +55,7 @@ st.markdown("""
         display: block; border-radius: 10px;
     }
 
-    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen */
+    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen zentriert */
     .fc-header-toolbar {
         margin-top: 35px !important;
         margin-bottom: 2.5rem !important;
@@ -80,17 +83,22 @@ st.markdown("""
         border-color: #B91D1D !important;
     }
 
-    /* 6. LISTE: "all-day" / "ganztägig" Text ausblenden */
-    .fc-list-event-time {
-        display: none !important;
-    }
+    /* 6. LISTE: "all-day" / "ganztägig" ausblenden */
+    .fc-list-event-time { display: none !important; }
 
+    /* 7. KALENDER-DETAILS */
     .fc-toolbar-title { font-size: 1.3rem !important; font-weight: bold !important; }
-    .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
+    .fc-event-title { 
+        font-size: 0.8rem !important; 
+        white-space: pre-wrap !important; 
+        font-weight: bold !important; 
+        line-height: 1.1 !important;
+    }
+    .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# Session State
+# Session State Initialisierung
 if 'started' not in st.session_state: st.session_state.started = False
 if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
@@ -98,8 +106,7 @@ if 'selected_date' not in st.session_state: st.session_state.selected_date = Non
 # --- 1. STARTBILDSCHIRM ---
 if not st.session_state.started:
     st.markdown('<p class="main-header">Klausuren-Planer</p>', unsafe_allow_html=True)
-    if os.path.exists("startbild.jpg"): 
-        st.image("startbild.jpg")
+    if os.path.exists("startbild.jpg"): st.image("startbild.jpg")
     st.write("")
     if st.button("JETZT STARTEN", use_container_width=True, type="primary"):
         st.session_state.started = True
@@ -107,20 +114,26 @@ if not st.session_state.started:
 
 # --- 2. HAUPT-APP ---
 else:
+    # Daten frisch laden
     try:
         response = supabase.table("klausuren").select("*").execute()
         data, df = response.data, pd.DataFrame(response.data)
-    except:
+    except Exception:
         data, df = [], pd.DataFrame()
 
-    # --- SIDEBAR ---
+    # SIDEBAR
     with st.sidebar:
         st.header("Neuer Eintrag")
         with st.form("sidebar_form", clear_on_submit=True):
-            sc = st.selectbox("Kind", CHILDREN); ss = st.selectbox("Fach", list(SUBJECTS.keys()))
-            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz (optional)")
+            sc = st.selectbox("Kind", list(CHILD_COLORS.keys()))
+            ss = st.selectbox("Fach", SUBJECTS)
+            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY")
+            sn = st.text_input("Notiz (optional)")
             if st.form_submit_button("Speichern"):
-                supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": SUBJECTS[ss], "child": sc, "note": sn}).execute()
+                supabase.table("klausuren").insert({
+                    "datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}",
+                    "start_date": str(sd), "color": CHILD_COLORS[sc], "child": sc, "note": sn
+                }).execute()
                 st.rerun()
         if st.button("Zur Startseite"):
             st.session_state.started = False; st.rerun()
@@ -137,74 +150,73 @@ else:
 
     calendar_events = []
     for d_row in data:
-        calendar_events.append({"id": str(d_row["id"]), "title": d_row["titel"], "start": d_row["start_date"], "backgroundColor": d_row["color"], "allDay": True, "textColor": "black" if d_row["color"] == "#FFD700" else "white"})
+        calendar_events.append({
+            "id": str(d_row["id"]), "title": d_row["titel"], "start": d_row["start_date"],
+            "backgroundColor": d_row["color"], "allDay": True,
+            "textColor": "white"
+        })
 
     # KALENDER OPTIONEN
     cal_options = {
         "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
         "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
-        "initialView": "dayGridMonth", 
-        "locale": "de", 
-        "firstDay": 1, 
-        "weekends": False, 
-        "height": "auto", 
-        "selectable": True,
-        "timeZone": "UTC", # Zwingt den Kalender, keine lokale Zeitumrechnung zu machen
-        "displayEventTime": False # Blendet Uhrzeiten/all-day in allen Ansichten aus
+        "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True,
+        "timeZone": "UTC", "displayEventTime": False
     }
     
     state = calendar(events=calendar_events + holidays, options=cal_options, key="main_calendar")
 
-    # LOGIK: DATE CLICK (Vortags-Shift Fix)
+    # INTERAKTION
     if state.get("dateClick"):
-        # Wir nehmen die ersten 10 Zeichen (YYYY-MM-DD) des gelieferten Strings
-        # Das ignoriert jegliche Zeit- und Zonenangaben am Ende
         st.session_state.selected_date = state["dateClick"]["date"][:10]
         st.session_state.edit_id = None 
-
     if state.get("eventClick"):
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
         st.session_state.selected_date = None
 
-    # SCHNELL-EINTRAG UNTER KALENDER
+    # FORMULAR: NEUER EINTRAG
     if st.session_state.selected_date:
         st.divider()
         st.subheader(f"Neu: {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}")
         with st.form("quick_new_form"):
-            qc = st.selectbox("Kind", CHILDREN); qs = st.selectbox("Fach", list(SUBJECTS.keys())); qn = st.text_input("Notiz")
+            qc = st.selectbox("Kind", list(CHILD_COLORS.keys()))
+            qs = st.selectbox("Fach", SUBJECTS)
+            qn = st.text_input("Notiz (optional)")
             c1, c2 = st.columns(2)
             if c1.form_submit_button("Speichern"):
-                supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": SUBJECTS[qs], "child": qc, "note": qn}).execute()
+                supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.rerun()
             if c2.form_submit_button("Abbrechen"):
                 st.session_state.selected_date = None; st.rerun()
 
-    # BEARBEITEN / LÖSCHEN UNTER KALENDER
+    # FORMULAR: BEARBEITEN / LÖSCHEN
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
         st.subheader("Eintrag bearbeiten")
         try:
             edit_row = df[df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("edit_form"):
-                new_c = st.selectbox("Kind", CHILDREN, index=CHILDREN.index(edit_row['child']))
+                new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()), index=list(CHILD_COLORS.keys()).index(edit_row['child']))
                 curr_s = edit_row['titel'].split('\n')[-1]
-                s_list = list(SUBJECTS.keys())
-                new_s = st.selectbox("Fach", s_list, index=s_list.index(curr_s) if curr_s in s_list else 0)
+                new_s = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0)
                 new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY")
                 new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2, c3 = st.columns([2, 2, 1])
                 if c1.form_submit_button("Speichern"):
-                    supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": SUBJECTS[new_s], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
+                    supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": CHILD_COLORS[new_c], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.rerun()
                 if c2.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute()
-                    st.session_state.edit_id = None; st.rerun()
+                    st.session_state.edit_id = None; st.toast("Eintrag gelöscht!"); st.rerun()
                 if c3.form_submit_button("X"):
                     st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
 
-    # Tabelle ganz unten
+    # TABELLEN-ÜBERSICHT (Jetzt ohne Index-Spalte)
     if not df.empty:
         st.divider()
-        df_table = df.copy(); df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
-        st.table(df_table.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'}))
+        df_table = df.copy()
+        df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
+        # Umwandlung der Anzeige in ein sortiertes DataFrame ohne Index ("0")
+        df_final = df_table.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'})
+        st.dataframe(df_final, hide_index=True, use_container_width=True)
