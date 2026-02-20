@@ -25,9 +25,13 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    .block-container { padding-top: 2.0rem !important; }
+    /* 1. SEITENABSTAND: Deutlich vergrößert für bessere Sichtbarkeit oben */
+    .block-container { 
+        padding-top: 4.5rem !important; 
+        padding-bottom: 0rem !important;
+    }
     
-    /* 1. ÜBERSCHRIFT STARTSEITE */
+    /* 2. ÜBERSCHRIFT STARTSEITE */
     .main-header {
         font-size: 2.0rem !important; 
         font-weight: 900 !important;
@@ -42,16 +46,17 @@ st.markdown("""
         white-space: nowrap;
     }
 
-    /* 2. STARTBILD: 58% Breite */
+    /* 3. STARTBILD: 58% Breite */
     [data-testid="stImage"] > img {
         width: 58% !important;
         margin-left: auto; margin-right: auto;
         display: block; border-radius: 10px;
     }
 
-    /* 3. KALENDER-NAVIGATION: Heute unter Pfeilen */
+    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen & Abstand nach unten */
     .fc-header-toolbar {
-        margin-top: 10px !important;
+        margin-top: 20px !important;
+        margin-bottom: 2.0rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
@@ -60,10 +65,10 @@ st.markdown("""
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        gap: 4px !important;
+        gap: 6px !important;
     }
 
-    /* 4. BUTTONS STYLING (Rot/Weiß) */
+    /* 5. BUTTONS STYLING (Rot/Weiß) */
     .fc-button-primary {
         background-color: #FF4B4B !important;
         border-color: #FF4B4B !important;
@@ -78,14 +83,7 @@ st.markdown("""
 
     /* Titel (Monat) & Einträge */
     .fc-toolbar-title { font-size: 1.2rem !important; font-weight: bold !important; }
-    
-    /* Maximale Breite für Event-Titel nutzen durch ausgeblendete Wochenenden */
-    .fc-event-title { 
-        font-size: 0.8rem !important; 
-        white-space: pre-wrap !important; 
-        font-weight: bold !important;
-        line-height: 1.2 !important;
-    }
+    .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -106,31 +104,23 @@ if not st.session_state.started:
 
 # --- 2. HAUPT-APP ---
 else:
-    # Daten laden
     try:
         response = supabase.table("klausuren").select("*").execute()
-        data = response.data
-        df = pd.DataFrame(data)
-    except Exception:
+        data, df = response.data, pd.DataFrame(response.data)
+    except:
         data, df = [], pd.DataFrame()
 
     # --- SIDEBAR ---
     with st.sidebar:
         st.header("Neuer Eintrag")
         with st.form("sidebar_form", clear_on_submit=True):
-            sc = st.selectbox("Kind", CHILDREN)
-            ss = st.selectbox("Fach", list(SUBJECTS.keys()))
-            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY")
-            sn = st.text_input("Notiz (optional)")
+            sc = st.selectbox("Kind", CHILDREN); ss = st.selectbox("Fach", list(SUBJECTS.keys()))
+            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz (optional)")
             if st.form_submit_button("Speichern"):
-                supabase.table("klausuren").insert({
-                    "datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}",
-                    "start_date": str(sd), "color": SUBJECTS[ss], "child": sc, "note": sn
-                }).execute()
+                supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": SUBJECTS[ss], "child": sc, "note": sn}).execute()
                 st.rerun()
         if st.button("Zur Startseite"):
-            st.session_state.started = False
-            st.rerun()
+            st.session_state.started = False; st.rerun()
 
     # FERIEN (Zartgrün)
     zart_gruen = "#C8E6C9"
@@ -144,37 +134,26 @@ else:
 
     calendar_events = []
     for d_row in data:
-        calendar_events.append({
-            "id": str(d_row["id"]), "title": d_row["titel"], "start": d_row["start_date"],
-            "backgroundColor": d_row["color"], "allDay": True,
-            "textColor": "black" if d_row["color"] == "#FFD700" else "white"
-        })
+        calendar_events.append({"id": str(d_row["id"]), "title": d_row["titel"], "start": d_row["start_date"], "backgroundColor": d_row["color"], "allDay": True, "textColor": "black" if d_row["color"] == "#FFD700" else "white"})
 
-    # KALENDER OPTIONEN
+    # KALENDER OPTIONEN (Ohne Wochenende)
     cal_options = {
         "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listWeek"},
         "buttonText": {"today": "Heute", "month": "Mon", "list": "Lis"},
-        "initialView": "dayGridMonth", 
-        "locale": "de", 
-        "firstDay": 1, 
-        "weekends": False, # <--- WOCHENENDEN AUSBLENDEN
-        "height": "auto", 
-        "selectable": True,
+        "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True,
     }
     
     state = calendar(events=calendar_events + holidays, options=cal_options, key="main_calendar")
 
-    # LOGIK: DATE CLICK
+    # LOGIK: KLICKS
     if state.get("dateClick"):
         st.session_state.selected_date = state["dateClick"]["date"].split("T")[0]
         st.session_state.edit_id = None 
-
-    # LOGIK: EVENT CLICK
     if state.get("eventClick"):
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
         st.session_state.selected_date = None
 
-    # FORMULAR: NEUER EINTRAG
+    # SCHNELL-EINTRAG UNTER KALENDER
     if st.session_state.selected_date:
         st.divider()
         st.subheader(f"Neu: {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}")
@@ -187,7 +166,7 @@ else:
             if c2.form_submit_button("Abbrechen"):
                 st.session_state.selected_date = None; st.rerun()
 
-    # FORMULAR: BEARBEITEN / LÖSCHEN
+    # BEARBEITEN / LÖSCHEN UNTER KALENDER
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
         st.subheader("Eintrag bearbeiten")
@@ -201,7 +180,7 @@ else:
                 new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY")
                 new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2, c3 = st.columns([2, 2, 1])
-                if c1.form_submit_button("💾 Save"):
+                if c1.form_submit_button("💾 Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": SUBJECTS[new_s], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.rerun()
                 if c2.form_submit_button("🗑️ Löschen"):
