@@ -26,7 +26,7 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
-    /* 2. STARTSEITE: ÜBERSCHRIFT (2.2rem, schwarz/weiß) */
+    /* 2. STARTSEITE: ÜBERSCHRIFT */
     .main-header {
         font-size: 2.2rem !important; 
         font-weight: 900 !important;
@@ -48,7 +48,7 @@ st.markdown("""
         display: block; border-radius: 10px;
     }
 
-    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen */
+    /* 4. KALENDER-NAVIGATION */
     .fc-header-toolbar {
         margin-top: 10px !important;
         margin-bottom: 1.5rem !important;
@@ -63,7 +63,7 @@ st.markdown("""
         gap: 6px !important;
     }
 
-    /* 5. BUTTONS STYLING (Rot/Weiß) */
+    /* 5. BUTTONS STYLING */
     .fc-button-primary {
         background-color: #FF4B4B !important;
         border-color: #FF4B4B !important;
@@ -90,19 +90,17 @@ if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 
-# --- APP LOGIK ---
+# --- APP LOGIK STEUERUNG ---
 
 if st.session_state.started:
-    # --- KALENDER-ANSICHT ---
+    # --- KALENDER-ANSICHT (HAUPT-APP) ---
     
-    # Daten laden
     try:
         response = supabase.table("klausuren").select("*").execute()
         data, df = response.data, pd.DataFrame(response.data)
     except:
         data, df = [], pd.DataFrame()
 
-    # Sidebar: Nur das Formular
     with st.sidebar:
         st.header("Neuer Eintrag")
         with st.form("sb_form", clear_on_submit=True):
@@ -134,13 +132,12 @@ if st.session_state.started:
             "backgroundColor": d_row["color"], "allDay": True, "textColor": "white"
         })
 
-    # KALENDER OPTIONEN
     cal_options = {
         "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
         "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
         "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", 
         "selectable": True, "timeZone": "UTC", "displayEventTime": False,
-        "noEventsText": "Keine Einträge vorhanden" # Text für leere Listenansicht
+        "noEventsText": "Keine Einträge vorhanden"
     }
     
     state = calendar(events=calendar_events + holidays, options=cal_options, key=st.session_state.cal_key)
@@ -152,20 +149,24 @@ if st.session_state.started:
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
         st.session_state.selected_date = None
 
-    # FORMULARE UNTER KALENDER
+    # FORMULAR UNTER KALENDER: NEU
     if st.session_state.selected_date:
         st.divider()
         with st.form("quick_form"):
             st.write(f"**Neu: {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
-            if st.form_submit_button("Speichern"):
+            c1, c2 = st.columns(2)
+            if c1.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None
                 st.session_state.cal_key = str(uuid.uuid4())
                 st.rerun()
-            if st.button("Abbrechen"):
-                st.session_state.selected_date = None; st.rerun()
+            # FIX: Hier muss form_submit_button stehen!
+            if c2.form_submit_button("Abbrechen"):
+                st.session_state.selected_date = None
+                st.rerun()
 
+    # FORMULAR UNTER KALENDER: BEARBEITEN
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
         try:
@@ -190,7 +191,7 @@ if st.session_state.started:
                     st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
 
-    # Tabelle ganz unten
+    # TABELLE GANZ UNTEN
     st.divider()
     if not df.empty:
         df_table = df.copy(); df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
