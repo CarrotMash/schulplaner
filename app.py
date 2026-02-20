@@ -20,19 +20,19 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. SEITENABSTAND: Jetzt auf 2.5rem eingestellt */
+    /* 1. SEITENABSTAND: 2.7rem */
     .block-container { 
-        padding-top: 2.5rem !important; 
+        padding-top: 2.7rem !important; 
         padding-bottom: 0rem !important;
     }
     
-    /* 2. STARTSEITE: ÜBERSCHRIFT (Wiederhergestellt auf 2.2rem) */
+    /* 2. STARTSEITE: ÜBERSCHRIFT (2.2rem, schwarz/weiß) */
     .main-header {
         font-size: 2.2rem !important; 
         font-weight: 900 !important;
         text-align: center;
         margin-top: -10px;
-        margin-bottom: 10px;
+        margin-bottom: 20px;
         background-color: #000000; 
         color: #FFFFFF !important;
         padding: 12px;
@@ -48,7 +48,7 @@ st.markdown("""
         display: block; border-radius: 10px;
     }
 
-    /* 4. KALENDER-NAVIGATION */
+    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen */
     .fc-header-toolbar {
         margin-top: 10px !important;
         margin-bottom: 1.5rem !important;
@@ -60,7 +60,7 @@ st.markdown("""
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        gap: 4px !important;
+        gap: 6px !important;
     }
 
     /* 5. BUTTONS STYLING (Rot/Weiß) */
@@ -69,9 +69,14 @@ st.markdown("""
         border-color: #FF4B4B !important;
         color: #FFFFFF !important;
         font-weight: bold !important;
+        font-size: 0.85rem !important;
+    }
+    .fc-button-active {
+        background-color: #B91D1D !important;
+        border-color: #B91D1D !important;
     }
 
-    /* 6. KALENDER-DETAILS */
+    /* 6. KALENDER-DETAILS & LISTE */
     .fc-list-event-time { display: none !important; }
     .fc-toolbar-title { font-size: 1.2rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
@@ -79,16 +84,16 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Session State Initialisierung (Stabilität gegen Zurückspringen)
+# Session State Initialisierung
 if 'started' not in st.session_state: st.session_state.started = False
 if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 
-# --- APP LOGIK STEUERUNG ---
+# --- APP LOGIK ---
 
 if st.session_state.started:
-    # --- KALENDER-ANSICHT (HAUPT-APP) ---
+    # --- KALENDER-ANSICHT ---
     
     # Daten laden
     try:
@@ -97,20 +102,20 @@ if st.session_state.started:
     except:
         data, df = [], pd.DataFrame()
 
+    # Sidebar: Nur das Formular
     with st.sidebar:
-        st.header("Menü")
-        if st.button("Abmelden"):
-            st.session_state.started = False
-            st.rerun()
-        st.divider()
-        st.subheader("Schnelleingabe")
+        st.header("Neuer Eintrag")
         with st.form("sb_form", clear_on_submit=True):
             sc = st.selectbox("Kind", list(CHILD_COLORS.keys())); ss = st.selectbox("Fach", SUBJECTS)
             sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz")
             if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": CHILD_COLORS[sc], "child": sc, "note": sn}).execute()
-                st.session_state.cal_key = str(uuid.uuid4()) # Force Refresh
+                st.session_state.cal_key = str(uuid.uuid4())
                 st.rerun()
+        st.divider()
+        if st.button("Zur Startseite"):
+            st.session_state.started = False
+            st.rerun()
 
     # FERIEN (Zartgrün)
     zart_gruen = "#C8E6C9"
@@ -129,14 +134,15 @@ if st.session_state.started:
             "backgroundColor": d_row["color"], "allDay": True, "textColor": "white"
         })
 
+    # KALENDER OPTIONEN
     cal_options = {
         "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
         "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
         "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", 
-        "selectable": True, "timeZone": "UTC", "displayEventTime": False
+        "selectable": True, "timeZone": "UTC", "displayEventTime": False,
+        "noEventsText": "Keine Einträge vorhanden" # Text für leere Listenansicht
     }
     
-    # Kalender-Widget
     state = calendar(events=calendar_events + holidays, options=cal_options, key=st.session_state.cal_key)
 
     if state.get("dateClick"):
@@ -157,6 +163,8 @@ if st.session_state.started:
                 st.session_state.selected_date = None
                 st.session_state.cal_key = str(uuid.uuid4())
                 st.rerun()
+            if st.button("Abbrechen"):
+                st.session_state.selected_date = None; st.rerun()
 
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
@@ -176,17 +184,20 @@ if st.session_state.started:
                 if c2.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None
-                    st.session_state.cal_key = str(uuid.uuid4()) # Zwingt Kalender zum Update
+                    st.session_state.cal_key = str(uuid.uuid4())
                     st.rerun()
                 if c3.form_submit_button("X"):
                     st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
 
+    # Tabelle ganz unten
+    st.divider()
     if not df.empty:
-        st.divider()
         df_table = df.copy(); df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
         df_final = df_table.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'})
         st.dataframe(df_final, hide_index=True, use_container_width=True)
+    else:
+        st.info("Keine Einträge vorhanden")
 
 else:
     # --- STARTSEITE ---
