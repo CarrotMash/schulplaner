@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from streamlit_calendar import calendar
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from supabase import create_client
 import os
 
@@ -25,13 +25,13 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. SEITENABSTAND: Deutlich vergrößert für bessere Sichtbarkeit oben */
+    /* 1. SEITENABSTAND: Noch weiter vergrößert für absolute Sichtbarkeit */
     .block-container { 
-        padding-top: 4.5rem !important; 
+        padding-top: 5.5rem !important; 
         padding-bottom: 0rem !important;
     }
     
-    /* 2. ÜBERSCHRIFT STARTSEITE */
+    /* 2. ÜBERSCHRIFT STARTSEITE (einzeilig, schwarz/weiß) */
     .main-header {
         font-size: 2.0rem !important; 
         font-weight: 900 !important;
@@ -53,10 +53,10 @@ st.markdown("""
         display: block; border-radius: 10px;
     }
 
-    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen & Abstand nach unten */
+    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen & extra Abstand nach oben */
     .fc-header-toolbar {
-        margin-top: 20px !important;
-        margin-bottom: 2.0rem !important;
+        margin-top: 35px !important;
+        margin-bottom: 2.5rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
@@ -65,7 +65,7 @@ st.markdown("""
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 8px !important;
     }
 
     /* 5. BUTTONS STYLING (Rot/Weiß) */
@@ -82,7 +82,7 @@ st.markdown("""
     }
 
     /* Titel (Monat) & Einträge */
-    .fc-toolbar-title { font-size: 1.2rem !important; font-weight: bold !important; }
+    .fc-toolbar-title { font-size: 1.3rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -145,10 +145,13 @@ else:
     
     state = calendar(events=calendar_events + holidays, options=cal_options, key="main_calendar")
 
-    # LOGIK: KLICKS
+    # LOGIK: DATE CLICK (Fix für Datums-Shift)
     if state.get("dateClick"):
-        st.session_state.selected_date = state["dateClick"]["date"].split("T")[0]
+        # Wir nehmen den Datums-String direkt und ignorieren alles nach dem 'T', um Verschiebungen zu vermeiden
+        raw_date = str(state["dateClick"]["date"])
+        st.session_state.selected_date = raw_date.split("T")[0]
         st.session_state.edit_id = None 
+
     if state.get("eventClick"):
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
         st.session_state.selected_date = None
@@ -180,7 +183,7 @@ else:
                 new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY")
                 new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2, c3 = st.columns([2, 2, 1])
-                if c1.form_submit_button("💾 Speichern"):
+                if c1.form_submit_button("Speichern"): # Geändert von Save
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": SUBJECTS[new_s], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.rerun()
                 if c2.form_submit_button("🗑️ Löschen"):
