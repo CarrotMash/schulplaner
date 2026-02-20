@@ -11,7 +11,7 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-# --- KONFIGURATION: KINDER-FARBEN & FÄCHER ---
+# --- KONFIGURATION ---
 CHILD_COLORS = {"Mila": "#FF85A1", "Jojo": "#8B0000", "Mikko": "#2E7D32"}
 SUBJECTS = ["Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", "Physik", "Spanisch", "WiPo"]
 
@@ -20,37 +20,39 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. SEITENABSTAND OBEN (Guter Puffer für die Toolbar) */
+    /* 1. ALLES NACH OBEN RÜCKEN */
     .block-container { 
-        padding-top: 5.5rem !important; 
+        padding-top: 1.0rem !important; 
+        padding-bottom: 0rem !important;
     }
     
-    /* 2. STARTSEITE: ÜBERSCHRIFT (Wiederhergestellt auf 2.2rem, einzeilig) */
+    /* 2. ÜBERSCHRIFT STARTSEITE (2.2rem, schwarz/weiß) */
     .main-header {
         font-size: 2.2rem !important; 
         font-weight: 900 !important;
         text-align: center;
         margin-top: -10px;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         background-color: #000000; 
         color: #FFFFFF !important;
-        padding: 12px;
+        padding: 10px;
         border-radius: 10px;
         line-height: 1.1;
         white-space: nowrap;
     }
 
-    /* 3. STARTBILD: Wiederhergestellt auf 64% Breite */
+    /* 3. STARTBILD: 64% Breite, kompakte Abstände */
     [data-testid="stImage"] > img {
         width: 64% !important;
         margin-left: auto; margin-right: auto;
         display: block; border-radius: 10px;
+        margin-top: 0px !important;
     }
 
-    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen */
+    /* 4. KALENDER-NAVIGATION: Kompakt & Sichtbar */
     .fc-header-toolbar {
-        margin-top: 25px !important;
-        margin-bottom: 2.5rem !important;
+        margin-top: 10px !important;
+        margin-bottom: 1.0rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
@@ -59,26 +61,20 @@ st.markdown("""
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        gap: 8px !important;
+        gap: 4px !important;
     }
 
-    /* 5. BUTTONS STYLING (Rot/Weiß) */
+    /* 5. BUTTONS STYLING */
     .fc-button-primary {
         background-color: #FF4B4B !important;
         border-color: #FF4B4B !important;
         color: #FFFFFF !important;
-        font-size: 0.85rem !important;
         font-weight: bold !important;
     }
-    .fc-button-active {
-        background-color: #B91D1D !important;
-        border-color: #B91D1D !important;
-    }
 
-    /* 6. LISTE: "all-day" entfernen */
+    /* 6. DETAILS */
     .fc-list-event-time { display: none !important; }
-
-    .fc-toolbar-title { font-size: 1.3rem !important; font-weight: bold !important; }
+    .fc-toolbar-title { font-size: 1.2rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
     .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
     </style>
@@ -90,18 +86,10 @@ if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 
-# --- 1. STARTBILDSCHIRM ---
-if st.session_state.started == False:
-    st.markdown('<p class="main-header">Klausuren-Planer</p>', unsafe_allow_html=True)
-    if os.path.exists("startbild.jpg"): 
-        st.image("startbild.jpg")
-    st.write("")
-    if st.button("JETZT STARTEN", use_container_width=True, type="primary"):
-        st.session_state.started = True
-        st.rerun()
+# --- LOGIK: WELCHE SEITE ANZEIGEN? ---
 
-# --- 2. HAUPT-APP (Kalenderansicht) ---
-else:
+# A. KALENDERSEITE (Wenn gestartet)
+if st.session_state.started:
     # Daten laden
     try:
         response = supabase.table("klausuren").select("*").execute()
@@ -109,22 +97,20 @@ else:
     except:
         data, df = [], pd.DataFrame()
 
-    # --- SIDEBAR (Wiederhergestellt für Backup-Eingaben) ---
     with st.sidebar:
-        st.header("Neuer Eintrag")
-        with st.form("sidebar_form", clear_on_submit=True):
-            sc = st.selectbox("Kind", list(CHILD_COLORS.keys()))
-            ss = st.selectbox("Fach", SUBJECTS)
-            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY")
-            sn = st.text_input("Notiz (optional)")
+        st.header("Menü")
+        if st.button("Abmelden / Startseite"):
+            st.session_state.started = False
+            st.rerun()
+        st.divider()
+        st.subheader("Schnelleingabe")
+        with st.form("sb_form", clear_on_submit=True):
+            sc = st.selectbox("Kind", list(CHILD_COLORS.keys())); ss = st.selectbox("Fach", SUBJECTS)
+            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz")
             if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": CHILD_COLORS[sc], "child": sc, "note": sn}).execute()
                 st.session_state.cal_key = str(uuid.uuid4())
                 st.rerun()
-        st.divider()
-        if st.button("Abmelden / Startseite"):
-            st.session_state.started = False
-            st.rerun()
 
     # FERIEN (Zartgrün)
     zart_gruen = "#C8E6C9"
@@ -143,7 +129,6 @@ else:
             "backgroundColor": d_row["color"], "allDay": True, "textColor": "white"
         })
 
-    # KALENDER OPTIONEN
     cal_options = {
         "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
         "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
@@ -151,10 +136,8 @@ else:
         "selectable": True, "timeZone": "UTC", "displayEventTime": False
     }
     
-    # Kalender-Widget mit dynamischem Key erzwingt Neuzeichnung beim Löschen
     state = calendar(events=calendar_events + holidays, options=cal_options, key=st.session_state.cal_key)
 
-    # --- LOGIK: DATE/EVENT CLICK ---
     if state.get("dateClick"):
         st.session_state.selected_date = state["dateClick"]["date"][:10]
         st.session_state.edit_id = None 
@@ -162,27 +145,22 @@ else:
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
         st.session_state.selected_date = None
 
-    # NEUER EINTRAG (unter Kalender)
+    # FORMULARE UNTER KALENDER
     if st.session_state.selected_date:
         st.divider()
-        with st.form("quick_new_form"):
-            st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
+        with st.form("quick_form"):
+            st.write(f"**Neu: {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
-            c1, c2 = st.columns(2)
-            if c1.form_submit_button("Speichern"):
+            if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
-                st.session_state.selected_date = None
-                st.session_state.cal_key = str(uuid.uuid4())
-                st.rerun()
-            if c2.form_submit_button("Abbrechen"):
-                st.session_state.selected_date = None; st.rerun()
+                st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
 
-    # BEARBEITEN / LÖSCHEN (unter Kalender)
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
         try:
             edit_row = df[df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("edit_form"):
+                st.write("**Bearbeiten**")
                 new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()), index=list(CHILD_COLORS.keys()).index(edit_row['child']))
                 curr_s = edit_row['titel'].split('\n')[-1]
                 new_s = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0)
@@ -194,17 +172,23 @@ else:
                     st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
                 if c2.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute()
-                    st.session_state.edit_id = None
-                    st.session_state.cal_key = str(uuid.uuid4())
-                    st.toast("Eintrag gelöscht!")
-                    st.rerun()
+                    st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
                 if c3.form_submit_button("X"):
                     st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
 
-    # Übersichtstabelle
     if not df.empty:
         st.divider()
         df_table = df.copy(); df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
         df_final = df_table.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'})
         st.dataframe(df_final, hide_index=True, use_container_width=True)
+
+# B. STARTSEITE (Wenn nicht gestartet)
+else:
+    st.markdown('<p class="main-header">Klausuren-Planer</p>', unsafe_allow_html=True)
+    if os.path.exists("startbild.jpg"): 
+        st.image("startbild.jpg")
+    st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+    if st.button("JETZT STARTEN", use_container_width=True, type="primary"):
+        st.session_state.started = True
+        st.rerun()
