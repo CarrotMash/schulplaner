@@ -11,7 +11,7 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-# --- KONFIGURATION ---
+# --- KONFIGURATION: KINDER-FARBEN & FÄCHER ---
 CHILD_COLORS = {"Mila": "#FF85A1", "Jojo": "#8B0000", "Mikko": "#2E7D32"}
 SUBJECTS = ["Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", "Physik", "Spanisch", "WiPo"]
 
@@ -20,9 +20,9 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. SEITENABSTAND: Fix auf 2.0rem wie gewünscht */
+    /* 1. SEITENABSTAND: Jetzt auf 2.5rem eingestellt */
     .block-container { 
-        padding-top: 2.0rem !important; 
+        padding-top: 2.5rem !important; 
         padding-bottom: 0rem !important;
     }
     
@@ -37,10 +37,11 @@ st.markdown("""
         color: #FFFFFF !important;
         padding: 12px;
         border-radius: 10px;
+        line-height: 1.1;
         white-space: nowrap;
     }
 
-    /* 3. STARTBILD: Wiederhergestellt auf 64% Breite */
+    /* 3. STARTBILD: 64% Breite */
     [data-testid="stImage"] > img {
         width: 64% !important;
         margin-left: auto; margin-right: auto;
@@ -62,7 +63,7 @@ st.markdown("""
         gap: 4px !important;
     }
 
-    /* 5. BUTTONS STYLING */
+    /* 5. BUTTONS STYLING (Rot/Weiß) */
     .fc-button-primary {
         background-color: #FF4B4B !important;
         border-color: #FF4B4B !important;
@@ -70,7 +71,7 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* 6. DETAILS */
+    /* 6. KALENDER-DETAILS */
     .fc-list-event-time { display: none !important; }
     .fc-toolbar-title { font-size: 1.2rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
@@ -78,7 +79,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Session State Initialisierung
+# Session State Initialisierung (Stabilität gegen Zurückspringen)
 if 'started' not in st.session_state: st.session_state.started = False
 if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
@@ -87,11 +88,14 @@ if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4(
 # --- APP LOGIK STEUERUNG ---
 
 if st.session_state.started:
-    # --- KALENDER-ANSICHT ---
+    # --- KALENDER-ANSICHT (HAUPT-APP) ---
     
     # Daten laden
-    response = supabase.table("klausuren").select("*").execute()
-    data, df = response.data, pd.DataFrame(response.data)
+    try:
+        response = supabase.table("klausuren").select("*").execute()
+        data, df = response.data, pd.DataFrame(response.data)
+    except:
+        data, df = [], pd.DataFrame()
 
     with st.sidebar:
         st.header("Menü")
@@ -105,7 +109,7 @@ if st.session_state.started:
             sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz")
             if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": CHILD_COLORS[sc], "child": sc, "note": sn}).execute()
-                st.session_state.cal_key = str(uuid.uuid4())
+                st.session_state.cal_key = str(uuid.uuid4()) # Force Refresh
                 st.rerun()
 
     # FERIEN (Zartgrün)
@@ -172,7 +176,7 @@ if st.session_state.started:
                 if c2.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None
-                    st.session_state.cal_key = str(uuid.uuid4()) # KEY ÄNDERN VOR RERUN
+                    st.session_state.cal_key = str(uuid.uuid4()) # Zwingt Kalender zum Update
                     st.rerun()
                 if c3.form_submit_button("X"):
                     st.session_state.edit_id = None; st.rerun()
