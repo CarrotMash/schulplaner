@@ -4,7 +4,6 @@ from streamlit_calendar import calendar
 from datetime import datetime, date
 from supabase import create_client
 import os
-import re
 
 # --- DATENBANK VERBINDUNG ---
 url = st.secrets["SUPABASE_URL"]
@@ -26,12 +25,12 @@ st.set_page_config(page_title="Klausuren-Planer", page_icon="📅", layout="cent
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* 1. SEITENABSTAND: Genug Platz für Toolbar */
+    /* 1. SEITENABSTAND: Genug Platz für die Toolbar oben */
     .block-container { 
         padding-top: 5.5rem !important; 
     }
     
-    /* 2. STARTSEITE: ÜBERSCHRIFT (Größe optimiert) */
+    /* 2. STARTSEITE: ÜBERSCHRIFT (2.0rem, einzeilig, Schwarz/Weiß) */
     .main-header {
         font-size: 2.0rem !important; 
         font-weight: 900 !important;
@@ -53,7 +52,7 @@ st.markdown("""
         display: block; border-radius: 10px;
     }
 
-    /* 4. KALENDER-NAVIGATION */
+    /* 4. KALENDER-NAVIGATION: Heute unter Pfeilen */
     .fc-header-toolbar {
         margin-top: 35px !important;
         margin-bottom: 2.5rem !important;
@@ -79,6 +78,11 @@ st.markdown("""
     .fc-button-active {
         background-color: #B91D1D !important;
         border-color: #B91D1D !important;
+    }
+
+    /* 6. LISTE: "all-day" / "ganztägig" Text ausblenden */
+    .fc-list-event-time {
+        display: none !important;
     }
 
     .fc-toolbar-title { font-size: 1.3rem !important; font-weight: bold !important; }
@@ -135,23 +139,28 @@ else:
     for d_row in data:
         calendar_events.append({"id": str(d_row["id"]), "title": d_row["titel"], "start": d_row["start_date"], "backgroundColor": d_row["color"], "allDay": True, "textColor": "black" if d_row["color"] == "#FFD700" else "white"})
 
-    # KALENDER OPTIONEN (Monatsliste & kein Wochenende)
+    # KALENDER OPTIONEN
     cal_options = {
-        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, # listMonth statt listWeek
+        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
         "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
-        "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True,
+        "initialView": "dayGridMonth", 
+        "locale": "de", 
+        "firstDay": 1, 
+        "weekends": False, 
+        "height": "auto", 
+        "selectable": True,
+        "timeZone": "UTC", # Zwingt den Kalender, keine lokale Zeitumrechnung zu machen
+        "displayEventTime": False # Blendet Uhrzeiten/all-day in allen Ansichten aus
     }
     
     state = calendar(events=calendar_events + holidays, options=cal_options, key="main_calendar")
 
-    # LOGIK: DATE CLICK (Robust gegen Vortags-Shift)
+    # LOGIK: DATE CLICK (Vortags-Shift Fix)
     if state.get("dateClick"):
-        # Extrahiere YYYY-MM-DD per Regex, um Timezone-Shifts im String zu ignorieren
-        click_str = state["dateClick"]["date"]
-        found = re.search(r'\d{4}-\d{2}-\d{2}', click_str)
-        if found:
-            st.session_state.selected_date = found.group(0)
-            st.session_state.edit_id = None 
+        # Wir nehmen die ersten 10 Zeichen (YYYY-MM-DD) des gelieferten Strings
+        # Das ignoriert jegliche Zeit- und Zonenangaben am Ende
+        st.session_state.selected_date = state["dateClick"]["date"][:10]
+        st.session_state.edit_id = None 
 
     if state.get("eventClick"):
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
