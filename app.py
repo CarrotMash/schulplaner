@@ -11,7 +11,7 @@ key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
 # --- KONFIGURATION ---
-CHILDREN = ["Milschi", "Jojo", "Toto"]
+CHILDREN = ["Mila", "Jojo", "Toto"]
 SUBJECTS = {
     "Englisch": "#3399FF", "Französisch": "#FF66B2", "Mathematik": "#00CC66",
     "Deutsch": "#FFD700", "Musik": "#FF9900", "Biologie": "#228B22",
@@ -60,7 +60,7 @@ if 'started' not in st.session_state:
 
 # --- STARTBILDSCHIRM ---
 if not st.session_state.started:
-    st.markdown("<h2 style='text-align: center;'>Willkommen beim Schul-Planer!</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>Willkommen beim Klausuren-Planer!</h2>", unsafe_allow_html=True)
     if os.path.exists("startbild.jpg"):
         st.image("startbild.jpg", use_container_width=True)
     if st.button("JETZT STARTEN", use_container_width=True, type="primary"):
@@ -176,4 +176,5 @@ else:
     st.subheader("Übersicht aller Termine")
     if not df.empty:
         df_sorted = df.sort_values(by='start_date')
+
         st.table(df_sorted[['datum', 'titel']])
