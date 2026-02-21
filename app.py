@@ -47,15 +47,20 @@ if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_child = "Mila"
+if 'started' not in st.session_state: st.session_state.started = False
 
-# --- HELFER: DATEN LADEN (MIT FIX FÜR EMPTY TABLE) ---
+# --- HELFER: DATEN LADEN (ROBUST GEGEN LEERE TABELLEN) ---
 def get_stundenplan(child):
-    res = supabase.table("stundenplaene").select("*").eq("child", child).execute()
-    df = pd.DataFrame(res.data)
-    if df.empty:
-        # Falls leer, Dummy-Struktur mit richtigen Spaltennamen zurückgeben
+    try:
+        res = supabase.table("stundenplaene").select("*").eq("child", child).execute()
+        # Wichtig: DataFrame explizit mit Spalten erstellen, falls res.data leer ist
+        df = pd.DataFrame(res.data)
+        for col in ["id", "child", "tag", "stunde", "fach"]:
+            if col not in df.columns:
+                df[col] = None
+        return df
+    except:
         return pd.DataFrame(columns=["id", "child", "tag", "stunde", "fach"])
-    return df
 
 # --- 1. STARTSEITE ---
 if st.session_state.view == 'start':
@@ -74,8 +79,11 @@ if st.session_state.view == 'start':
 
 # --- 2. KLAUSUREN-BEREICH ---
 elif st.session_state.view == 'klausuren':
-    response = supabase.table("klausuren").select("*").execute()
-    data, df = response.data, pd.DataFrame(response.data)
+    try:
+        response = supabase.table("klausuren").select("*").execute()
+        data, df = response.data, pd.DataFrame(response.data)
+    except:
+        data, df = [], pd.DataFrame()
 
     with st.sidebar:
         st.header("Klausuren")
@@ -119,10 +127,11 @@ elif st.session_state.view == 'klausuren':
         with st.form("quick_form"):
             st.write(f"**Neu: {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
-            if st.form_submit_button("Speichern"):
+            c1, c2 = st.columns(2)
+            if c1.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if st.form_submit_button("Abbrechen"):
+            if c2.form_submit_button("Abbrechen"):
                 st.session_state.selected_date = None; st.rerun()
 
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
@@ -137,7 +146,7 @@ elif st.session_state.view == 'klausuren':
                 new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY")
                 new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2, c3 = st.columns([2, 2, 1])
-                if c1.form_submit_button("Speichern"):
+                if c1.form_submit_button("💾 Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": CHILD_COLORS[new_c], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
                 if c2.form_submit_button("🗑️"):
@@ -158,7 +167,6 @@ elif st.session_state.view == 'klausuren':
 elif st.session_state.view == 'stundenplan':
     st.markdown(f'<div style="background-color:black; color:white; padding:10px; border-radius:10px; text-align:center; font-weight:bold; font-size:1.5rem; margin-bottom:15px;">🏫 Stundenpläne</div>', unsafe_allow_html=True)
     
-    # Kind-Auswahl Buttons
     c_col1, c_col2, c_col3 = st.columns(3)
     if c_col1.button("Mila", use_container_width=True): st.session_state.stundenplan_child = "Mila"
     if c_col2.button("Jojo", use_container_width=True): st.session_state.stundenplan_child = "Jojo"
@@ -172,7 +180,7 @@ elif st.session_state.view == 'stundenplan':
     for day in DAYS:
         with st.expander(f"📅 {day}", expanded=False):
             for std in range(1, 9):
-                # Suche nach Fach in den geladenen Daten
+                # Sicherer Abgleich
                 match = plan_df[(plan_df['tag'] == day) & (plan_df['stunde'] == std)]
                 current_fach = match.iloc[0]['fach'] if not match.empty else "---"
                 
@@ -200,7 +208,6 @@ elif st.session_state.view == 'stundenplan':
                 del st.session_state.edit_lesson
                 st.rerun()
 
-    st.write("")
     if st.button("← Hauptmenü", use_container_width=True):
         st.session_state.view = 'start'
         st.rerun()
