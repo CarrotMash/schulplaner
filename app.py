@@ -11,9 +11,16 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-# --- KONFIGURATION ---
+# --- KONFIGURATION: KINDER-FARBEN & FÄCHER ---
 CHILD_COLORS = {"Mila": "#FF85A1", "Jojo": "#8B0000", "Mikko": "#2E7D32"}
-SUBJECTS = ["Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", "Physik", "Spanisch", "WiPo", "Sport", "Religion", "Freistunde"]
+
+# Fächerliste um Geografie erweitert
+SUBJECTS = [
+    "Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", 
+    "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", 
+    "Physik", "Spanisch", "WiPo", "Geografie", "Sport", "Religion", "Freistunde"
+]
+
 DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 TIMES = {
     1: "07:50-08:35", 2: "08:40-09:25", 3: "09:40-10:25", 4: "10:30-11:15",
@@ -81,7 +88,7 @@ st.markdown("""
         padding: 8px;
         margin-bottom: 10px;
         font-weight: bold;
-        color: #FFFFFF; /* Weißer Text für maximalen Kontrast */
+        color: #FFFFFF !important;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }
     .time-label { font-size: 0.7rem; color: #444; margin-bottom: 0px; line-height: 1.1; font-weight: bold; }
@@ -149,7 +156,6 @@ elif st.session_state.view == 'klausuren':
     if state.get("eventClick"):
         st.session_state.edit_id = state["eventClick"]["event"].get("id"); st.session_state.selected_date = None
 
-    # Formulare unter Kalender
     if st.session_state.selected_date:
         st.divider()
         with st.form("quick_f"):
@@ -167,14 +173,13 @@ elif st.session_state.view == 'klausuren':
         try:
             edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("edit_f"):
-                st.write("**Bearbeiten**")
                 new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()), index=list(CHILD_COLORS.keys()).index(edit_row['child']))
                 curr_s = edit_row['titel'].split('\n')[-1]
                 new_s = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0)
                 new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY")
                 new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2, c3 = st.columns([2, 2, 1])
-                if c1.form_submit_button("Speichern"):
+                if c1.form_submit_button("💾 Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": CHILD_COLORS[new_c], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
                 if c2.form_submit_button("🗑️"):
@@ -226,7 +231,6 @@ elif st.session_state.view == 'stundenplan':
     cols = st.columns(3)
     for i, day in enumerate(display_days):
         with cols[i]:
-            # Header mit Kind-Farbe und weißem Text für maximalen Kontrast
             st.markdown(f"<div class='day-header' style='background:{child_color};'>{day}</div>", unsafe_allow_html=True)
             for std in range(1, 9):
                 fach = plan_dict.get((day, std), "---")
