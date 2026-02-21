@@ -14,7 +14,6 @@ supabase = create_client(url, key)
 
 # --- KONFIGURATION ---
 CHILD_COLORS = {"Mila": "#FF85A1", "Jojo": "#8B0000", "Mikko": "#2E7D32"}
-# Alle Kinder erhalten jetzt einheitlich weiße Schrift auf den Headern
 SUBJECTS = ["Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", "Physik", "Spanisch", "WiPo", "Geografie", "Sport", "Religion", "Freistunde"]
 DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 TIMES = {1: "07:50-08:35", 2: "08:40-09:25", 3: "09:40-10:25", 4: "10:30-11:15", 5: "11:30-12:15", 6: "12:20-13:05", 7: "13:35-14:20", 8: "14:25-15:10"}
@@ -35,16 +34,24 @@ st.markdown("""
     .fc-button-primary { background-color: #FF4B4B !important; border-color: #FF4B4B !important; color: #FFFFFF !important; font-weight: bold !important; font-size: 0.85rem !important; }
     .fc-list-event-time { display: none !important; }
     .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
-    
-    /* Tag-Header im Stundenplan (Einheitlich Weiß) */
     .day-header { text-align: center; border-radius: 5px; padding: 8px; margin-bottom: 10px; font-weight: bold; color: #FFFFFF !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
-    
     .bus-card { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 5px solid #FF4B4B; }
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
     
-    /* Klassen-Info Styling */
-    .class-text { font-weight: bold; font-size: 1.0rem; color: #31333F; display: inline-block; vertical-align: middle; }
+    /* Klassen-Anzeige: Groß, Schwarz, Fett */
+    .class-display-big {
+        font-size: 1.3rem !important;
+        font-weight: 800 !important;
+        color: #000000 !important;
+        text-align: right;
+        padding-top: 5px;
+    }
+    /* Kleiner Button-Fix für das Icon */
+    .stButton button[kind="secondary"] {
+        padding: 0px 5px !important;
+        height: 35px !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -93,7 +100,6 @@ elif st.session_state.view == 'klausuren':
     zart_gruen = "#C8E6C9"
     holidays = [{"title": "Oster", "start": "2025-04-11", "end": "2025-04-26", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Sommer", "start": "2025-07-28", "end": "2025-09-06", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Herbst", "start": "2025-10-20", "end": "2025-10-31", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Weihnacht", "start": "2025-12-19", "end": "2026-01-06", "backgroundColor": zart_gruen, "display": "background"}]
     cal_ev = [{"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"} for d in k_data]
-    
     state = calendar(events=cal_ev + holidays, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False}, key=st.session_state.cal_key)
     
     if state.get("dateClick"): st.session_state.selected_date = state["dateClick"]["date"][:10]; st.rerun()
@@ -130,7 +136,7 @@ elif st.session_state.view == 'klausuren':
 elif st.session_state.view == 'stundenplan':
     st.markdown(f'<div class="main-header">Schulplaner Stundenpläne</div>', unsafe_allow_html=True)
     
-    # Kind-Auswahl (Symmetrisch Reihe 1)
+    # Kind-Auswahl (Reihe 1)
     c_cols = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
         if c_cols[i].button(name, use_container_width=True, type="secondary" if st.session_state.stundenplan_child != name else "primary"):
@@ -144,25 +150,24 @@ elif st.session_state.view == 'stundenplan':
         cur_klasse = k_info[0]['klasse'] if k_info else "Klasse ?"
     except: cur_klasse = "Klasse ?"
 
-    # Navigations-Reihe (Symmetrisch Reihe 2)
-    t_col1, t_col2, t_col3 = st.columns(3)
+    # Navigations-Reihe (◀ | Klasse ✏️ | ▶)
+    t_col1, t_col2, t_col3 = st.columns([1, 2, 1])
     with t_col1:
         if st.button("◀", key="prev_day", use_container_width=True): st.session_state.day_offset -= 1; st.rerun()
     with t_col2:
-        # Klasse und Edit-Button kompakt nebeneinander zentriert
-        st.markdown(f"""<div style='text-align:center; padding-top:5px;'><span class='class-text'>{cur_klasse}</span></div>""", unsafe_allow_html=True)
-        if st.button("✏️", key="edit_grade", help="Klasse ändern", use_container_width=True): st.session_state.editing_grade = True
+        # Verschachtelte Spalten für Text und Button in einer Zeile
+        inner_l, inner_r = st.columns([4, 1])
+        inner_l.markdown(f"<div class='class-display-big'>{cur_klasse}</div>", unsafe_allow_html=True)
+        if inner_r.button("✏️", key="edit_grade"): st.session_state.editing_grade = True
     with t_col3:
         if st.button("▶", key="next_day", use_container_width=True): st.session_state.day_offset += 1; st.rerun()
 
     if st.session_state.editing_grade:
         with st.form("grade_form"):
             new_g = st.text_input("Klasse anpassen:", value=cur_klasse)
-            c1, c2 = st.columns(2)
-            if c1.form_submit_button("Übernehmen"):
+            if st.form_submit_button("Übernehmen"):
                 supabase.table("kinder_info").upsert({"child": cur_c, "klasse": new_g}).execute()
                 st.session_state.editing_grade = False; st.rerun()
-            if c2.form_submit_button("Abbrechen"): st.session_state.editing_grade = False; st.rerun()
 
     # Plan laden
     res = supabase.table("stundenplaene").select("*").eq("child", cur_c).execute()
@@ -173,7 +178,6 @@ elif st.session_state.view == 'stundenplan':
     cols = st.columns(3)
     for i, day in enumerate(disp_days):
         with cols[i]:
-            # Einheits-Farbe: Alle Kinder haben weiße Schrift auf ihrem Header
             st.markdown(f"<div class='day-header' style='background:{CHILD_COLORS[cur_c]};'>{day}</div>", unsafe_allow_html=True)
             for std in range(1, 9):
                 lesson = plan_dict.get((day, std))
