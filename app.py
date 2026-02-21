@@ -5,6 +5,7 @@ from datetime import datetime, date
 from supabase import create_client
 import os
 import uuid
+import streamlit.components.v1 as components
 
 # --- DATENBANK VERBINDUNG ---
 url = st.secrets["SUPABASE_URL"]
@@ -21,7 +22,7 @@ SUBJECTS = [
 DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 TIMES = {1: "07:50-08:35", 2: "08:40-09:25", 3: "09:40-10:25", 4: "10:30-11:15", 5: "11:30-12:15", 6: "12:20-13:05", 7: "13:35-14:20", 8: "14:25-15:10"}
 
-# --- FERIENDATEN SH 2026/2027 (Mit vollen Jahreszahlen) ---
+# --- FERIENDATEN SH 2026/2027 ---
 FERIEN_DATA = {
     2026: [
         {"Ferien": "Osterferien", "Zeitraum": "26.03.2026 - 11.04.2026"},
@@ -52,13 +53,10 @@ st.markdown("""
     .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
     .day-header { text-align: center; border-radius: 5px; padding: 8px; margin-bottom: 10px; font-weight: bold; color: #FFFFFF !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
     .time-label { font-size: 0.7rem; color: #444; margin-bottom: 0px; line-height: 1.1; font-weight: bold; }
-    
-    /* Bus-Sektion Kontrast-Fix */
-    .bus-box { background-color: #000000; color: #FFFFFF; padding: 12px; border-radius: 8px; margin-bottom: 5px; font-weight: bold; border-left: 5px solid #FF4B4B; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- INITIALISIERUNG SESSION STATE (Verhindert AttributeErrors) ---
+# --- INITIALISIERUNG SESSION STATE ---
 if 'view' not in st.session_state: st.session_state.view = 'start'
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'edit_id' not in st.session_state: st.session_state.edit_id = None
@@ -83,7 +81,7 @@ if st.session_state.view == 'start':
         if st.button("🚌 BUS-CHECK", use_container_width=True, type="primary"):
             st.session_state.view = 'bus'; st.rerun()
     with c2:
-        if st.button("🏫 PLÄNE", use_container_width=True, type="primary"):
+        if st.button("🏫 STUNDENPLÄNE", use_container_width=True, type="primary"):
             st.session_state.view = 'stundenplan'; st.rerun()
         if st.button("🌴 FERIEN", use_container_width=True, type="primary"):
             st.session_state.view = 'ferien'; st.rerun()
@@ -204,28 +202,35 @@ elif st.session_state.view == 'stundenplan':
     st.write(""); 
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
 
-# --- 4. BUS-CHECK ---
+# --- 4. BUS-CHECK (Direkt integriert) ---
 elif st.session_state.view == 'bus':
-    st.markdown('<div class="main-header">Schulplaner Bus</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Bus-Check Live</div>', unsafe_allow_html=True)
     
-    st.markdown("<div class='bus-box'>Schule ➔ Nach Hause<br><small>Kiel Seefischmarkt (Ri. Schönberg)</small></div>", unsafe_allow_html=True)
-    st.link_button("➔ Abfahrten Seefischmarkt", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop=Kiel%2C+Seefischmarkt", use_container_width=True)
+    stops = {
+        "Seefischmarkt (Schule ➔ Haus)": "Kiel%2C+Seefischmarkt",
+        "Amboßweg (Haus ➔ Schule)": "Sch%C3%B6nkirchen%2C+Ambo%C3%9Fweg",
+        "Linas Diek (Haus ➔ Schule)": "Sch%C3%B6nkirchen%2C+Linas+Diek"
+    }
     
-    st.write("---")
-    st.markdown("<div class='bus-box'>Zuhause ➔ Kiel / Schule<br><small>Schönkirchen Amboßweg/Linas Diek</small></div>", unsafe_allow_html=True)
-    st.link_button("➔ Abfahrten Amboßweg", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop=Sch%C3%B6nkirchen%2C+Ambo%C3%9Fweg", use_container_width=True)
-    st.link_button("➔ Abfahrten Linas Diek", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop=Sch%C3%B6nkirchen%2C+Linas+Diek", use_container_width=True)
+    selection = st.selectbox("Haltestelle wählen:", list(stops.keys()))
+    
+    url_nahsh = f"https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop={stops[selection]}"
+    
+    # Anzeige des Monitors direkt in der App via iFrame
+    components.iframe(url_nahsh, height=600, scrolling=True)
     
     st.write(""); 
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
 
 # --- 5. FERIEN ---
 elif st.session_state.view == 'ferien':
-    st.markdown('<div class="main-header">Schulplaner Ferien</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Ferien Schleswig-Holstein</div>', unsafe_allow_html=True)
+    
     jahr = st.radio("Jahr:", [2026, 2027], horizontal=True)
     
     df_f = pd.DataFrame(FERIEN_DATA[jahr])
     st.dataframe(df_f, hide_index=True, use_container_width=True)
     
-    st.info("Ferien in Schleswig-Holstein. Alle Angaben ohne Gewähr.")
+    st.caption("Alle Angaben ohne Gewähr")
+    
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
