@@ -47,20 +47,23 @@ if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_child = "Mila"
-if 'started' not in st.session_state: st.session_state.started = False
 
-# --- HELFER: DATEN LADEN (ROBUST GEGEN LEERE TABELLEN) ---
+# --- HELFER: DATEN LADEN (Zwei-Stufen-Sicherheit gegen KeyError) ---
 def get_stundenplan(child):
+    standard_cols = ["id", "child", "tag", "stunde", "fach"]
     try:
         res = supabase.table("stundenplaene").select("*").eq("child", child).execute()
-        # Wichtig: DataFrame explizit mit Spalten erstellen, falls res.data leer ist
-        df = pd.DataFrame(res.data)
-        for col in ["id", "child", "tag", "stunde", "fach"]:
+        data = res.data
+        if not data:
+            return pd.DataFrame(columns=standard_cols)
+        df = pd.DataFrame(data)
+        # Falls Spalten fehlen (Sicherheitsschleife)
+        for col in standard_cols:
             if col not in df.columns:
                 df[col] = None
         return df
-    except:
-        return pd.DataFrame(columns=["id", "child", "tag", "stunde", "fach"])
+    except Exception:
+        return pd.DataFrame(columns=standard_cols)
 
 # --- 1. STARTSEITE ---
 if st.session_state.view == 'start':
@@ -81,21 +84,19 @@ if st.session_state.view == 'start':
 elif st.session_state.view == 'klausuren':
     try:
         response = supabase.table("klausuren").select("*").execute()
-        data, df = response.data, pd.DataFrame(response.data)
+        k_data, k_df = response.data, pd.DataFrame(response.data)
     except:
-        data, df = [], pd.DataFrame()
+        k_data, k_df = [], pd.DataFrame()
 
     with st.sidebar:
-        st.header("Klausuren")
+        st.header("Menü")
         if st.button("← Hauptmenü"):
             st.session_state.view = 'start'
             st.rerun()
         st.divider()
         with st.form("sb_form", clear_on_submit=True):
-            sc = st.selectbox("Kind", list(CHILD_COLORS.keys()))
-            ss = st.selectbox("Fach", SUBJECTS)
-            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY")
-            sn = st.text_input("Notiz")
+            sc = st.selectbox("Kind", list(CHILD_COLORS.keys())); ss = st.selectbox("Fach", SUBJECTS)
+            sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz")
             if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": CHILD_COLORS[sc], "child": sc, "note": sn}).execute()
                 st.session_state.cal_key = str(uuid.uuid4())
@@ -108,11 +109,11 @@ elif st.session_state.view == 'klausuren':
                 {"title": "Herbst", "start": "2025-10-20", "end": "2025-10-31", "backgroundColor": zart_gruen, "display": "background"},
                 {"title": "Weihnacht", "start": "2025-12-19", "end": "2026-01-06", "backgroundColor": zart_gruen, "display": "background"}]
     
-    calendar_events = []
-    for d_row in data:
-        calendar_events.append({"id": str(d_row["id"]), "title": d_row["titel"], "start": d_row["start_date"], "backgroundColor": d_row["color"], "allDay": True, "textColor": "white"})
+    cal_events = []
+    for d in k_data:
+        cal_events.append({"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"})
 
-    state = calendar(events=calendar_events + holidays, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False, "noEventsText": "Keine Einträge vorhanden"}, key=st.session_state.cal_key)
+    state = calendar(events=cal_events + holidays, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False, "noEventsText": "Keine Einträge vorhanden"}, key=st.session_state.cal_key)
 
     if state.get("dateClick"):
         st.session_state.selected_date = state["dateClick"]["date"][:10]
@@ -121,10 +122,10 @@ elif st.session_state.view == 'klausuren':
         st.session_state.edit_id = state["eventClick"]["event"].get("id")
         st.session_state.selected_date = None
 
-    # Formulare unter Kalender
+    # Formulare
     if st.session_state.selected_date:
         st.divider()
-        with st.form("quick_form"):
+        with st.form("quick_f"):
             st.write(f"**Neu: {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
             c1, c2 = st.columns(2)
@@ -137,9 +138,8 @@ elif st.session_state.view == 'klausuren':
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
         try:
-            edit_row = df[df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
-            with st.form("edit_form"):
-                st.write("**Bearbeiten**")
+            edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
+            with st.form("edit_f"):
                 new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()), index=list(CHILD_COLORS.keys()).index(edit_row['child']))
                 curr_s = edit_row['titel'].split('\n')[-1]
                 new_s = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0)
@@ -156,11 +156,10 @@ elif st.session_state.view == 'klausuren':
                     st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
 
-    if not df.empty:
+    if not k_df.empty:
         st.divider()
-        df_table = df.copy(); df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
-        df_final = df_table.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'})
-        st.dataframe(df_final, hide_index=True, use_container_width=True)
+        df_table = k_df.copy(); df_table['Anzeige'] = df_table['titel'].str.replace('\n', ': ')
+        st.dataframe(df_table.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'}), hide_index=True, use_container_width=True)
     else: st.info("Keine Einträge vorhanden")
 
 # --- 3. STUNDENPLAN-BEREICH ---
@@ -168,19 +167,23 @@ elif st.session_state.view == 'stundenplan':
     st.markdown(f'<div style="background-color:black; color:white; padding:10px; border-radius:10px; text-align:center; font-weight:bold; font-size:1.5rem; margin-bottom:15px;">🏫 Stundenpläne</div>', unsafe_allow_html=True)
     
     c_col1, c_col2, c_col3 = st.columns(3)
-    if c_col1.button("Mila", use_container_width=True): st.session_state.stundenplan_child = "Mila"
-    if c_col2.button("Jojo", use_container_width=True): st.session_state.stundenplan_child = "Jojo"
-    if c_col3.button("Mikko", use_container_width=True): st.session_state.stundenplan_child = "Mikko"
+    if c_col1.button("Mila", use_container_width=True): st.session_state.stundenplan_child = "Mila"; st.rerun()
+    if c_col2.button("Jojo", use_container_width=True): st.session_state.stundenplan_child = "Jojo"; st.rerun()
+    if c_col3.button("Mikko", use_container_width=True): st.session_state.stundenplan_child = "Mikko"; st.rerun()
 
     current_child = st.session_state.stundenplan_child
     st.write(f"### Plan für {current_child}")
 
     plan_df = get_stundenplan(current_child)
+    
+    # ULTIMATIVE SICHERHEIT: Falls plan_df trotz Helfer-Funktion keine Spalten hat
+    if "tag" not in plan_df.columns:
+        plan_df = pd.DataFrame(columns=["id", "child", "tag", "stunde", "fach"])
 
     for day in DAYS:
         with st.expander(f"📅 {day}", expanded=False):
             for std in range(1, 9):
-                # Sicherer Abgleich
+                # Filterung
                 match = plan_df[(plan_df['tag'] == day) & (plan_df['stunde'] == std)]
                 current_fach = match.iloc[0]['fach'] if not match.empty else "---"
                 
@@ -192,7 +195,7 @@ elif st.session_state.view == 'stundenplan':
     if 'edit_lesson' in st.session_state:
         el = st.session_state.edit_lesson
         st.divider()
-        with st.form("edit_plan_form"):
+        with st.form("edit_plan_f"):
             st.write(f"**{el['day']}, {el['std']}. Std ändern**")
             new_f = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(el['fach']) if el['fach'] in SUBJECTS else 0)
             cc1, cc2 = st.columns(2)
@@ -208,6 +211,7 @@ elif st.session_state.view == 'stundenplan':
                 del st.session_state.edit_lesson
                 st.rerun()
 
+    st.write("")
     if st.button("← Hauptmenü", use_container_width=True):
         st.session_state.view = 'start'
         st.rerun()
