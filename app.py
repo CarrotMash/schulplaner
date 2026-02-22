@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from streamlit_calendar import calendar
 from datetime import datetime, date
+import zoneinfo
 from supabase import create_client
 import os
 import uuid
@@ -56,7 +57,7 @@ st.markdown("""
     }
 
     [data-testid="stImage"] > img {
-        width: 64% !important; margin-left: auto; margin-right: auto;
+        width: 44% !important; margin-left: auto; margin-right: auto;
         display: block; border-radius: 10px;
     }
 
@@ -101,6 +102,35 @@ if st.session_state.view == 'start':
     st.markdown('<p class="main-header">Schulplaner</p>', unsafe_allow_html=True)
     if os.path.exists("startbild.jpg"):
         st.image("startbild.jpg")
+
+    # --- Klausur-Frühwarnung: Banner wenn Klausur in ≤ 2 Tagen ---
+    try:
+        from datetime import timedelta
+        res_warn = supabase.table("klausuren").select("*").execute()
+        heute = date.today()
+        bald = []
+        for k in res_warn.data:
+            try:
+                k_date = date.fromisoformat(k["start_date"])
+                delta = (k_date - heute).days
+                if 0 <= delta <= 2:
+                    bald.append((delta, k))
+            except Exception:
+                pass
+        if bald:
+            bald.sort(key=lambda x: x[0])
+            for delta, k in bald:
+                titel = k["titel"].replace("\n", " · ")
+                if delta == 0:
+                    wann = "⚡ **heute!**"
+                elif delta == 1:
+                    wann = "⏰ **morgen**"
+                else:
+                    wann = "📅 **übermorgen**"
+                st.warning(f"🔔 Klausur {wann}: **{titel}**")
+    except Exception:
+        pass
+
     st.write("")
     c1, c2 = st.columns(2)
     with c1:
@@ -453,7 +483,7 @@ elif st.session_state.view == 'bus':
 
     def zeige_naechste_120min(fahrplan, haltestellenname, richtung):
         from datetime import timedelta
-        now    = datetime.now()
+        now    = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin")).replace(tzinfo=None)
         cutoff = now.replace(second=0, microsecond=0)
 
         # Wochentag-Namen für Ausgaben
