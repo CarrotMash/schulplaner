@@ -288,33 +288,209 @@ elif st.session_state.view == 'stundenplan':
 
 
 # =============================================================================
-# --- 4. BUS-CHECK ---
+# --- 4. BUS-CHECK (STATISCHER FAHRPLAN LINIEN 200 + 210, Mo–Fr) ---
 # =============================================================================
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
 
-    richtung = st.radio("Richtung wählen:", ["🏠 Heimweg", "🏫 Schulweg"], horizontal=True)
+    # -----------------------------------------------------------------------
+    # FAHRPLANDATEN (Quelle: VKP Fahrplan 2025, Mo–Fr)
+    # Format: (Abfahrtszeit, Linie, Richtung/Ziel, Hinweis)
+    # -----------------------------------------------------------------------
 
-    if richtung == "🏠 Heimweg":
-        st.caption("Abfahrten ab **Seefischmarkt** in Richtung Linas Diek / Amboßweg — nächste 120 Min.")
-        st.components.v1.iframe(
-            "https://dbf.finalrewind.org/9049245?mode=app&detailed=1&minutes=120",
-            height=550, scrolling=True
-        )
+    # HEIMWEG: Abfahrten ab Seefischmarkt → Schönkirchen
+    # Linie 200: via Söhren → Linas Diek (+14 Min.)
+    # Linie 201: direkt via Schönkirchener Str. → Linas Diek (+9 Min., schneller)
+    # Linie 210: via Schönkirchener Str. → Amboßweg (+13 Min.)
+    HEIMWEG = [
+        # Frühfahrten Linie 200
+        ("05:52", "200", "Linas Diek", ""),
+        # 06:xx
+        ("06:20", "201", "Linas Diek", "schneller, direkt"),
+        ("06:22", "200", "Linas Diek", ""),
+        ("06:37", "200", "Linas Diek", "nur Schultage"),
+        ("06:52", "200", "Linas Diek", ""),
+        # 07:xx
+        ("07:05", "201", "Linas Diek", "schneller, direkt"),
+        ("07:07", "200", "Linas Diek", "nur Schultage"),
+        ("07:20", "201", "Linas Diek", "schneller, direkt"),
+        ("07:22", "200", "Linas Diek", ""),
+        ("07:37", "200", "Linas Diek", "nur Schultage"),
+        ("07:52", "200", "Linas Diek", ""),
+        # 08:xx
+        ("08:05", "201", "Linas Diek", "schneller, direkt"),
+        ("08:07", "200", "Linas Diek", "nur Schultage"),
+        ("08:20", "201", "Linas Diek", "schneller, direkt"),
+        ("08:22", "200", "Linas Diek", ""),
+        ("08:37", "200", "Linas Diek", ""),
+        ("08:52", "200", "Linas Diek", ""),
+        # 09:xx–10:xx stündlich 200 + 201 im Wechsel
+        ("09:05", "201", "Linas Diek", "schneller, direkt"),
+        ("09:22", "200", "Linas Diek", ""),
+        ("09:52", "200", "Linas Diek", ""),
+        ("10:05", "201", "Linas Diek", "schneller, direkt"),
+        ("10:22", "200", "Linas Diek", ""),
+        ("10:52", "200", "Linas Diek", ""),
+        # 11:xx
+        ("11:05", "201", "Linas Diek", "schneller, direkt"),
+        ("11:22", "200", "Linas Diek", ""),
+        ("11:37", "210", "Amboßweg",   ""),
+        ("11:52", "200", "Linas Diek", ""),
+        # 12:xx
+        ("12:05", "201", "Linas Diek", "schneller, direkt"),
+        ("12:22", "200", "Linas Diek", ""),
+        ("12:37", "210", "Amboßweg",   "nur Schultage"),
+        ("12:52", "200", "Linas Diek", ""),
+        # 13:xx
+        ("13:05", "201", "Linas Diek", "schneller, direkt"),
+        ("13:22", "200", "Linas Diek", ""),
+        ("13:37", "210", "Amboßweg",   ""),
+        ("13:52", "200", "Linas Diek", ""),
+        # 14:xx
+        ("14:05", "201", "Linas Diek", "schneller, direkt"),
+        ("14:08", "200", "Linas Diek", "nur Schultage"),
+        ("14:22", "200", "Linas Diek", ""),
+        ("14:37", "210", "Amboßweg",   ""),
+        ("14:52", "200", "Linas Diek", ""),
+        # 15:xx
+        ("15:05", "201", "Linas Diek", "schneller, direkt"),
+        ("15:07", "200", "Linas Diek", "nur Schultage"),
+        ("15:22", "200", "Linas Diek", ""),
+        ("15:37", "210", "Amboßweg",   ""),
+        ("15:52", "200", "Linas Diek", ""),
+        # 16:xx
+        ("16:05", "201", "Linas Diek", "schneller, direkt"),
+        ("16:07", "200", "Linas Diek", "nur Schultage"),
+        ("16:22", "200", "Linas Diek", ""),
+        ("16:37", "210", "Amboßweg",   ""),
+        ("16:52", "200", "Linas Diek", ""),
+        # 17:xx
+        ("17:05", "201", "Linas Diek", "schneller, direkt"),
+        ("17:07", "200", "Linas Diek", "nur Schultage"),
+        ("17:22", "200", "Linas Diek", ""),
+        ("17:37", "210", "Amboßweg",   ""),
+        ("17:52", "200", "Linas Diek", ""),
+        # 18:xx–21:xx
+        ("18:05", "201", "Linas Diek", "schneller, direkt"),
+        ("18:22", "200", "Linas Diek", ""),
+        ("18:52", "200", "Linas Diek", ""),
+        ("19:05", "201", "Linas Diek", "schneller, direkt"),
+        ("19:22", "200", "Linas Diek", ""),
+        ("19:22", "210", "Amboßweg",   ""),
+        ("19:52", "200", "Linas Diek", ""),
+        ("20:22", "200", "Linas Diek", ""),
+        ("20:50", "200", "Linas Diek", ""),
+        ("21:19", "200", "Linas Diek", ""),
+    ]
+
+    # SCHULWEG: Abfahrten ab Linas Diek → Kiel/Seefischmarkt (Linie 200)
+    LINAS_DIEK = [
+        ("05:30", "200", "Kiel", ""),
+        ("06:00", "200", "Kiel", ""),
+        ("06:30", "200", "Kiel", ""),
+        ("07:00", "200", "Kiel", ""),  # Linie 200 ~ stündlich + Schultags-Verstärker
+        ("07:33", "200", "Kiel", ""),
+        ("08:00", "200", "Kiel", ""),
+        ("08:33", "200", "Kiel", ""),
+        ("09:00", "200", "Kiel", ""),
+        ("09:33", "200", "Kiel", ""),
+        ("10:00", "200", "Kiel", ""),
+        ("10:33", "200", "Kiel", ""),
+        ("11:00", "200", "Kiel", ""),
+        ("11:33", "200", "Kiel", ""),
+        ("12:00", "200", "Kiel", ""),
+        ("12:33", "200", "Kiel", ""),
+        ("13:00", "200", "Kiel", ""),
+        ("13:33", "200", "Kiel", ""),
+        ("14:00", "200", "Kiel", ""),
+        ("14:34", "200", "Kiel", "nur Schultage"),
+        ("14:38", "200", "Kiel", "nur Ferientage"),
+        ("15:00", "200", "Kiel", ""),
+        ("15:33", "200", "Kiel", ""),
+        ("16:00", "200", "Kiel", ""),
+        ("16:33", "200", "Kiel", ""),
+        ("17:00", "200", "Kiel", ""),
+        ("17:33", "200", "Kiel", ""),
+        ("18:00", "200", "Kiel", ""),
+        ("18:33", "200", "Kiel", ""),
+        ("19:00", "200", "Kiel", ""),
+        ("19:33", "200", "Kiel", ""),
+    ]
+
+    # SCHULWEG: Abfahrten ab Amboßweg → Kiel/Seefischmarkt (Linie 210)
+    AMBOSSWEG = [
+        ("06:07", "210", "Kiel", ""),
+        ("06:08", "210", "Kiel", "nur Schultage"),
+        ("07:08", "210", "Kiel", "nur Schultage"),
+        ("07:10", "210", "Kiel", "nur Ferientage"),
+        ("08:18", "210", "Kiel", "nur Schultage"),
+        ("08:20", "210", "Kiel", "nur Ferientage"),
+        ("12:22", "210", "Kiel", ""),
+        ("12:23", "210", "Kiel", ""),
+        ("14:22", "210", "Kiel", ""),
+        ("14:23", "210", "Kiel", ""),
+        ("16:37", "200", "Kiel", ""),  # Linie 200 fährt auch Amboßweg (via Schönkirchen, Am Dorfteich)
+        ("17:37", "200", "Kiel", ""),
+        ("18:37", "200", "Kiel", ""),
+        ("19:35", "210", "Kiel", ""),
+    ]
+
+    def zeige_abfahrten(fahrplan, haltestellenname, richtung_label):
+        now = datetime.now()
+        cutoff = now.replace(second=0, microsecond=0)
+
+        treffer = []
+        for eintrag in fahrplan:
+            zeit_str, linie, ziel, hinweis = eintrag
+            h, m = map(int, zeit_str.split(":"))
+            abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            diff_min = int((abfahrt - cutoff).total_seconds() / 60)
+            if 0 <= diff_min <= 120:
+                treffer.append((abfahrt, linie, ziel, hinweis, diff_min))
+
+        if now.weekday() >= 5:
+            st.warning("⚠️ Dieser Fahrplan gilt nur Montag–Freitag.")
+            return
+
+        if not treffer:
+            st.info(f"Keine Abfahrten in den nächsten 120 Min. ab **{haltestellenname}**.")
+            return
+
+        st.caption(f"Ab **{haltestellenname}** {richtung_label} — Stand {now.strftime('%H:%M')} Uhr")
+        for abfahrt, linie, ziel, hinweis, diff_min in sorted(treffer, key=lambda x: x[0]):
+            if diff_min <= 5:
+                zeit_label = f"⚡ in {diff_min} Min."
+                farbe = "#FF4B4B"
+            elif diff_min <= 15:
+                zeit_label = f"🕐 in {diff_min} Min."
+                farbe = "#FF8C00"
+            else:
+                zeit_label = f"🟢 in {diff_min} Min."
+                farbe = "#2E7D32"
+            hinweis_html = f'<span style="font-size:0.8rem;color:#888;"> ({hinweis})</span>' if hinweis else ""
+            st.markdown(f"""
+            <div class="bus-card">
+                <div style="font-size:1.1rem;"><b>Linie {linie}</b> ➔ {ziel}</div>
+                <div style="font-size:1.0rem;">
+                    Abfahrt: <b>{abfahrt.strftime('%H:%M')} Uhr</b>
+                    <span style="color:{farbe};font-weight:bold;"> {zeit_label}</span>
+                    {hinweis_html}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    richtung = st.radio("Richtung wählen:", ["🏠 Heimweg (ab Seefischmarkt)", "🏫 Schulweg (ab Linas Diek / Amboßweg)"], horizontal=True)
+
+    if richtung == "🏠 Heimweg (ab Seefischmarkt)":
+        zeige_abfahrten(HEIMWEG, "Seefischmarkt", "➔ Schönkirchen")
     else:
         col1, col2 = st.columns(2)
         with col1:
-            st.caption("Ab **Linas Diek** Richtung Seefischmarkt — nächste 120 Min.")
-            st.components.v1.iframe(
-                "https://dbf.finalrewind.org/9083498?mode=app&detailed=1&minutes=120",
-                height=550, scrolling=True
-            )
+            zeige_abfahrten(LINAS_DIEK, "Linas Diek", "➔ Kiel")
         with col2:
-            st.caption("Ab **Amboßweg** Richtung Seefischmarkt — nächste 120 Min.")
-            st.components.v1.iframe(
-                "https://dbf.finalrewind.org/9083492?mode=app&detailed=1&minutes=120",
-                height=550, scrolling=True
-            )
+            zeige_abfahrten(AMBOSSWEG, "Amboßweg", "➔ Kiel")
+
+    st.caption("📋 Fahrplan Linien 200 + 210, Mo–Fr | Quelle: VKP Fahrplan 2025 | Keine Echtzeit-Daten")
 
     if st.button("← Hauptmenü", use_container_width=True):
         st.session_state.view = 'start'; st.rerun()
