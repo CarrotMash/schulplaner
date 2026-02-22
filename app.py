@@ -5,13 +5,7 @@ from datetime import datetime, date
 from supabase import create_client
 import os
 import uuid
-import datetime as dt
-try:
-    from pyhafas import HafasClient
-    from pyhafas.profile import DBProfile
-    HAFAS_AVAILABLE = True
-except ImportError:
-    HAFAS_AVAILABLE = False
+
 
 # --- DATENBANK VERBINDUNG ---
 url = st.secrets["SUPABASE_URL"]
@@ -89,33 +83,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- BUS-FUNKTION (pyhafas / DB HAFAS) ---
-def fetch_departures(stop_id):
-    if not HAFAS_AVAILABLE:
-        return None
-    try:
-        client = HafasClient(DBProfile())
-        departures = client.departures(
-            station=stop_id,
-            date=dt.datetime.now(),
-            max_trips=10,
-            products={
-                'long_distance_express': False,
-                'long_distance': False,
-                'regional_express': False,
-                'regional': False,
-                'suburban': False,
-                'bus': True,
-                'ferry': False,
-                'subway': False,
-                'tram': False,
-                'taxi': False
-            }
-        )
-        return departures
-    except Exception as e:
-        st.error(f"HAFAS Fehler: {e}")
-        return None
+
 
 
 # =============================================================================
@@ -332,53 +300,11 @@ elif st.session_state.view == 'bus':
     }
 
     selection = st.selectbox("Haltestelle wählen:", list(stops.keys()))
-    if st.button("🔄 Aktualisieren", use_container_width=True):
-        st.rerun()
+    stop_id = stops[selection]
 
-    if not HAFAS_AVAILABLE:
-        st.error("❌ pyhafas nicht installiert. Bitte `pyhafas` zur requirements.txt hinzufügen.")
-    else:
-        with st.spinner("Abfahrten werden geladen..."):
-            departures = fetch_departures(stops[selection])
+    iframe_url = f"https://dbf.finalrewind.org/{stop_id}?mode=app&detailed=1&platforms=&via="
 
-        if departures is None:
-            st.error("❌ Verbindung zum Fahrplanserver fehlgeschlagen.")
-        elif not departures:
-            st.info("ℹ️ Aktuell keine Abfahrten in den nächsten 60 Minuten geplant.")
-        else:
-            st.caption(f"Nächste Abfahrten — Stand: {datetime.now().strftime('%H:%M')} Uhr")
-            for dep in departures:
-                line = dep.name or "Bus"
-                direction = dep.direction or "Unbekannt"
-                p_time = dep.date_time
-                delay = dep.delay  # timedelta or None
-                cancelled = dep.cancelled
-
-                if delay is not None:
-                    delay_min = int(delay.total_seconds() / 60)
-                else:
-                    delay_min = 0
-
-                delay_label = f"+{delay_min} Min." if delay_min > 0 else "pünktlich"
-                delay_class = "delay" if delay_min > 0 else "ontime"
-
-                if cancelled:
-                    st.markdown(f"""
-                    <div class="bus-card" style="opacity:0.5;">
-                        <div style="font-size:1.1rem;"><b>{line}</b> ➔ {direction}</div>
-                        <div style="font-size:1.0rem; color:#FF4B4B;"><b>🚫 FÄLLT AUS</b> (geplant: {p_time.strftime('%H:%M')} Uhr)</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div class="bus-card">
-                        <div style="font-size:1.1rem;"><b>{line}</b> ➔ {direction}</div>
-                        <div style="font-size:1.0rem;">
-                            Abfahrt: <b>{p_time.strftime('%H:%M')} Uhr</b>
-                            <span class="{delay_class}"> ({delay_label})</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+    st.components.v1.iframe(iframe_url, height=500, scrolling=True)
 
     if st.button("← Hauptmenü", use_container_width=True):
         st.session_state.view = 'start'; st.rerun()
