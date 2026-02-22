@@ -293,18 +293,31 @@ elif st.session_state.view == 'stundenplan':
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
 
-    stops = {
-        "Seefischmarkt (Schule ➔ Zuhause)": "9049245",
-        "Amboßweg (Zuhause ➔ Schule)": "9083492",
-        "Linas Diek (Zuhause ➔ Schule)": "9083498"
-    }
+    # Richtung Zuhause (Schönberg)
+    st.markdown("#### 🏠 Richtung Zuhause")
+    st.caption("Seefischmarkt → Richtung Schönberg")
+    st.components.v1.iframe(
+        "https://dbf.finalrewind.org/9049245?mode=app&detailed=1&via=Sch%C3%B6nberg",
+        height=340, scrolling=True
+    )
 
-    selection = st.selectbox("Haltestelle wählen:", list(stops.keys()))
-    stop_id = stops[selection]
+    st.divider()
 
-    iframe_url = f"https://dbf.finalrewind.org/{stop_id}?mode=app&detailed=1&platforms=&via="
-
-    st.components.v1.iframe(iframe_url, height=500, scrolling=True)
+    # Richtung Schule (Kiel)
+    st.markdown("#### 🏫 Richtung Schule")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.caption("Linas Diek → Richtung Kiel")
+        st.components.v1.iframe(
+            "https://dbf.finalrewind.org/9083498?mode=app&detailed=1&via=Kiel",
+            height=340, scrolling=True
+        )
+    with col2:
+        st.caption("Amboßweg → Richtung Kiel")
+        st.components.v1.iframe(
+            "https://dbf.finalrewind.org/9083492?mode=app&detailed=1&via=Kiel",
+            height=340, scrolling=True
+        )
 
     if st.button("← Hauptmenü", use_container_width=True):
         st.session_state.view = 'start'; st.rerun()
