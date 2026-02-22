@@ -39,33 +39,35 @@ st.markdown("""
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
     
-    /* Der gewünschte schwarze Kasten für die Klasse */
+    /* Klassen-Kasten */
     .class-box {
         background-color: #000000;
         color: #FFFFFF !important;
         padding: 5px 10px;
         border-radius: 8px;
         font-weight: bold;
-        font-size: 1.0rem;
+        font-size: 1.1rem;
         text-align: center;
-        display: inline-block;
         width: 100%;
+        display: inline-block;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- INITIALISIERUNG SESSION STATE ---
+# --- INITIALISIERUNG ---
 if 'view' not in st.session_state: st.session_state.view = 'start'
-if 'selected_date' not in st.session_state: st.session_state.selected_date = None
-if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_child = "Mila"
 if 'day_offset' not in st.session_state: st.session_state.day_offset = 0
 
 def get_bus_departures(stop_id):
     try:
-        url = f"https://v6.db.transport.rest/stops/{stop_id}/departures?duration=120&results=15"
-        return requests.get(url, timeout=5).json().get('departures', [])
+        # Nutzung der VBN/HAFAS API als stabilere Alternative
+        url = f"https://v6.vbn.transport.rest/stops/{stop_id}/departures?duration=120&results=10"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            return r.json().get('departures', [])
+        return None
     except: return None
 
 # --- 1. DASHBOARD ---
@@ -91,6 +93,7 @@ elif st.session_state.view == 'klausuren':
     with st.sidebar:
         st.header("Schulplaner")
         if st.button("← Hauptmenü"): st.session_state.view = 'start'; st.rerun()
+        st.divider()
         with st.form("sb_form", clear_on_submit=True):
             sc = st.selectbox("Kind", list(CHILD_COLORS.keys())); ss = st.selectbox("Fach", SUBJECTS)
             sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz")
@@ -100,24 +103,23 @@ elif st.session_state.view == 'klausuren':
 
     zart_gruen = "#C8E6C9"
     holidays = [{"title": "Oster", "start": "2025-04-11", "end": "2025-04-26", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Sommer", "start": "2025-07-28", "end": "2025-09-06", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Herbst", "start": "2025-10-20", "end": "2025-10-31", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Weihnacht", "start": "2025-12-19", "end": "2026-01-06", "backgroundColor": zart_gruen, "display": "background"}]
-    
     cal_ev = [{"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"} for d in k_data]
+    
     state = calendar(events=cal_ev + holidays, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False}, key=st.session_state.cal_key)
 
     if state.get("dateClick"): st.session_state.selected_date = state["dateClick"]["date"][:10]; st.session_state.edit_id = None; st.rerun()
     if state.get("eventClick"): st.session_state.edit_id = state["eventClick"]["event"].get("id"); st.session_state.selected_date = None; st.rerun()
 
-    if st.session_state.selected_date:
+    if st.session_state.get('selected_date'):
         with st.form("q_f"):
             st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
-            c1, c2 = st.columns(2)
-            if c1.form_submit_button("Speichern"):
+            if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if c2.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
+            if st.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
 
-    if st.session_state.edit_id and st.session_state.edit_id != "undefined":
+    if st.session_state.get('edit_id') and st.session_state.edit_id != "undefined":
         try:
             edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("ed_f"):
@@ -153,10 +155,10 @@ elif st.session_state.view == 'stundenplan':
     with t_col1:
         if st.button("◀", key="prev_day", use_container_width=True): st.session_state.day_offset -= 1; st.rerun()
     with t_col2:
-        # Hier wird die schwarze Box mit dem Text und das Edit-Icon nebeneinander gesetzt
-        sub_l, sub_r = st.columns([4, 1])
-        sub_l.markdown(f"<div class='class-box'>{cur_klasse}</div>", unsafe_allow_html=True)
-        if sub_r.button("✏️", key="edit_grade"): st.session_state.editing_grade = True
+        # Horizontale Anordnung im mittleren Bereich
+        m_c1, m_c2 = st.columns([0.8, 0.2])
+        m_c1.markdown(f"<div class='class-box'>{cur_klasse}</div>", unsafe_allow_html=True)
+        if m_c2.button("✏️", key="edit_grade"): st.session_state.editing_grade = True
     with t_col3:
         if st.button("▶", key="next_day", use_container_width=True): st.session_state.day_offset += 1; st.rerun()
 
@@ -185,15 +187,12 @@ elif st.session_state.view == 'stundenplan':
     if 'edit_cell' in st.session_state:
         ec = st.session_state.edit_cell
         with st.form("ed_p"):
-            st.write(f"📌 **{ec['day']}, {ec['std']}. Std**")
             new_f = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(ec['fach']) if ec['fach'] in SUBJECTS else 0)
-            c1, c2 = st.columns(2)
-            if c1.form_submit_button("Speichern"):
+            if st.form_submit_button("Speichern"):
                 if ec['id']: supabase.table("stundenplaene").update({"fach": new_f}).eq("id", ec['id']).execute()
                 else: supabase.table("stundenplaene").insert({"child": cur_c, "tag": ec['day'], "stunde": ec['std'], "fach": new_f}).execute()
                 del st.session_state.edit_cell; st.rerun()
-            if c2.form_submit_button("Abbrechen"): del st.session_state.edit_cell; st.rerun()
-            
+            if st.form_submit_button("Abbrechen"): del st.session_state.edit_cell; st.rerun()
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
 
 # --- 4. BUS-CHECK ---
@@ -203,7 +202,7 @@ elif st.session_state.view == 'bus':
     selection = st.selectbox("Haltestelle wählen:", list(stops.keys()))
     if st.button("🔄 Aktualisieren", use_container_width=True): st.rerun()
     departures = get_bus_departures(stops[selection])
-    if departures is None: st.error("Fehler beim Abrufen der Daten.")
+    if departures is None: st.error("Daten aktuell nicht verfügbar (Server-Wartung).")
     elif not departures: st.info("Aktuell keine Abfahrten geplant.")
     else:
         for dep in departures:
