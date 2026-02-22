@@ -25,32 +25,41 @@ FERIEN_DATA = {
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
 
-# --- CUSTOM DESIGN ---
+# --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
     .block-container { padding-top: 2.7rem !important; }
     .main-header { font-size: 2.2rem !important; font-weight: 900 !important; text-align: center; margin-top: -10px; margin-bottom: 20px; background-color: #000000; color: #FFFFFF !important; padding: 12px; border-radius: 10px; line-height: 1.1; white-space: nowrap; }
     [data-testid="stImage"] > img { width: 64% !important; margin-left: auto; margin-right: auto; display: block; border-radius: 10px; }
-    .fc-button-primary { background-color: #FF4B4B !important; border-color: #FF4B4B !important; color: #FFFFFF !important; font-weight: bold !important; font-size: 0.85rem !important; }
-    .fc-list-event-time { display: none !important; }
-    .fc-event-title { font-size: 0.8rem !important; white-space: pre-wrap !important; font-weight: bold !important; }
-    .day-header { text-align: center; border-radius: 5px; padding: 8px; margin-bottom: 10px; font-weight: bold; color: #FFFFFF !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+    
+    /* Kalender-Buttons Deutsch & Symmetrie */
+    .fc-button-primary { background-color: #FF4B4B !important; border-color: #FF4B4B !important; color: #FFFFFF !important; font-weight: bold !important; font-size: 0.8rem !important; text-transform: capitalize !important; }
+    .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold !important; }
+    .fc-event-title { font-size: 0.75rem !important; white-space: pre-wrap !important; font-weight: bold !important; line-height: 1.1 !important; }
+    .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
+
+    /* STUNDENPLAN MOBILE FIX: Erzwingt Nebeneinander-Darstellung der 3 Tage */
+    [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 5px !important;
+    }
+    [data-testid="column"] {
+        min-width: 0 !important;
+        flex: 1 1 0% !important;
+    }
+    
+    /* Tag-Header */
+    .day-header { text-align: center; border-radius: 5px; padding: 5px 2px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 0.75rem; box-shadow: 1px 1px 3px rgba(0,0,0,0.1); }
+    
+    /* Klassen-Kasten & Edit-Button */
+    .class-box { background-color: #000000; color: #FFFFFF !important; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 1.0rem; text-align: center; width: 100%; display: block; }
+    .edit-btn-tiny button { padding: 0px !important; height: 28px !important; width: 28px !important; min-width: 28px !important; font-size: 0.8rem !important; line-height: 1 !important; border: none !important; background: transparent !important; }
+    
     .bus-card { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 5px solid #FF4B4B; }
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
-    
-    /* Klassen-Kasten */
-    .class-box {
-        background-color: #000000;
-        color: #FFFFFF !important;
-        padding: 5px 10px;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 1.1rem;
-        text-align: center;
-        width: 100%;
-        display: inline-block;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -62,12 +71,8 @@ if 'day_offset' not in st.session_state: st.session_state.day_offset = 0
 
 def get_bus_departures(stop_id):
     try:
-        # Nutzung der VBN/HAFAS API als stabilere Alternative
         url = f"https://v6.vbn.transport.rest/stops/{stop_id}/departures?duration=120&results=10"
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            return r.json().get('departures', [])
-        return None
+        return requests.get(url, timeout=10).json().get('departures', [])
     except: return None
 
 # --- 1. DASHBOARD ---
@@ -91,9 +96,8 @@ elif st.session_state.view == 'klausuren':
     except: k_data, k_df = [], pd.DataFrame()
 
     with st.sidebar:
-        st.header("Schulplaner")
+        st.header("Klausuren") # Sidebar Überschrift angepasst
         if st.button("← Hauptmenü"): st.session_state.view = 'start'; st.rerun()
-        st.divider()
         with st.form("sb_form", clear_on_submit=True):
             sc = st.selectbox("Kind", list(CHILD_COLORS.keys())); ss = st.selectbox("Fach", SUBJECTS)
             sd = st.date_input("Datum", date.today(), format="DD.MM.YYYY"); sn = st.text_input("Notiz")
@@ -102,10 +106,14 @@ elif st.session_state.view == 'klausuren':
                 st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
 
     zart_gruen = "#C8E6C9"
-    holidays = [{"title": "Oster", "start": "2025-04-11", "end": "2025-04-26", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Sommer", "start": "2025-07-28", "end": "2025-09-06", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Herbst", "start": "2025-10-20", "end": "2025-10-31", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Weihnacht", "start": "2025-12-19", "end": "2026-01-06", "backgroundColor": zart_gruen, "display": "background"}]
     cal_ev = [{"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"} for d in k_data]
     
-    state = calendar(events=cal_ev + holidays, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False}, key=st.session_state.cal_key)
+    # Kalender Optionen mit deutschen Begriffen
+    state = calendar(events=cal_ev, options={
+        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
+        "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
+        "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False
+    }, key=st.session_state.cal_key)
 
     if state.get("dateClick"): st.session_state.selected_date = state["dateClick"]["date"][:10]; st.session_state.edit_id = None; st.rerun()
     if state.get("eventClick"): st.session_state.edit_id = state["eventClick"]["event"].get("id"); st.session_state.selected_date = None; st.rerun()
@@ -114,10 +122,11 @@ elif st.session_state.view == 'klausuren':
         with st.form("q_f"):
             st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
-            if st.form_submit_button("Speichern"):
+            c1, c2 = st.columns(2)
+            if c1.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if st.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
+            if c1.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
 
     if st.session_state.get('edit_id') and st.session_state.edit_id != "undefined":
         try:
@@ -132,13 +141,15 @@ elif st.session_state.view == 'klausuren':
                 if c2.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute(); st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
         except: st.session_state.edit_id = None
+    
     if not k_df.empty:
-        df_t = k_df.copy(); df_t['Anzeige'] = df_t['titel'].str.replace('\n', ': ')
+        st.divider(); df_t = k_df.copy(); df_t['Anzeige'] = df_t['titel'].str.replace('\n', ': ')
         st.dataframe(df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'}), hide_index=True, use_container_width=True)
 
 # --- 3. STUNDENPLÄNE ---
 elif st.session_state.view == 'stundenplan':
-    st.markdown(f'<div class="main-header">Schulplaner Stundenpläne</div>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Stundenpläne</p>', unsafe_allow_html=True)
+    
     c_cols = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
         if c_cols[i].button(name, use_container_width=True, type="secondary" if st.session_state.stundenplan_child != name else "primary"):
@@ -150,15 +161,18 @@ elif st.session_state.view == 'stundenplan':
         cur_klasse = k_info[0]['klasse'] if k_info else "Klasse ?"
     except: cur_klasse = "Klasse ?"
 
-    # Die Navigations-Zeile
+    # Navigations-Reihe (◀ | Klasse ✏️ | ▶) - Durch Columns-Verhältnis [1, 2, 1] optimiert
     t_col1, t_col2, t_col3 = st.columns([1, 2, 1])
     with t_col1:
         if st.button("◀", key="prev_day", use_container_width=True): st.session_state.day_offset -= 1; st.rerun()
     with t_col2:
-        # Horizontale Anordnung im mittleren Bereich
-        m_c1, m_c2 = st.columns([0.8, 0.2])
-        m_c1.markdown(f"<div class='class-box'>{cur_klasse}</div>", unsafe_allow_html=True)
-        if m_c2.button("✏️", key="edit_grade"): st.session_state.editing_grade = True
+        # Klasse und Edit-Button ganz eng zusammen
+        m_l, m_r = st.columns([0.8, 0.2])
+        m_l.markdown(f"<div class='class-box'>{cur_klasse}</div>", unsafe_allow_html=True)
+        with m_r:
+            st.markdown('<div class="edit-btn-tiny">', unsafe_allow_html=True)
+            if st.button("✏️", key="edit_grade"): st.session_state.editing_grade = True
+            st.markdown('</div>', unsafe_allow_html=True)
     with t_col3:
         if st.button("▶", key="next_day", use_container_width=True): st.session_state.day_offset += 1; st.rerun()
 
@@ -181,6 +195,7 @@ elif st.session_state.view == 'stundenplan':
             for std in range(1, 9):
                 lesson = plan_dict.get((day, std))
                 fach = lesson['fach'] if lesson else "---"
+                # Kleinere Schrift für die Buttons im Stundenplan
                 if st.button(f"{fach}", key=f"p_{cur_c}_{day}_{std}_{i}", use_container_width=True):
                     st.session_state.edit_cell = {"day": day, "std": std, "fach": fach, "id": lesson['id'] if lesson else None}
     
@@ -197,12 +212,12 @@ elif st.session_state.view == 'stundenplan':
 
 # --- 4. BUS-CHECK ---
 elif st.session_state.view == 'bus':
-    st.markdown('<div class="main-header">Schulplaner Bus</div>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
     stops = {"Seefischmarkt (Schule ➔ Zuhause)": "de:01002:73144", "Amboßweg (Zuhause ➔ Schule)": "de:01002:73151", "Linas Diek (Zuhause ➔ Schule)": "de:01002:73152"}
     selection = st.selectbox("Haltestelle wählen:", list(stops.keys()))
     if st.button("🔄 Aktualisieren", use_container_width=True): st.rerun()
     departures = get_bus_departures(stops[selection])
-    if departures is None: st.error("Daten aktuell nicht verfügbar (Server-Wartung).")
+    if departures is None: st.error("Daten aktuell nicht verfügbar.")
     elif not departures: st.info("Aktuell keine Abfahrten geplant.")
     else:
         for dep in departures:
@@ -216,7 +231,7 @@ elif st.session_state.view == 'bus':
 
 # --- 5. FERIEN ---
 elif st.session_state.view == 'ferien':
-    st.markdown('<div class="main-header">Ferien Schleswig-Holstein</div>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Ferien S-H</p>', unsafe_allow_html=True)
     jahr = st.radio("Jahr:", [2026, 2027], horizontal=True)
     st.dataframe(pd.DataFrame(FERIEN_DATA[jahr]), hide_index=True, use_container_width=True)
     st.caption("Alle Angaben ohne Gewähr")
