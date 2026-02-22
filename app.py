@@ -83,15 +83,18 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- BUS-FUNKTION ---
+# --- BUS-FUNKTION (DEBUG) ---
 def fetch_departures(stop_id):
     try:
         url = f"https://v6.db.transport.rest/stops/{stop_id}/departures?duration=60&results=10&bus=true"
         r = requests.get(url, timeout=10)
+        st.write(f"**Debug:** Status={r.status_code}, URL={url}")
+        st.write(f"**Antwort:** {r.text[:500]}")
         if r.status_code == 200:
             return r.json().get('departures', [])
         return None
-    except:
+    except Exception as e:
+        st.error(f"**Fehler:** {e}")
         return None
 
 
