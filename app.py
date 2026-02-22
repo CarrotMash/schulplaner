@@ -132,33 +132,66 @@ if st.session_state.view == 'start':
         pass
 
     st.write("")
-    # 2x2 Grid via HTML – funktioniert zuverlässig auf jedem Smartphone
+    # 2x2 Button-Grid: vollständig via HTML/CSS – Streamlit-Spalten wrappen auf Smartphone
+    # Buttons lösen session_state-Wechsel via query_params-Trick nicht aus,
+    # daher: reines HTML mit st.markdown + separate unsichtbare st.buttons als Trigger
+    if 'nav' not in st.session_state:
+        st.session_state.nav = None
+
     st.markdown("""
     <style>
-    .btn-grid {
+    .menu-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 10px;
         width: 100%;
-        margin-bottom: 8px;
+        margin: 0 0 12px 0;
     }
-    .btn-grid form { margin: 0 !important; }
+    .menu-btn {
+        background-color: #FF4B4B;
+        color: white !important;
+        border: none;
+        border-radius: 8px;
+        padding: 16px 8px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        width: 100%;
+        cursor: pointer;
+        text-align: center;
+        line-height: 1.3;
+    }
+    .menu-btn:active { background-color: #c0392b; }
+    /* Streamlit-Spalten niemals umbrechen */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 0 !important;
+        flex: 1 1 0 !important;
+    }
+    /* native Streamlit-Buttons verkleinern */
+    [data-testid="stHorizontalBlock"] button {
+        font-size: 0.78rem !important;
+        padding: 0.4rem 0.2rem !important;
+        white-space: normal !important;
+        line-height: 1.2 !important;
+        min-height: 56px !important;
+    }
     </style>
-    <div class="btn-grid">
     """, unsafe_allow_html=True)
 
-    c1, c2 = st.columns(2)
-    with c1:
+    r1a, r1b = st.columns(2)
+    with r1a:
         if st.button("📅 KLAUSUREN", use_container_width=True, type="primary", key="btn_kl"):
             st.session_state.view = 'klausuren'; st.rerun()
-    with c2:
+    with r1b:
         if st.button("🏫 STUNDENPLÄNE", use_container_width=True, type="primary", key="btn_sp"):
             st.session_state.view = 'stundenplan'; st.rerun()
-    c3, c4 = st.columns(2)
-    with c3:
+    r2a, r2b = st.columns(2)
+    with r2a:
         if st.button("🚌 BUS-CHECK", use_container_width=True, type="primary", key="btn_bc"):
             st.session_state.view = 'bus'; st.rerun()
-    with c4:
+    with r2b:
         if st.button("🌴 FERIEN", use_container_width=True, type="primary", key="btn_fe"):
             st.session_state.view = 'ferien'; st.rerun()
 
