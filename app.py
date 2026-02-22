@@ -16,7 +16,11 @@ supabase = create_client(url, key)
 CHILD_COLORS = {"Mila": "#FF85A1", "Jojo": "#8B0000", "Mikko": "#2E7D32"}
 SUBJECTS = ["Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", "Physik", "Spanisch", "WiPo", "Geografie", "Sport", "Religion", "Freistunde"]
 DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
-TIMES = {1: "07:50-08:35", 2: "08:40-09:25", 3: "09:40-10:25", 4: "10:30-11:15", 5: "11:30-12:15", 6: "12:20-13:05", 7: "13:35-14:20", 8: "14:25-15:10"}
+# 8. Stunde entfernt
+TIMES = {
+    1: "07:50-08:35", 2: "08:40-09:25", 3: "09:40-10:25", 4: "10:30-11:15",
+    5: "11:30-12:15", 6: "12:20-13:05", 7: "13:35-14:20"
+}
 
 FERIEN_DATA = {
     2026: [{"Ferien": "Osterferien", "Zeitraum": "26.03.2026 - 11.04.2026"}, {"Ferien": "Sommerferien", "Zeitraum": "13.07.2026 - 22.08.2026"}, {"Ferien": "Herbstferien", "Zeitraum": "12.10.2026 - 24.10.2026"}, {"Ferien": "Weihnachtsferien", "Zeitraum": "21.12.2026 - 06.01.2027"}],
@@ -55,7 +59,7 @@ st.markdown("""
 
     /* Stundenplan Scroll-Design */
     .day-header { text-align: center; border-radius: 8px; padding: 8px; margin-top: 15px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 1.1rem; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
-    .time-label { font-size: 0.7rem; color: #555; font-weight: bold; margin-bottom: 0px; }
+    .time-label { font-size: 0.65rem; color: #555; font-weight: bold; margin-bottom: 0px; line-height: 1.1; }
     
     .bus-card { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 5px solid #FF4B4B; }
     .delay { color: #FF4B4B; font-weight: bold; }
@@ -112,10 +116,11 @@ elif st.session_state.view == 'klausuren':
         with st.form("q_f"):
             st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
-            if st.form_submit_button("Speichern"):
+            c1, c2 = st.columns(2)
+            if c1.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if st.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
+            if c1.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
 
     if st.session_state.edit_id:
         try:
@@ -146,7 +151,7 @@ elif st.session_state.view == 'stundenplan':
     cur_c = st.session_state.stundenplan_child
     child_color = CHILD_COLORS[cur_c]
 
-    # DYNAMISCHES CSS FÜR DEN KLASSEN-BUTTON
+    # Dynamisches CSS für den Klassen-Button (erzwingt Kind-Farbe)
     st.markdown(f"""
         <style>
         div[data-testid="stButton"] button[key="grade_btn"] {{
@@ -154,11 +159,11 @@ elif st.session_state.view == 'stundenplan':
             color: #FFFFFF !important;
             border-radius: 8px !important;
             font-weight: bold !important;
-            font-size: 1.1rem !important;
+            font-size: 1.2rem !important;
             border: none !important;
             width: 100% !important;
             padding: 10px !important;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1) !important;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2) !important;
         }}
         </style>
         """, unsafe_allow_html=True)
@@ -174,7 +179,7 @@ elif st.session_state.view == 'stundenplan':
     else:
         with st.form("grade_form"):
             new_g = st.text_input("Klasse anpassen:", value=cur_klasse)
-            if st.form_submit_button("Übernehmen"):
+            if st.form_submit_button("Speichern"):
                 supabase.table("kinder_info").upsert({"child": cur_c, "klasse": new_g}).execute()
                 st.session_state.editing_grade = False; st.rerun()
 
@@ -183,7 +188,8 @@ elif st.session_state.view == 'stundenplan':
 
     for day in DAYS:
         st.markdown(f"<div class='day-header' style='background:{child_color};'>{day}</div>", unsafe_allow_html=True)
-        for std in range(1, 9):
+        # Reichweite auf 1 bis 7 begrenzt (8. Stunde weg)
+        for std in range(1, 8):
             lesson = plan_dict.get((day, std))
             fach = lesson['fach'] if lesson else "---"
             col_t, col_f = st.columns([1, 4])
