@@ -39,18 +39,23 @@ st.markdown("""
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
     
-    /* Klassen-Anzeige: Groß, Schwarz, Fett */
-    .class-display-big {
-        font-size: 1.3rem !important;
-        font-weight: 800 !important;
-        color: #000000 !important;
-        text-align: right;
-        padding-top: 5px;
+    /* Klassen-Badge: Weiß auf Schwarz, zentriert */
+    .class-badge {
+        background-color: #000000;
+        color: #FFFFFF !important;
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-align: center;
+        padding: 6px 15px;
+        border-radius: 8px;
+        display: block;
+        margin-bottom: 5px;
     }
-    /* Kleiner Button-Fix für das Icon */
+    /* Edit-Button klein halten */
     .stButton button[kind="secondary"] {
-        padding: 0px 5px !important;
-        height: 35px !important;
+        padding: 0px 2px !important;
+        height: 30px !important;
+        width: 30px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -96,15 +101,12 @@ elif st.session_state.view == 'klausuren':
             if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": CHILD_COLORS[sc], "child": sc, "note": sn}).execute()
                 st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-    
     zart_gruen = "#C8E6C9"
     holidays = [{"title": "Oster", "start": "2025-04-11", "end": "2025-04-26", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Sommer", "start": "2025-07-28", "end": "2025-09-06", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Herbst", "start": "2025-10-20", "end": "2025-10-31", "backgroundColor": zart_gruen, "display": "background"}, {"title": "Weihnacht", "start": "2025-12-19", "end": "2026-01-06", "backgroundColor": zart_gruen, "display": "background"}]
     cal_ev = [{"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"} for d in k_data]
     state = calendar(events=cal_ev + holidays, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False}, key=st.session_state.cal_key)
-    
     if state.get("dateClick"): st.session_state.selected_date = state["dateClick"]["date"][:10]; st.rerun()
     if state.get("eventClick"): st.session_state.edit_id = state["eventClick"]["event"].get("id"); st.rerun()
-    
     if st.session_state.get('selected_date'):
         with st.form("q_f"):
             st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
@@ -113,7 +115,6 @@ elif st.session_state.view == 'klausuren':
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
             if st.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
-    
     if st.session_state.get('edit_id') and st.session_state.edit_id != "undefined":
         try:
             edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
@@ -127,7 +128,6 @@ elif st.session_state.view == 'klausuren':
                 if c2.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute(); st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
         except: st.session_state.edit_id = None
-    
     if not k_df.empty:
         st.divider(); df_t = k_df.copy(); df_t['Anzeige'] = df_t['titel'].str.replace('\n', ': ')
         st.dataframe(df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'}), hide_index=True, use_container_width=True)
@@ -139,7 +139,7 @@ elif st.session_state.view == 'stundenplan':
     # Kind-Auswahl (Reihe 1)
     c_cols = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
-        if c_cols[i].button(name, use_container_width=True, type="secondary" if st.session_state.stundenplan_child != name else "primary"):
+        if c_cols[i].button(name, key=f"child_btn_{name}", use_container_width=True, type="secondary" if st.session_state.stundenplan_child != name else "primary"):
             st.session_state.stundenplan_child = name; st.rerun()
 
     cur_c = st.session_state.stundenplan_child
@@ -150,14 +150,15 @@ elif st.session_state.view == 'stundenplan':
         cur_klasse = k_info[0]['klasse'] if k_info else "Klasse ?"
     except: cur_klasse = "Klasse ?"
 
-    # Navigations-Reihe (◀ | Klasse ✏️ | ▶)
+    # Navigations-Reihe (ZENTRIERT)
+    # [◀] [ KLASSE ✏️ ] [▶]
     t_col1, t_col2, t_col3 = st.columns([1, 2, 1])
     with t_col1:
         if st.button("◀", key="prev_day", use_container_width=True): st.session_state.day_offset -= 1; st.rerun()
     with t_col2:
-        # Verschachtelte Spalten für Text und Button in einer Zeile
-        inner_l, inner_r = st.columns([4, 1])
-        inner_l.markdown(f"<div class='class-display-big'>{cur_klasse}</div>", unsafe_allow_html=True)
+        # Hier wird die Klasse weiß auf schwarz zentriert
+        inner_l, inner_r = st.columns([5, 1])
+        inner_l.markdown(f"<div class='class-badge'>{cur_klasse}</div>", unsafe_allow_html=True)
         if inner_r.button("✏️", key="edit_grade"): st.session_state.editing_grade = True
     with t_col3:
         if st.button("▶", key="next_day", use_container_width=True): st.session_state.day_offset += 1; st.rerun()
