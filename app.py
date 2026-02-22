@@ -288,202 +288,233 @@ elif st.session_state.view == 'stundenplan':
 
 
 # =============================================================================
-# --- 4. BUS-CHECK (STATISCHER FAHRPLAN, Mo–Fr, 06:30–16:00 Uhr) ---
+# --- 4. BUS-CHECK (Echtzeit-Fenster 120 Min., Haltestelle zuerst wählen) ---
 # =============================================================================
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
 
     # -----------------------------------------------------------------------
-    # FAHRPLANDATEN
-    # Quelle: VKP Fahrplan 2025, Mo–Fr
-    # Zeitfenster: 06:30–16:00 Uhr
-    # Format: (Abfahrtszeit, Linie, Ziel, Hinweis)
+    # FAHRPLANDATEN  –  Quelle: VKP Fahrplan 2025, Mo–Fr
     #
-    # SEEFISCHMARKT → Richtung Schönberg / Schönberger Strand
-    #   Linie 200: via Söhren/Linas Diek → weiter nach Schönberg
-    #   Linie 201: direkt via Schönkirchener Str. → Schönberg (schneller)
-    #   Linie 210: via Amboßweg → weiter nach Schönberg
+    # Format: (Abfahrtszeit, Linie, Ausstieg/Endpunkt, Hinweis)
     #
-    # LINAS DIEK   → Richtung Kiel (Linie 200)
-    # AMBOßWEG     → Richtung Kiel (Linie 210)
+    # SEEFISCHMARKT → Richtung Schönkirchen / Schönberg
+    #   200/201 Ausstieg: Linas Diek
+    #   210     Ausstieg: Amboßweg
+    #
+    # LINAS DIEK  → Kiel  (Linie 200, Ausstieg Seefischmarkt)
+    # AMBOßWEG    → Kiel  (Linie 210, Ausstieg Seefischmarkt)
     # -----------------------------------------------------------------------
 
+    # (abfahrt, linie, ausstieg, hinweis)
     SEEFISCHMARKT = [
-        # --- 06:30–06:59 ---
-        ("06:37", "200", "Schönberg",          "nur Schultage"),
-        ("06:52", "200", "Schönberg",          ""),
-        # --- 07:xx ---
-        ("07:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("07:07", "200", "Schönberg",          "nur Schultage"),
-        ("07:20", "201", "Schönberger Strand", "direkt, schneller"),
-        ("07:22", "200", "Schönberg",          ""),
-        ("07:37", "200", "Schönberg",          "nur Schultage"),
-        ("07:52", "200", "Schönberg",          ""),
-        # --- 08:xx ---
-        ("08:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("08:07", "200", "Schönberg",          "nur Schultage"),
-        ("08:20", "201", "Schönberger Strand", "direkt, schneller"),
-        ("08:22", "200", "Schönberg",          ""),
-        ("08:37", "200", "Schönberg",          ""),
-        ("08:52", "200", "Schönberg",          ""),
-        # --- 09:xx ---
-        ("09:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("09:22", "200", "Schönberg",          ""),
-        ("09:52", "200", "Schönberg",          ""),
-        # --- 10:xx ---
-        ("10:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("10:22", "200", "Schönberg",          ""),
-        ("10:52", "200", "Schönberg",          ""),
-        # --- 11:xx ---
-        ("11:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("11:22", "200", "Schönberg",          ""),
-        ("11:37", "210", "Schönberg",          ""),
-        ("11:52", "200", "Schönberg",          ""),
-        # --- 12:xx ---
-        ("12:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("12:22", "200", "Schönberg",          ""),
-        ("12:37", "210", "Schönberg",          "nur Schultage"),
-        ("12:52", "200", "Schönberg",          ""),
-        # --- 13:xx ---
-        ("13:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("13:22", "200", "Schönberg",          ""),
-        ("13:37", "210", "Schönberg",          ""),
-        ("13:52", "200", "Schönberg",          ""),
-        # --- 14:xx ---
-        ("14:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("14:08", "200", "Schönberg",          "nur Schultage"),
-        ("14:22", "200", "Schönberg",          ""),
-        ("14:37", "210", "Schönberg",          ""),
-        ("14:52", "200", "Schönberg",          ""),
-        # --- 15:xx ---
-        ("15:05", "201", "Schönberger Strand", "direkt, schneller"),
-        ("15:07", "200", "Schönberg",          "nur Schultage"),
-        ("15:22", "200", "Schönberg",          ""),
-        ("15:37", "210", "Schönberg",          ""),
-        ("15:52", "200", "Schönberg",          ""),
-        # --- bis 16:00 ---
-        ("16:00", "200", "Schönberg",          ""),
+        ("06:37", "200", "Linas Diek",  "nur Schultage"),
+        ("06:52", "200", "Linas Diek",  ""),
+        ("07:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("07:07", "200", "Linas Diek",  "nur Schultage"),
+        ("07:20", "201", "Linas Diek",  "direkt, schneller"),
+        ("07:22", "200", "Linas Diek",  ""),
+        ("07:37", "200", "Linas Diek",  "nur Schultage"),
+        ("07:52", "200", "Linas Diek",  ""),
+        ("08:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("08:07", "200", "Linas Diek",  "nur Schultage"),
+        ("08:20", "201", "Linas Diek",  "direkt, schneller"),
+        ("08:22", "200", "Linas Diek",  ""),
+        ("08:37", "200", "Linas Diek",  ""),
+        ("08:52", "200", "Linas Diek",  ""),
+        ("09:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("09:22", "200", "Linas Diek",  ""),
+        ("09:52", "200", "Linas Diek",  ""),
+        ("10:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("10:22", "200", "Linas Diek",  ""),
+        ("10:52", "200", "Linas Diek",  ""),
+        ("11:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("11:22", "200", "Linas Diek",  ""),
+        ("11:37", "210", "Amboßweg",    ""),
+        ("11:52", "200", "Linas Diek",  ""),
+        ("12:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("12:22", "200", "Linas Diek",  ""),
+        ("12:37", "210", "Amboßweg",    "nur Schultage"),
+        ("12:52", "200", "Linas Diek",  ""),
+        ("13:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("13:22", "200", "Linas Diek",  ""),
+        ("13:37", "210", "Amboßweg",    ""),
+        ("13:52", "200", "Linas Diek",  ""),
+        ("14:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("14:08", "200", "Linas Diek",  "nur Schultage"),
+        ("14:22", "200", "Linas Diek",  ""),
+        ("14:37", "210", "Amboßweg",    ""),
+        ("14:52", "200", "Linas Diek",  ""),
+        ("15:05", "201", "Linas Diek",  "direkt, schneller"),
+        ("15:07", "200", "Linas Diek",  "nur Schultage"),
+        ("15:22", "200", "Linas Diek",  ""),
+        ("15:37", "210", "Amboßweg",    ""),
+        ("15:52", "200", "Linas Diek",  ""),
+        ("16:00", "200", "Linas Diek",  ""),
     ]
 
     LINAS_DIEK = [
-        # --- ab 06:30 ---
-        ("06:30", "200", "Kiel Hbf",  ""),
-        ("07:00", "200", "Kiel Hbf",  ""),
-        ("07:33", "200", "Kiel Hbf",  ""),
-        ("08:00", "200", "Kiel Hbf",  ""),
-        ("08:33", "200", "Kiel Hbf",  ""),
-        ("09:00", "200", "Kiel Hbf",  ""),
-        ("09:33", "200", "Kiel Hbf",  ""),
-        ("10:00", "200", "Kiel Hbf",  ""),
-        ("10:33", "200", "Kiel Hbf",  ""),
-        ("11:00", "200", "Kiel Hbf",  ""),
-        ("11:33", "200", "Kiel Hbf",  ""),
-        ("12:00", "200", "Kiel Hbf",  ""),
-        ("12:33", "200", "Kiel Hbf",  ""),
-        ("13:00", "200", "Kiel Hbf",  ""),
-        ("13:33", "200", "Kiel Hbf",  ""),
-        ("14:00", "200", "Kiel Hbf",  ""),
-        ("14:34", "200", "Kiel Hbf",  "nur Schultage"),
-        ("14:38", "200", "Kiel Hbf",  "nur Ferientage"),
-        ("15:00", "200", "Kiel Hbf",  ""),
-        ("15:33", "200", "Kiel Hbf",  ""),
-        # --- bis 16:00 ---
-        ("16:00", "200", "Kiel Hbf",  ""),
+        ("06:30", "200", "Seefischmarkt", ""),
+        ("07:00", "200", "Seefischmarkt", ""),
+        ("07:33", "200", "Seefischmarkt", ""),
+        ("08:00", "200", "Seefischmarkt", ""),
+        ("08:33", "200", "Seefischmarkt", ""),
+        ("09:00", "200", "Seefischmarkt", ""),
+        ("09:33", "200", "Seefischmarkt", ""),
+        ("10:00", "200", "Seefischmarkt", ""),
+        ("10:33", "200", "Seefischmarkt", ""),
+        ("11:00", "200", "Seefischmarkt", ""),
+        ("11:33", "200", "Seefischmarkt", ""),
+        ("12:00", "200", "Seefischmarkt", ""),
+        ("12:33", "200", "Seefischmarkt", ""),
+        ("13:00", "200", "Seefischmarkt", ""),
+        ("13:33", "200", "Seefischmarkt", ""),
+        ("14:00", "200", "Seefischmarkt", ""),
+        ("14:34", "200", "Seefischmarkt", "nur Schultage"),
+        ("14:38", "200", "Seefischmarkt", "nur Ferientage"),
+        ("15:00", "200", "Seefischmarkt", ""),
+        ("15:33", "200", "Seefischmarkt", ""),
+        ("16:00", "200", "Seefischmarkt", ""),
     ]
 
     AMBOSSWEG = [
-        # --- ab 06:30 ---
-        ("06:30", "210", "Kiel Hbf",  ""),   # Fahrt ab Schönberg, Halt Amboßweg ~06:30
-        ("07:08", "210", "Kiel Hbf",  "nur Schultage"),
-        ("07:10", "210", "Kiel Hbf",  "nur Ferientage"),
-        ("08:18", "210", "Kiel Hbf",  "nur Schultage"),
-        ("08:20", "210", "Kiel Hbf",  "nur Ferientage"),
-        ("12:22", "210", "Kiel Hbf",  ""),
-        ("14:22", "210", "Kiel Hbf",  ""),
-        # --- bis 16:00 ---
-        ("15:53", "210", "Kiel Hbf",  ""),
+        ("06:30", "210", "Seefischmarkt", ""),
+        ("07:08", "210", "Seefischmarkt", "nur Schultage"),
+        ("07:10", "210", "Seefischmarkt", "nur Ferientage"),
+        ("08:18", "210", "Seefischmarkt", "nur Schultage"),
+        ("08:20", "210", "Seefischmarkt", "nur Ferientage"),
+        ("12:22", "210", "Seefischmarkt", ""),
+        ("14:22", "210", "Seefischmarkt", ""),
+        ("15:53", "210", "Seefischmarkt", ""),
     ]
 
     # -----------------------------------------------------------------------
     # DARSTELLUNG
     # -----------------------------------------------------------------------
 
-    LINE_COLORS = {"200": "#D32F2F", "201": "#1565C0", "210": "#2E7D32"}
+    LINE_COLORS  = {"200": "#C62828", "201": "#1565C0", "210": "#2E7D32"}
+    LINE_BGLIGHT = {"200": "#FFEBEE", "201": "#E3F2FD", "210": "#E8F5E9"}
 
-    def zeige_tabelle(fahrplan, haltestellenname, richtung_label):
-        """Gibt alle Fahrten im Fenster 06:30–16:00 als Karten-Tabelle aus."""
-        now = datetime.now()
-        naechste_markiert = False
+    def bus_card(zeit_str, linie, ausstieg, hinweis, diff_min, ist_naechste):
+        farbe  = LINE_COLORS.get(linie,  "#555")
+        bg_l   = LINE_BGLIGHT.get(linie, "#fafafa")
+
+        bg     = bg_l if ist_naechste else "white"
+        rahmen = f"2px solid {farbe}" if ist_naechste else "1px solid #e8e8e8"
+
+        # Badge "Nächste"
+        naechste_badge = (
+            f'<span style="background:{farbe};color:white;font-size:0.7rem;'
+            f'padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;">'
+            f'▶ Nächste</span>'
+        ) if ist_naechste else ""
+
+        # Minuten-Countdown
+        if diff_min == 0:
+            countdown = f'<span style="color:{farbe};font-weight:bold;font-size:0.85rem;margin-left:6px;">jetzt!</span>'
+        elif 0 < diff_min <= 120:
+            countdown = f'<span style="color:{farbe};font-size:0.85rem;margin-left:6px;">in <b>{diff_min} Min.</b></span>'
+        else:
+            countdown = ""
+
+        hinweis_html = (
+            f'<div style="font-size:0.75rem;color:#999;margin-top:2px;">ℹ️ {hinweis}</div>'
+        ) if hinweis else ""
+
+        st.markdown(f"""
+        <div style="
+            background:{bg};
+            border:{rahmen};
+            border-left:6px solid {farbe};
+            border-radius:10px;
+            padding:11px 14px 9px 14px;
+            margin-bottom:9px;
+            box-shadow:1px 2px 5px rgba(0,0,0,0.06);
+        ">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+                <div>
+                    <span style="font-size:1.4rem;font-weight:900;color:{farbe};">{zeit_str}</span>
+                    <span style="font-size:0.9rem;font-weight:700;
+                                 background:{farbe};color:white;
+                                 padding:2px 8px;border-radius:6px;
+                                 margin-left:8px;">Linie {linie}</span>
+                    {naechste_badge}
+                </div>
+                <div style="text-align:right;">
+                    {countdown}
+                </div>
+            </div>
+            <div style="margin-top:5px;font-size:0.9rem;color:#444;">
+                🚏 Ausstieg: <b>{ausstieg}</b>
+            </div>
+            {hinweis_html}
+        </div>
+        """, unsafe_allow_html=True)
+
+    def zeige_naechste_120min(fahrplan, haltestellenname, richtung):
+        now    = datetime.now()
+        cutoff = now.replace(second=0, microsecond=0)
 
         if now.weekday() >= 5:
             st.warning("⚠️ Dieser Fahrplan gilt nur Montag–Freitag.")
+            return
 
-        st.caption(f"📍 **{haltestellenname}** ➔ {richtung_label} | Mo–Fr, 06:30–16:00 Uhr | Quelle: VKP 2025")
+        treffer = []
+        for zeit_str, linie, ausstieg, hinweis in fahrplan:
+            h, m    = map(int, zeit_str.split(":"))
+            abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            diff    = int((abfahrt - cutoff).total_seconds() / 60)
+            if 0 <= diff <= 120:
+                treffer.append((zeit_str, linie, ausstieg, hinweis, diff))
 
-        rows = []
-        for zeit_str, linie, ziel, hinweis in fahrplan:
-            h, m = map(int, zeit_str.split(":"))
-            abfahrt_heute = now.replace(hour=h, minute=m, second=0, microsecond=0)
-            diff_min = int((abfahrt_heute - now.replace(second=0, microsecond=0)).total_seconds() / 60)
-            rows.append((zeit_str, linie, ziel, hinweis, diff_min))
+        st.caption(
+            f"📍 **{haltestellenname}** ➔ {richtung} &nbsp;|&nbsp; "
+            f"nächste 120 Min. ab {now.strftime('%H:%M')} Uhr &nbsp;|&nbsp; Mo–Fr &nbsp;|&nbsp; Quelle: VKP 2025"
+        )
 
-        for zeit_str, linie, ziel, hinweis, diff_min in rows:
-            # Nächste Abfahrt hervorheben
-            ist_naechste = (not naechste_markiert and diff_min >= 0)
-            if ist_naechste:
-                naechste_markiert = True
+        if not treffer:
+            st.info("Keine weiteren Abfahrten in den nächsten 120 Minuten.")
+            return
 
-            farbe = LINE_COLORS.get(linie, "#555555")
+        naechste_markiert = False
+        for i, (zeit_str, linie, ausstieg, hinweis, diff_min) in enumerate(treffer):
+            ist_naechste = (i == 0)
+            bus_card(zeit_str, linie, ausstieg, hinweis, diff_min, ist_naechste)
 
-            if ist_naechste:
-                rahmen = "3px solid #FF8C00"
-                bg = "#FFF8E1"
-                naechste_badge = '<span style="background:#FF8C00;color:white;font-size:0.72rem;padding:2px 7px;border-radius:8px;margin-left:8px;">▶ Nächste</span>'
-            else:
-                rahmen = f"1px solid #e0e0e0"
-                bg = "white"
-                naechste_badge = ""
+    # -----------------------------------------------------------------------
+    # HALTESTELLE WÄHLEN
+    # -----------------------------------------------------------------------
+    if 'bus_halt' not in st.session_state:
+        st.session_state.bus_halt = None
 
-            hinweis_html = f'<span style="font-size:0.78rem;color:#888;margin-left:6px;">({hinweis})</span>' if hinweis else ""
-
-            # Minuten-Anzeige nur wenn Fahrt heute noch kommt
-            if 0 <= diff_min <= 90:
-                min_text = f'<span style="color:#FF6F00;font-size:0.82rem;margin-left:4px;">in {diff_min} Min.</span>'
-            elif diff_min < 0:
-                min_text = f'<span style="color:#bbb;font-size:0.78rem;margin-left:4px;">abgefahren</span>'
-            else:
-                min_text = ""
-
-            st.markdown(f"""
-            <div style="background:{bg};border:{rahmen};border-left:6px solid {farbe};
-                        border-radius:10px;padding:10px 14px;margin-bottom:8px;
-                        box-shadow:1px 1px 4px rgba(0,0,0,0.06);">
-                <span style="font-size:1.25rem;font-weight:900;color:{farbe};">{zeit_str}</span>
-                <span style="font-size:0.95rem;font-weight:bold;margin-left:10px;">Linie {linie}</span>
-                <span style="font-size:0.9rem;color:#444;margin-left:6px;">➔ {ziel}</span>
-                {hinweis_html}{naechste_badge}{min_text}
-            </div>
-            """, unsafe_allow_html=True)
-
-    # --- Haltestelle wählen ---
-    haltestelle = st.radio(
-        "Haltestelle wählen:",
-        ["🏠 Seefischmarkt → Schönberg / Schönberger Strand",
-         "🏫 Linas Diek → Kiel",
-         "🏫 Amboßweg → Kiel"],
-        horizontal=False
-    )
+    c1, c2, c3 = st.columns(3)
+    if c1.button("🏠 Seefischmarkt\n→ Schönkirchen", use_container_width=True,
+                 type="primary" if st.session_state.bus_halt == "seefisch" else "secondary"):
+        st.session_state.bus_halt = "seefisch"; st.rerun()
+    if c2.button("🏫 Linas Diek\n→ Kiel", use_container_width=True,
+                 type="primary" if st.session_state.bus_halt == "linas" else "secondary"):
+        st.session_state.bus_halt = "linas"; st.rerun()
+    if c3.button("🏫 Amboßweg\n→ Kiel", use_container_width=True,
+                 type="primary" if st.session_state.bus_halt == "amboss" else "secondary"):
+        st.session_state.bus_halt = "amboss"; st.rerun()
 
     st.divider()
 
-    if haltestelle.startswith("🏠"):
-        zeige_tabelle(SEEFISCHMARKT, "Seefischmarkt", "Schönberg / Schönberger Strand")
-    elif "Linas Diek" in haltestelle:
-        zeige_tabelle(LINAS_DIEK, "Linas Diek", "Kiel Hbf")
+    if st.session_state.bus_halt == "seefisch":
+        zeige_naechste_120min(SEEFISCHMARKT, "Seefischmarkt", "Richtung Schönkirchen / Schönberg")
+    elif st.session_state.bus_halt == "linas":
+        zeige_naechste_120min(LINAS_DIEK, "Linas Diek", "Richtung Kiel")
+    elif st.session_state.bus_halt == "amboss":
+        zeige_naechste_120min(AMBOSSWEG, "Amboßweg", "Richtung Kiel")
     else:
-        zeige_tabelle(AMBOSSWEG, "Amboßweg", "Kiel Hbf")
+        st.markdown(
+            "<div style='text-align:center;color:#aaa;padding:30px 0;font-size:1rem;'>"
+            "⬆️ Bitte Haltestelle auswählen</div>",
+            unsafe_allow_html=True
+        )
 
     if st.button("← Hauptmenü", use_container_width=True):
+        st.session_state.bus_halt = None
         st.session_state.view = 'start'; st.rerun()
 
 
