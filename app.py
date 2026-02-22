@@ -23,9 +23,9 @@ FERIEN_DATA = {
     2027: [{"Ferien": "Osterferien", "Zeitraum": "22.03.2027 - 03.04.2027"}, {"Ferien": "Sommerferien", "Zeitraum": "12.07.2027 - 21.08.2027"}, {"Ferien": "Herbstferien", "Zeitraum": "11.10.2027 - 23.10.2027"}, {"Ferien": "Weihnachtsferien", "Zeitraum": "20.12.2027 - 05.01.2028"}]
 }
 
-# --- INITIALISIERUNG SESSION STATE (Verhindert Abstürze) ---
+# --- INITIALISIERUNG SESSION STATE ---
 if 'view' not in st.session_state: st.session_state.view = 'start'
-if 'cal_key' not in st.session_state: st.session_state.cal_key = "vFinal"
+if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
 if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_child = "Mila"
 if 'editing_grade' not in st.session_state: st.session_state.editing_grade = False
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
@@ -40,31 +40,32 @@ st.markdown("""
     .main-header { font-size: 2.2rem !important; font-weight: 900 !important; text-align: center; margin-top: -10px; margin-bottom: 20px; background-color: #000000; color: #FFFFFF !important; padding: 12px; border-radius: 10px; line-height: 1.1; white-space: nowrap; }
     [data-testid="stImage"] > img { width: 64% !important; margin-left: auto; margin-right: auto; display: block; border-radius: 10px; }
     
-    /* Kalender Deutsch */
+    /* Kalender-Buttons Deutsch */
     .fc-button-primary { background-color: #FF4B4B !important; border-color: #FF4B4B !important; color: #FFFFFF !important; font-weight: bold !important; font-size: 0.8rem !important; text-transform: capitalize !important; }
     .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.75rem !important; white-space: pre-wrap !important; font-weight: bold !important; line-height: 1.1 !important; }
     .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
     .fc-list-event-time { display: none !important; }
 
-    /* Buttons nebeneinander zwingen */
+    /* Buttons Mila/Jojo/Mikko nebeneinander */
     div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; }
     div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) div[data-testid="column"] { flex: 1 1 0% !important; min-width: 0 !important; }
 
     .day-header { text-align: center; border-radius: 8px; padding: 8px; margin-top: 15px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 1.1rem; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+    .time-label { font-size: 0.65rem; color: #555; font-weight: bold; margin-bottom: 0px; line-height: 1.1; }
     
-    /* Bus-Karten Design */
+    /* Bus-Monitor Karten */
     .bus-card { background: white; border: 1px solid #ddd; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 6px solid #FF4B4B; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- BUS-FUNKTION (DIREKTABRUF) ---
+# --- BUS-FUNKTION (DEINE NEUE DB-API) ---
 def fetch_departures(stop_id):
     try:
-        # HAFAS-Schnittstelle (VBN/NAH.SH Proxy)
-        url = f"https://v6.vbn.transport.rest/stops/{stop_id}/departures?duration=120&results=10"
+        # Die von dir recherchierte zuverlässige DB-Schnittstelle
+        url = f"https://v6.db.transport.rest/stops/{stop_id}/departures?duration=120&results=10"
         r = requests.get(url, timeout=10)
         return r.json().get('departures', []) if r.status_code == 200 else None
     except:
@@ -109,7 +110,7 @@ elif st.session_state.view == 'klausuren':
         ni = state["eventClick"]["event"].get("id")
         if st.session_state.edit_id != ni: st.session_state.edit_id = ni; st.rerun()
 
-    if st.session_state.selected_date:
+    if st.session_state.get('selected_date'):
         with st.form("q_f"):
             st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
@@ -117,19 +118,19 @@ elif st.session_state.view == 'klausuren':
             if c1.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if c2.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
+            if c1.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
 
-    if st.session_state.edit_id:
+    if st.session_state.get('edit_id'):
         try:
             edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("ed_f"):
                 new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()), index=list(CHILD_COLORS.keys()).index(edit_row['child'])); curr_s = edit_row['titel'].split('\n')[-1]
                 new_s = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0); new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY"); new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2 = st.columns(2)
-                if c1.form_submit_button("Speichern"):
+                if c1.form_submit_button("💾 Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": CHILD_COLORS[new_c], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-                if c2.form_submit_button("🗑️ Löschen"):
+                if c1.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute(); st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
         except: st.session_state.edit_id = None
     if not k_df.empty:
@@ -172,7 +173,7 @@ elif st.session_state.view == 'stundenplan':
     if 'edit_cell' in st.session_state:
         ec = st.session_state.edit_cell
         with st.form("ed_p"):
-            st.write(f"📌 **{ec['day']}, {ec['std']}. Std**")
+            st.write(f"📌 **{ec['day']}, {ec['std']}. Std ändern**")
             new_f = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(ec['fach']) if ec['fach'] in SUBJECTS else 0)
             if st.form_submit_button("Speichern"):
                 if ec['id']: supabase.table("stundenplaene").update({"fach": new_f}).eq("id", ec['id']).execute()
@@ -181,10 +182,11 @@ elif st.session_state.view == 'stundenplan':
             if st.form_submit_button("Abbrechen"): del st.session_state.edit_cell; st.rerun()
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
 
-# --- 4. BUS-CHECK (DIE DIREKT-INTEGRATION) ---
+# --- 4. BUS-CHECK (DIE NEUE DB-LÖSUNG) ---
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
     
+    # Offizielle Haltestellen-IDs (DHID) für Kiel & Schönkirchen
     stops = {
         "Seefischmarkt (Schule ➔ Zuhause)": "de:01002:73144",
         "Amboßweg (Zuhause ➔ Schule)": "de:01002:73151",
@@ -206,6 +208,7 @@ elif st.session_state.view == 'bus':
             direction = dep.get('direction', 'Unbekannt')
             p_time_str = dep.get('plannedDeparture')
             if p_time_str:
+                # Zeit-Konvertierung
                 p_time = datetime.fromisoformat(p_time_str.replace('Z', '+00:00'))
                 delay_min = int(dep.get('delay', 0) / 60)
                 st.markdown(f"""
