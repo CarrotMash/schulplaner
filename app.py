@@ -16,7 +16,6 @@ supabase = create_client(url, key)
 CHILD_COLORS = {"Mila": "#FF85A1", "Jojo": "#8B0000", "Mikko": "#2E7D32"}
 SUBJECTS = ["Englisch", "Französisch", "Mathematik", "Deutsch", "Musik", "Biologie", "Chemie", "Kunst", "Philosophie", "Geschichte", "Physik", "Spanisch", "WiPo", "Geografie", "Sport", "Religion", "Freistunde"]
 DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
-# 8. Stunde entfernt
 TIMES = {
     1: "07:50-08:35", 2: "08:40-09:25", 3: "09:40-10:25", 4: "10:30-11:15",
     5: "11:30-12:15", 6: "12:20-13:05", 7: "13:35-14:20"
@@ -49,7 +48,7 @@ st.markdown("""
     .fc-event-title { font-size: 0.75rem !important; white-space: pre-wrap !important; font-weight: bold !important; line-height: 1.1 !important; }
     .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
 
-    /* MOBILE FIX: Namens-Auswahl nebeneinander */
+    /* Namens-Auswahl nebeneinander */
     div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) {
         display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important;
     }
@@ -57,8 +56,6 @@ st.markdown("""
         flex: 1 1 0% !important; min-width: 0 !important;
     }
 
-    /* Stundenplan Scroll-Design */
-    .day-header { text-align: center; border-radius: 8px; padding: 8px; margin-top: 15px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 1.1rem; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
     .time-label { font-size: 0.65rem; color: #555; font-weight: bold; margin-bottom: 0px; line-height: 1.1; }
     
     .bus-card { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 5px solid #FF4B4B; }
@@ -143,6 +140,7 @@ elif st.session_state.view == 'klausuren':
 elif st.session_state.view == 'stundenplan':
     st.markdown('<p class="main-header">Stundenpläne</p>', unsafe_allow_html=True)
     
+    # Kind-Auswahl nebeneinander
     c_cols = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
         if c_cols[i].button(name, key=f"child_sel_{name}", use_container_width=True, type="secondary" if st.session_state.stundenplan_child != name else "primary"):
@@ -151,7 +149,7 @@ elif st.session_state.view == 'stundenplan':
     cur_c = st.session_state.stundenplan_child
     child_color = CHILD_COLORS[cur_c]
 
-    # Dynamisches CSS für den Klassen-Button (erzwingt Kind-Farbe)
+    # Dynamische Farbe für den Klassen-Button
     st.markdown(f"""
         <style>
         div[data-testid="stButton"] button[key="grade_btn"] {{
@@ -173,6 +171,7 @@ elif st.session_state.view == 'stundenplan':
         cur_klasse = k_info[0]['klasse'] if k_info else "Klasse ?"
     except: cur_klasse = "Klasse ?"
 
+    # Interaktive Klasse
     if not st.session_state.editing_grade:
         if st.button(f"{cur_klasse}", key="grade_btn", use_container_width=True):
             st.session_state.editing_grade = True; st.rerun()
@@ -183,22 +182,28 @@ elif st.session_state.view == 'stundenplan':
                 supabase.table("kinder_info").upsert({"child": cur_c, "klasse": new_g}).execute()
                 st.session_state.editing_grade = False; st.rerun()
 
+    # Stundenplan Daten
     res = supabase.table("stundenplaene").select("*").eq("child", cur_c).execute()
     plan_dict = {(item['tag'], int(item['stunde'])): item for item in res.data}
 
-    for day in DAYS:
-        st.markdown(f"<div class='day-header' style='background:{child_color};'>{day}</div>", unsafe_allow_html=True)
-        # Reichweite auf 1 bis 7 begrenzt (8. Stunde weg)
-        for std in range(1, 8):
-            lesson = plan_dict.get((day, std))
-            fach = lesson['fach'] if lesson else "---"
-            col_t, col_f = st.columns([1, 4])
-            col_t.markdown(f"<p class='time-label'>{std}. Std<br>{TIMES[std]}</p>", unsafe_allow_html=True)
-            if col_f.button(f"{fach}", key=f"p_sc_{cur_c}_{day}_{std}", use_container_width=True):
-                st.session_state.edit_cell = {"day": day, "std": std, "fach": fach, "id": lesson['id'] if lesson else None}
+    st.write("") # Kleiner Puffer
 
+    # Aufklappbare Wochentage (Expander)
+    for day in DAYS:
+        # Hier nutzen wir Streamlit Expander für das Auf- und Zuklappen
+        with st.expander(f"**{day}**", expanded=False):
+            for std in range(1, 8):
+                lesson = plan_dict.get((day, std))
+                fach = lesson['fach'] if lesson else "---"
+                col_t, col_f = st.columns([1, 4])
+                col_t.markdown(f"<p class='time-label'>{std}. Std<br>{TIMES[std]}</p>", unsafe_allow_html=True)
+                if col_f.button(f"{fach}", key=f"p_exp_{cur_c}_{day}_{std}", use_container_width=True):
+                    st.session_state.edit_cell = {"day": day, "std": std, "fach": fach, "id": lesson['id'] if lesson else None}
+
+    # Bearbeitungs-Dialog falls eine Stunde geklickt wurde
     if 'edit_cell' in st.session_state:
         ec = st.session_state.edit_cell
+        st.divider()
         with st.form("ed_p"):
             st.write(f"📌 **{ec['day']}, {ec['std']}. Std ändern**")
             new_f = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(ec['fach']) if ec['fach'] in SUBJECTS else 0)
