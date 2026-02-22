@@ -132,16 +132,34 @@ if st.session_state.view == 'start':
         pass
 
     st.write("")
+    # 2x2 Grid via HTML – funktioniert zuverlässig auf jedem Smartphone
+    st.markdown("""
+    <style>
+    .btn-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    .btn-grid form { margin: 0 !important; }
+    </style>
+    <div class="btn-grid">
+    """, unsafe_allow_html=True)
+
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("📅 KLAUSUREN", use_container_width=True, type="primary"):
+        if st.button("📅 KLAUSUREN", use_container_width=True, type="primary", key="btn_kl"):
             st.session_state.view = 'klausuren'; st.rerun()
-        if st.button("🚌 BUS-CHECK", use_container_width=True, type="primary"):
-            st.session_state.view = 'bus'; st.rerun()
     with c2:
-        if st.button("🏫 STUNDENPLÄNE", use_container_width=True, type="primary"):
+        if st.button("🏫 STUNDENPLÄNE", use_container_width=True, type="primary", key="btn_sp"):
             st.session_state.view = 'stundenplan'; st.rerun()
-        if st.button("🌴 FERIEN", use_container_width=True, type="primary"):
+    c3, c4 = st.columns(2)
+    with c3:
+        if st.button("🚌 BUS-CHECK", use_container_width=True, type="primary", key="btn_bc"):
+            st.session_state.view = 'bus'; st.rerun()
+    with c4:
+        if st.button("🌴 FERIEN", use_container_width=True, type="primary", key="btn_fe"):
             st.session_state.view = 'ferien'; st.rerun()
 
 
