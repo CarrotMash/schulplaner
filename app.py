@@ -23,13 +23,13 @@ FERIEN_DATA = {
     2027: [{"Ferien": "Osterferien", "Zeitraum": "22.03.2027 - 03.04.2027"}, {"Ferien": "Sommerferien", "Zeitraum": "12.07.2027 - 21.08.2027"}, {"Ferien": "Herbstferien", "Zeitraum": "11.10.2027 - 23.10.2027"}, {"Ferien": "Weihnachtsferien", "Zeitraum": "20.12.2027 - 05.01.2028"}]
 }
 
-# --- INITIALISIERUNG SESSION STATE (Ganz oben!) ---
+# --- INITIALISIERUNG ---
 if 'view' not in st.session_state: st.session_state.view = 'start'
-if 'cal_key' not in st.session_state: st.session_state.cal_key = "initial"
+if 'cal_key' not in st.session_state: st.session_state.cal_key = "v1"
 if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_child = "Mila"
-if 'day_offset' not in st.session_state: st.session_state.day_offset = 0
-if 'edit_id' not in st.session_state: st.session_state.edit_id = None
+if 'editing_grade' not in st.session_state: st.session_state.editing_grade = False
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
+if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
 
@@ -40,29 +40,38 @@ st.markdown("""
     .main-header { font-size: 2.2rem !important; font-weight: 900 !important; text-align: center; margin-top: -10px; margin-bottom: 20px; background-color: #000000; color: #FFFFFF !important; padding: 12px; border-radius: 10px; line-height: 1.1; white-space: nowrap; }
     [data-testid="stImage"] > img { width: 64% !important; margin-left: auto; margin-right: auto; display: block; border-radius: 10px; }
     
-    /* Kalender-Buttons Deutsch */
+    /* Kalender Deutsch & Fixes */
     .fc-button-primary { background-color: #FF4B4B !important; border-color: #FF4B4B !important; color: #FFFFFF !important; font-weight: bold !important; font-size: 0.8rem !important; text-transform: capitalize !important; }
     .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.75rem !important; white-space: pre-wrap !important; font-weight: bold !important; line-height: 1.1 !important; }
     .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
 
-    /* STUNDENPLAN MOBILE FIX: Zwingt Spalten nebeneinander */
-    div[data-testid="stHorizontalBlock"]:has(button[key^="p_"]) {
+    /* MOBILE FIX: Zwingt NUR die Namens-Auswahl-Buttons nebeneinander */
+    div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         width: 100% !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="p_"]) > div {
+    div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) div[data-testid="column"] {
         flex: 1 1 0% !important;
         min-width: 0 !important;
     }
-    
-    /* Tag-Header */
-    .day-header { text-align: center; border-radius: 5px; padding: 5px 2px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 0.65rem; box-shadow: 1px 1px 3px rgba(0,0,0,0.1); }
-    
-    /* Klassen-Kasten */
-    .class-box { background-color: #000000; color: #FFFFFF !important; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 1.1rem; text-align: center; width: 100%; display: block; }
+
+    /* Stundenplan Scroll-Design */
+    .day-header { text-align: center; border-radius: 8px; padding: 8px; margin-top: 15px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 1.1rem; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+    .time-label { font-size: 0.7rem; color: #555; font-weight: bold; margin-bottom: 0px; }
+
+    /* Klassen-Button (Schwarz) */
+    div[data-testid="stButton"] button[key="grade_btn"] {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        border: none !important;
+        width: 100% !important;
+    }
     
     .bus-card { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 5px solid #FF4B4B; }
     .delay { color: #FF4B4B; font-weight: bold; }
@@ -95,7 +104,6 @@ elif st.session_state.view == 'klausuren':
         res = supabase.table("klausuren").select("*").execute()
         k_data, k_df = res.data, pd.DataFrame(res.data)
     except: k_data, k_df = [], pd.DataFrame()
-
     with st.sidebar:
         st.header("Klausuren")
         if st.button("← Hauptmenü"): st.session_state.view = 'start'; st.rerun()
@@ -107,27 +115,15 @@ elif st.session_state.view == 'klausuren':
                 st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
 
     cal_ev = [{"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"} for d in k_data]
-    
-    state = calendar(events=cal_ev, options={
-        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
-        "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
-        "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False
-    }, key=st.session_state.cal_key)
+    state = calendar(events=cal_ev, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False}, key=st.session_state.cal_key)
 
-    # RELOAD-FIX: Nur reagieren, wenn Klick wirklich neu ist
+    # Reload Fix
     if state.get("dateClick"):
-        new_date = state["dateClick"]["date"][:10]
-        if st.session_state.selected_date != new_date:
-            st.session_state.selected_date = new_date
-            st.session_state.edit_id = None
-            st.rerun()
-
+        nd = state["dateClick"]["date"][:10]
+        if st.session_state.selected_date != nd: st.session_state.selected_date = nd; st.session_state.edit_id = None; st.rerun()
     if state.get("eventClick"):
-        new_id = state["eventClick"]["event"].get("id")
-        if st.session_state.edit_id != new_id:
-            st.session_state.edit_id = new_id
-            st.session_state.selected_date = None
-            st.rerun()
+        ni = state["eventClick"]["event"].get("id")
+        if st.session_state.edit_id != ni: st.session_state.edit_id = ni; st.session_state.selected_date = None; st.rerun()
 
     if st.session_state.selected_date:
         with st.form("q_f"):
@@ -137,8 +133,7 @@ elif st.session_state.view == 'klausuren':
             if c1.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if c2.form_submit_button("Abbrechen"):
-                st.session_state.selected_date = None; st.rerun()
+            if c1.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
 
     if st.session_state.edit_id:
         try:
@@ -146,27 +141,27 @@ elif st.session_state.view == 'klausuren':
             with st.form("ed_f"):
                 new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()), index=list(CHILD_COLORS.keys()).index(edit_row['child'])); curr_s = edit_row['titel'].split('\n')[-1]
                 new_s = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0); new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY"); new_n = st.text_input("Notiz", value=edit_row['note'])
-                c1, c2, c3 = st.columns([2,2,1])
+                c1, c2 = st.columns(2)
                 if c1.form_submit_button("Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": CHILD_COLORS[new_c], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-                if c2.form_submit_button("🗑️"):
+                if c1.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute(); st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-                if c3.form_submit_button("X"):
-                    st.session_state.edit_id = None; st.rerun()
         except: st.session_state.edit_id = None
-    
     if not k_df.empty:
         st.divider(); df_t = k_df.copy(); df_t['Anzeige'] = df_t['titel'].str.replace('\n', ': ')
         st.dataframe(df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'}), hide_index=True, use_container_width=True)
 
-# --- 3. STUNDENPLÄNE ---
+# --- 3. STUNDENPLÄNE (Scroll-Ansicht mit Mobile-Button-Fix) ---
 elif st.session_state.view == 'stundenplan':
     st.markdown('<p class="main-header">Stundenpläne</p>', unsafe_allow_html=True)
+    
+    # Kind-Auswahl (Zwang zum Nebeneinander durch CSS und speziellen Key)
     c_cols = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
-        if c_cols[i].button(name, use_container_width=True, type="secondary" if st.session_state.stundenplan_child != name else "primary"):
-            st.session_state.stundenplan_child = name; st.rerun()
+        # key beginnt mit "child_sel_" für CSS-Ansprache
+        if c_cols[i].button(name, key=f"child_sel_{name}", use_container_width=True, type="secondary" if st.session_state.stundenplan_child != name else "primary"):
+            st.session_state.stundenplan_child = name; st.session_state.editing_grade = False; st.rerun()
 
     cur_c = st.session_state.stundenplan_child
     try:
@@ -174,50 +169,42 @@ elif st.session_state.view == 'stundenplan':
         cur_klasse = k_info[0]['klasse'] if k_info else "Klasse ?"
     except: cur_klasse = "Klasse ?"
 
-    t1, t2, t3 = st.columns([1, 2, 1])
-    with t1:
-        if st.button("◀", key="prev_day", use_container_width=True): st.session_state.day_offset -= 1; st.rerun()
-    with t2:
-        m_l, m_r = st.columns([0.8, 0.2])
-        m_l.markdown(f"<div class='class-box'>{cur_klasse}</div>", unsafe_allow_html=True)
-        if m_r.button("✏️", key="edit_grade"): st.session_state.editing_grade = True
-    with t3:
-        if st.button("▶", key="next_day", use_container_width=True): st.session_state.day_offset += 1; st.rerun()
-
-    if st.session_state.get('editing_grade'):
+    # Klassen-Button
+    if not st.session_state.editing_grade:
+        if st.button(f"{cur_klasse}", key="grade_btn", use_container_width=True):
+            st.session_state.editing_grade = True; st.rerun()
+    else:
         with st.form("grade_form"):
             new_g = st.text_input("Klasse anpassen:", value=cur_klasse)
-            if st.form_submit_button("Übernehmen"):
+            if st.form_submit_button("Speichern"):
                 supabase.table("kinder_info").upsert({"child": cur_c, "klasse": new_g}).execute()
                 st.session_state.editing_grade = False; st.rerun()
 
+    # Plan Daten
     res = supabase.table("stundenplaene").select("*").eq("child", cur_c).execute()
     plan_dict = {(item['tag'], int(item['stunde'])): item for item in res.data}
-    start_idx = (datetime.now().weekday() if datetime.now().weekday() < 5 else 0 + st.session_state.day_offset) % 5
-    disp_days = [DAYS[(start_idx + i) % 5] for i in range(3)]
-    
-    cols = st.columns(3)
-    for i, day in enumerate(disp_days):
-        with cols[i]:
-            st.markdown(f"<div class='day-header' style='background:{CHILD_COLORS[cur_c]};'>{day}</div>", unsafe_allow_html=True)
-            for std in range(1, 9):
-                lesson = plan_dict.get((day, std))
-                fach = lesson['fach'] if lesson else "---"
-                # Buttons im Plan haben key p_... für CSS-Selector
-                if st.button(f"{fach}", key=f"p_{cur_c}_{day}_{std}_{i}", use_container_width=True):
-                    st.session_state.edit_cell = {"day": day, "std": std, "fach": fach, "id": lesson['id'] if lesson else None}
-    
+
+    for day in DAYS:
+        st.markdown(f"<div class='day-header' style='background:{CHILD_COLORS[cur_c]};'>{day}</div>", unsafe_allow_html=True)
+        for std in range(1, 9):
+            lesson = plan_dict.get((day, std))
+            fach = lesson['fach'] if lesson else "---"
+            col_t, col_f = st.columns([1, 4])
+            col_t.markdown(f"<p class='time-label'>{std}. Std<br>{TIMES[std]}</p>", unsafe_allow_html=True)
+            if col_f.button(f"{fach}", key=f"p_sc_{cur_c}_{day}_{std}", use_container_width=True):
+                st.session_state.edit_cell = {"day": day, "std": std, "fach": fach, "id": lesson['id'] if lesson else None}
+
     if 'edit_cell' in st.session_state:
         ec = st.session_state.edit_cell
         with st.form("ed_p"):
             st.write(f"📌 **{ec['day']}, {ec['std']}. Std**")
             new_f = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(ec['fach']) if ec['fach'] in SUBJECTS else 0)
-            c1, c2 = st.columns(2)
-            if c1.form_submit_button("Speichern"):
+            if st.form_submit_button("Speichern"):
                 if ec['id']: supabase.table("stundenplaene").update({"fach": new_f}).eq("id", ec['id']).execute()
                 else: supabase.table("stundenplaene").insert({"child": cur_c, "tag": ec['day'], "stunde": ec['std'], "fach": new_f}).execute()
                 del st.session_state.edit_cell; st.rerun()
-            if c2.form_submit_button("Abbrechen"): del st.session_state.edit_cell; st.rerun()
+            if st.form_submit_button("Abbrechen"): del st.session_state.edit_cell; st.rerun()
+
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
 
 # --- 4. BUS-CHECK ---
