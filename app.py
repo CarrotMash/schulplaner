@@ -293,31 +293,28 @@ elif st.session_state.view == 'stundenplan':
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
 
-    # Richtung Zuhause (Schönberg)
-    st.markdown("#### 🏠 Richtung Zuhause")
-    st.caption("Seefischmarkt → Richtung Schönberg")
-    st.components.v1.iframe(
-        "https://dbf.finalrewind.org/9049245?mode=app&detailed=1&via=Sch%C3%B6nberg",
-        height=340, scrolling=True
-    )
+    richtung = st.radio("Richtung wählen:", ["🏠 Heimweg", "🏫 Schulweg"], horizontal=True)
 
-    st.divider()
-
-    # Richtung Schule (Kiel)
-    st.markdown("#### 🏫 Richtung Schule")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.caption("Linas Diek → Richtung Kiel")
+    if richtung == "🏠 Heimweg":
+        st.caption("Abfahrten ab **Seefischmarkt** in Richtung Linas Diek / Amboßweg — nächste 120 Min.")
         st.components.v1.iframe(
-            "https://dbf.finalrewind.org/9083498?mode=app&detailed=1&via=Kiel",
-            height=340, scrolling=True
+            "https://dbf.finalrewind.org/9049245?mode=app&detailed=1&minutes=120",
+            height=550, scrolling=True
         )
-    with col2:
-        st.caption("Amboßweg → Richtung Kiel")
-        st.components.v1.iframe(
-            "https://dbf.finalrewind.org/9083492?mode=app&detailed=1&via=Kiel",
-            height=340, scrolling=True
-        )
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption("Ab **Linas Diek** Richtung Seefischmarkt — nächste 120 Min.")
+            st.components.v1.iframe(
+                "https://dbf.finalrewind.org/9083498?mode=app&detailed=1&minutes=120",
+                height=550, scrolling=True
+            )
+        with col2:
+            st.caption("Ab **Amboßweg** Richtung Seefischmarkt — nächste 120 Min.")
+            st.components.v1.iframe(
+                "https://dbf.finalrewind.org/9083492?mode=app&detailed=1&minutes=120",
+                height=550, scrolling=True
+            )
 
     if st.button("← Hauptmenü", use_container_width=True):
         st.session_state.view = 'start'; st.rerun()
