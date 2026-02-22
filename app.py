@@ -23,9 +23,9 @@ FERIEN_DATA = {
     2027: [{"Ferien": "Osterferien", "Zeitraum": "22.03.2027 - 03.04.2027"}, {"Ferien": "Sommerferien", "Zeitraum": "12.07.2027 - 21.08.2027"}, {"Ferien": "Herbstferien", "Zeitraum": "11.10.2027 - 23.10.2027"}, {"Ferien": "Weihnachtsferien", "Zeitraum": "20.12.2027 - 05.01.2028"}]
 }
 
-# --- INITIALISIERUNG SESSION STATE ---
+# --- INITIALISIERUNG ---
 if 'view' not in st.session_state: st.session_state.view = 'start'
-if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
+if 'cal_key' not in st.session_state: st.session_state.cal_key = "vFinal"
 if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_child = "Mila"
 if 'editing_grade' not in st.session_state: st.session_state.editing_grade = False
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
@@ -48,28 +48,27 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; }
     div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) div[data-testid="column"] { flex: 1 1 0% !important; min-width: 0 !important; }
 
-    .day-header { text-align: center; border-radius: 8px; padding: 8px; margin-top: 15px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 1.1rem; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
     .time-label { font-size: 0.65rem; color: #555; font-weight: bold; margin-bottom: 0px; line-height: 1.1; }
-    
     .bus-card { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 5px solid #FF4B4B; }
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- BUS ABFRAGE FUNKTION ---
+# --- BUS FUNKTION ---
 def get_bus_departures(stop_id):
     try:
-        # Erweitert auf 240 Minuten für Sonntage/Nebenzeiten
-        url = f"https://v6.db.transport.rest/stops/{stop_id}/departures?duration=240&results=15"
-        r = requests.get(url, timeout=10)
+        url = f"https://v6.db.transport.rest/stops/{stop_id}/departures?duration=120&results=10"
+        # Wir fügen einen User-Agent Header hinzu, um wie ein Browser zu wirken
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        r = requests.get(url, headers=headers, timeout=8)
         if r.status_code == 200:
             return r.json().get('departures', [])
         return None
-    except Exception as e:
+    except:
         return None
 
-# --- 1. DASHBOARD (STARTSEITE) ---
+# --- 1. DASHBOARD ---
 if st.session_state.view == 'start':
     st.markdown('<p class="main-header">Schulplaner</p>', unsafe_allow_html=True)
     if os.path.exists("startbild.jpg"): st.image("startbild.jpg")
@@ -97,18 +96,15 @@ elif st.session_state.view == 'klausuren':
             if st.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": sd.strftime('%d.%m.%Y'), "titel": f"{sc}\n{ss}", "start_date": str(sd), "color": CHILD_COLORS[sc], "child": sc, "note": sn}).execute()
                 st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-
     cal_ev = [{"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"} for d in k_data]
     state = calendar(events=cal_ev, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False}, key=st.session_state.cal_key)
-
     if state.get("dateClick"):
         nd = state["dateClick"]["date"][:10]
         if st.session_state.selected_date != nd: st.session_state.selected_date = nd; st.session_state.edit_id = None; st.rerun()
     if state.get("eventClick"):
         ni = state["eventClick"]["event"].get("id")
         if st.session_state.edit_id != ni: st.session_state.edit_id = ni; st.session_state.selected_date = None; st.rerun()
-
-    if st.session_state.selected_date:
+    if st.session_state.get('selected_date'):
         with st.form("q_f"):
             st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
@@ -117,8 +113,7 @@ elif st.session_state.view == 'klausuren':
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
             if c1.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
-
-    if st.session_state.edit_id:
+    if st.session_state.get('edit_id'):
         try:
             edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("ed_f"):
@@ -172,7 +167,7 @@ elif st.session_state.view == 'stundenplan':
     if 'edit_cell' in st.session_state:
         ec = st.session_state.edit_cell
         with st.form("ed_p"):
-            st.write(f"📌 **{ec['day']}, {ec['std']}. Std**")
+            st.write(f"📌 **{ec['day']}, {ec['std']}. Std ändern**")
             new_f = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(ec['fach']) if ec['fach'] in SUBJECTS else 0)
             if st.form_submit_button("Speichern"):
                 if ec['id']: supabase.table("stundenplaene").update({"fach": new_f}).eq("id", ec['id']).execute()
@@ -185,23 +180,25 @@ elif st.session_state.view == 'stundenplan':
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
     stops = {
-        "Seefischmarkt (Schule ➔ Zuhause)": "de:01002:73144",
-        "Amboßweg (Zuhause ➔ Schule)": "de:01002:73151",
-        "Linas Diek (Zuhause ➔ Schule)": "de:01002:73152"
+        "Seefischmarkt (Schule ➔ Zuhause)": {"id": "de:01002:73144", "url": "Kiel%2C+Seefischmarkt"},
+        "Amboßweg (Zuhause ➔ Schule)": {"id": "de:01002:73151", "url": "Sch%C3%B6nkirchen%2C+Ambo%C3%9Fweg"},
+        "Linas Diek (Zuhause ➔ Schule)": {"id": "de:01002:73152", "url": "Sch%C3%B6nkirchen%2C+Linas+Diek"}
     }
     selection = st.selectbox("Haltestelle wählen:", list(stops.keys()))
     if st.button("🔄 Aktualisieren", use_container_width=True): st.rerun()
     
-    departures = get_bus_departures(stops[selection])
+    departures = get_bus_departures(stops[selection]["id"])
     
     if departures is None:
-        st.error("Verbindung zum Server fehlgeschlagen. Bitte Internetverbindung prüfen.")
+        st.warning("Live-Daten aktuell nicht verfügbar.")
+        # FALLBACK BUTTON
+        st.link_button("➔ Monitor auf NAH.SH öffnen", f"https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop={stops[selection]['url']}", use_container_width=True)
     elif not departures:
-        st.info("Keine Abfahrten in den nächsten 4 Stunden gefunden.")
+        st.info("Aktuell keine Abfahrten geplant.")
+        st.link_button("➔ Monitor auf NAH.SH öffnen", f"https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop={stops[selection]['url']}", use_container_width=True)
     else:
         for dep in departures:
-            line = dep.get('line', {}).get('name', 'Bus')
-            direction = dep.get('direction', 'Unbekannt')
+            line = dep.get('line', {}).get('name', 'Bus'); direction = dep.get('direction', 'Unbekannt')
             p_time_str = dep.get('plannedDeparture')
             if p_time_str:
                 p_time = datetime.fromisoformat(p_time_str.replace('Z', '+00:00'))
