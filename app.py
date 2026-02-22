@@ -288,209 +288,200 @@ elif st.session_state.view == 'stundenplan':
 
 
 # =============================================================================
-# --- 4. BUS-CHECK (STATISCHER FAHRPLAN LINIEN 200 + 210, Mo–Fr) ---
+# --- 4. BUS-CHECK (STATISCHER FAHRPLAN, Mo–Fr, 06:30–16:00 Uhr) ---
 # =============================================================================
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
 
     # -----------------------------------------------------------------------
-    # FAHRPLANDATEN (Quelle: VKP Fahrplan 2025, Mo–Fr)
-    # Format: (Abfahrtszeit, Linie, Richtung/Ziel, Hinweis)
+    # FAHRPLANDATEN
+    # Quelle: VKP Fahrplan 2025, Mo–Fr
+    # Zeitfenster: 06:30–16:00 Uhr
+    # Format: (Abfahrtszeit, Linie, Ziel, Hinweis)
+    #
+    # SEEFISCHMARKT → Richtung Schönberg / Schönberger Strand
+    #   Linie 200: via Söhren/Linas Diek → weiter nach Schönberg
+    #   Linie 201: direkt via Schönkirchener Str. → Schönberg (schneller)
+    #   Linie 210: via Amboßweg → weiter nach Schönberg
+    #
+    # LINAS DIEK   → Richtung Kiel (Linie 200)
+    # AMBOßWEG     → Richtung Kiel (Linie 210)
     # -----------------------------------------------------------------------
 
-    # HEIMWEG: Abfahrten ab Seefischmarkt → Schönkirchen
-    # Linie 200: via Söhren → Linas Diek (+14 Min.)
-    # Linie 201: direkt via Schönkirchener Str. → Linas Diek (+9 Min., schneller)
-    # Linie 210: via Schönkirchener Str. → Amboßweg (+13 Min.)
-    HEIMWEG = [
-        # Frühfahrten Linie 200
-        ("05:52", "200", "Linas Diek", ""),
-        # 06:xx
-        ("06:20", "201", "Linas Diek", "schneller, direkt"),
-        ("06:22", "200", "Linas Diek", ""),
-        ("06:37", "200", "Linas Diek", "nur Schultage"),
-        ("06:52", "200", "Linas Diek", ""),
-        # 07:xx
-        ("07:05", "201", "Linas Diek", "schneller, direkt"),
-        ("07:07", "200", "Linas Diek", "nur Schultage"),
-        ("07:20", "201", "Linas Diek", "schneller, direkt"),
-        ("07:22", "200", "Linas Diek", ""),
-        ("07:37", "200", "Linas Diek", "nur Schultage"),
-        ("07:52", "200", "Linas Diek", ""),
-        # 08:xx
-        ("08:05", "201", "Linas Diek", "schneller, direkt"),
-        ("08:07", "200", "Linas Diek", "nur Schultage"),
-        ("08:20", "201", "Linas Diek", "schneller, direkt"),
-        ("08:22", "200", "Linas Diek", ""),
-        ("08:37", "200", "Linas Diek", ""),
-        ("08:52", "200", "Linas Diek", ""),
-        # 09:xx–10:xx stündlich 200 + 201 im Wechsel
-        ("09:05", "201", "Linas Diek", "schneller, direkt"),
-        ("09:22", "200", "Linas Diek", ""),
-        ("09:52", "200", "Linas Diek", ""),
-        ("10:05", "201", "Linas Diek", "schneller, direkt"),
-        ("10:22", "200", "Linas Diek", ""),
-        ("10:52", "200", "Linas Diek", ""),
-        # 11:xx
-        ("11:05", "201", "Linas Diek", "schneller, direkt"),
-        ("11:22", "200", "Linas Diek", ""),
-        ("11:37", "210", "Amboßweg",   ""),
-        ("11:52", "200", "Linas Diek", ""),
-        # 12:xx
-        ("12:05", "201", "Linas Diek", "schneller, direkt"),
-        ("12:22", "200", "Linas Diek", ""),
-        ("12:37", "210", "Amboßweg",   "nur Schultage"),
-        ("12:52", "200", "Linas Diek", ""),
-        # 13:xx
-        ("13:05", "201", "Linas Diek", "schneller, direkt"),
-        ("13:22", "200", "Linas Diek", ""),
-        ("13:37", "210", "Amboßweg",   ""),
-        ("13:52", "200", "Linas Diek", ""),
-        # 14:xx
-        ("14:05", "201", "Linas Diek", "schneller, direkt"),
-        ("14:08", "200", "Linas Diek", "nur Schultage"),
-        ("14:22", "200", "Linas Diek", ""),
-        ("14:37", "210", "Amboßweg",   ""),
-        ("14:52", "200", "Linas Diek", ""),
-        # 15:xx
-        ("15:05", "201", "Linas Diek", "schneller, direkt"),
-        ("15:07", "200", "Linas Diek", "nur Schultage"),
-        ("15:22", "200", "Linas Diek", ""),
-        ("15:37", "210", "Amboßweg",   ""),
-        ("15:52", "200", "Linas Diek", ""),
-        # 16:xx
-        ("16:05", "201", "Linas Diek", "schneller, direkt"),
-        ("16:07", "200", "Linas Diek", "nur Schultage"),
-        ("16:22", "200", "Linas Diek", ""),
-        ("16:37", "210", "Amboßweg",   ""),
-        ("16:52", "200", "Linas Diek", ""),
-        # 17:xx
-        ("17:05", "201", "Linas Diek", "schneller, direkt"),
-        ("17:07", "200", "Linas Diek", "nur Schultage"),
-        ("17:22", "200", "Linas Diek", ""),
-        ("17:37", "210", "Amboßweg",   ""),
-        ("17:52", "200", "Linas Diek", ""),
-        # 18:xx–21:xx
-        ("18:05", "201", "Linas Diek", "schneller, direkt"),
-        ("18:22", "200", "Linas Diek", ""),
-        ("18:52", "200", "Linas Diek", ""),
-        ("19:05", "201", "Linas Diek", "schneller, direkt"),
-        ("19:22", "200", "Linas Diek", ""),
-        ("19:22", "210", "Amboßweg",   ""),
-        ("19:52", "200", "Linas Diek", ""),
-        ("20:22", "200", "Linas Diek", ""),
-        ("20:50", "200", "Linas Diek", ""),
-        ("21:19", "200", "Linas Diek", ""),
+    SEEFISCHMARKT = [
+        # --- 06:30–06:59 ---
+        ("06:37", "200", "Schönberg",          "nur Schultage"),
+        ("06:52", "200", "Schönberg",          ""),
+        # --- 07:xx ---
+        ("07:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("07:07", "200", "Schönberg",          "nur Schultage"),
+        ("07:20", "201", "Schönberger Strand", "direkt, schneller"),
+        ("07:22", "200", "Schönberg",          ""),
+        ("07:37", "200", "Schönberg",          "nur Schultage"),
+        ("07:52", "200", "Schönberg",          ""),
+        # --- 08:xx ---
+        ("08:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("08:07", "200", "Schönberg",          "nur Schultage"),
+        ("08:20", "201", "Schönberger Strand", "direkt, schneller"),
+        ("08:22", "200", "Schönberg",          ""),
+        ("08:37", "200", "Schönberg",          ""),
+        ("08:52", "200", "Schönberg",          ""),
+        # --- 09:xx ---
+        ("09:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("09:22", "200", "Schönberg",          ""),
+        ("09:52", "200", "Schönberg",          ""),
+        # --- 10:xx ---
+        ("10:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("10:22", "200", "Schönberg",          ""),
+        ("10:52", "200", "Schönberg",          ""),
+        # --- 11:xx ---
+        ("11:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("11:22", "200", "Schönberg",          ""),
+        ("11:37", "210", "Schönberg",          ""),
+        ("11:52", "200", "Schönberg",          ""),
+        # --- 12:xx ---
+        ("12:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("12:22", "200", "Schönberg",          ""),
+        ("12:37", "210", "Schönberg",          "nur Schultage"),
+        ("12:52", "200", "Schönberg",          ""),
+        # --- 13:xx ---
+        ("13:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("13:22", "200", "Schönberg",          ""),
+        ("13:37", "210", "Schönberg",          ""),
+        ("13:52", "200", "Schönberg",          ""),
+        # --- 14:xx ---
+        ("14:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("14:08", "200", "Schönberg",          "nur Schultage"),
+        ("14:22", "200", "Schönberg",          ""),
+        ("14:37", "210", "Schönberg",          ""),
+        ("14:52", "200", "Schönberg",          ""),
+        # --- 15:xx ---
+        ("15:05", "201", "Schönberger Strand", "direkt, schneller"),
+        ("15:07", "200", "Schönberg",          "nur Schultage"),
+        ("15:22", "200", "Schönberg",          ""),
+        ("15:37", "210", "Schönberg",          ""),
+        ("15:52", "200", "Schönberg",          ""),
+        # --- bis 16:00 ---
+        ("16:00", "200", "Schönberg",          ""),
     ]
 
-    # SCHULWEG: Abfahrten ab Linas Diek → Kiel/Seefischmarkt (Linie 200)
     LINAS_DIEK = [
-        ("05:30", "200", "Kiel", ""),
-        ("06:00", "200", "Kiel", ""),
-        ("06:30", "200", "Kiel", ""),
-        ("07:00", "200", "Kiel", ""),  # Linie 200 ~ stündlich + Schultags-Verstärker
-        ("07:33", "200", "Kiel", ""),
-        ("08:00", "200", "Kiel", ""),
-        ("08:33", "200", "Kiel", ""),
-        ("09:00", "200", "Kiel", ""),
-        ("09:33", "200", "Kiel", ""),
-        ("10:00", "200", "Kiel", ""),
-        ("10:33", "200", "Kiel", ""),
-        ("11:00", "200", "Kiel", ""),
-        ("11:33", "200", "Kiel", ""),
-        ("12:00", "200", "Kiel", ""),
-        ("12:33", "200", "Kiel", ""),
-        ("13:00", "200", "Kiel", ""),
-        ("13:33", "200", "Kiel", ""),
-        ("14:00", "200", "Kiel", ""),
-        ("14:34", "200", "Kiel", "nur Schultage"),
-        ("14:38", "200", "Kiel", "nur Ferientage"),
-        ("15:00", "200", "Kiel", ""),
-        ("15:33", "200", "Kiel", ""),
-        ("16:00", "200", "Kiel", ""),
-        ("16:33", "200", "Kiel", ""),
-        ("17:00", "200", "Kiel", ""),
-        ("17:33", "200", "Kiel", ""),
-        ("18:00", "200", "Kiel", ""),
-        ("18:33", "200", "Kiel", ""),
-        ("19:00", "200", "Kiel", ""),
-        ("19:33", "200", "Kiel", ""),
+        # --- ab 06:30 ---
+        ("06:30", "200", "Kiel Hbf",  ""),
+        ("07:00", "200", "Kiel Hbf",  ""),
+        ("07:33", "200", "Kiel Hbf",  ""),
+        ("08:00", "200", "Kiel Hbf",  ""),
+        ("08:33", "200", "Kiel Hbf",  ""),
+        ("09:00", "200", "Kiel Hbf",  ""),
+        ("09:33", "200", "Kiel Hbf",  ""),
+        ("10:00", "200", "Kiel Hbf",  ""),
+        ("10:33", "200", "Kiel Hbf",  ""),
+        ("11:00", "200", "Kiel Hbf",  ""),
+        ("11:33", "200", "Kiel Hbf",  ""),
+        ("12:00", "200", "Kiel Hbf",  ""),
+        ("12:33", "200", "Kiel Hbf",  ""),
+        ("13:00", "200", "Kiel Hbf",  ""),
+        ("13:33", "200", "Kiel Hbf",  ""),
+        ("14:00", "200", "Kiel Hbf",  ""),
+        ("14:34", "200", "Kiel Hbf",  "nur Schultage"),
+        ("14:38", "200", "Kiel Hbf",  "nur Ferientage"),
+        ("15:00", "200", "Kiel Hbf",  ""),
+        ("15:33", "200", "Kiel Hbf",  ""),
+        # --- bis 16:00 ---
+        ("16:00", "200", "Kiel Hbf",  ""),
     ]
 
-    # SCHULWEG: Abfahrten ab Amboßweg → Kiel/Seefischmarkt (Linie 210)
     AMBOSSWEG = [
-        ("06:07", "210", "Kiel", ""),
-        ("06:08", "210", "Kiel", "nur Schultage"),
-        ("07:08", "210", "Kiel", "nur Schultage"),
-        ("07:10", "210", "Kiel", "nur Ferientage"),
-        ("08:18", "210", "Kiel", "nur Schultage"),
-        ("08:20", "210", "Kiel", "nur Ferientage"),
-        ("12:22", "210", "Kiel", ""),
-        ("12:23", "210", "Kiel", ""),
-        ("14:22", "210", "Kiel", ""),
-        ("14:23", "210", "Kiel", ""),
-        ("16:37", "200", "Kiel", ""),  # Linie 200 fährt auch Amboßweg (via Schönkirchen, Am Dorfteich)
-        ("17:37", "200", "Kiel", ""),
-        ("18:37", "200", "Kiel", ""),
-        ("19:35", "210", "Kiel", ""),
+        # --- ab 06:30 ---
+        ("06:30", "210", "Kiel Hbf",  ""),   # Fahrt ab Schönberg, Halt Amboßweg ~06:30
+        ("07:08", "210", "Kiel Hbf",  "nur Schultage"),
+        ("07:10", "210", "Kiel Hbf",  "nur Ferientage"),
+        ("08:18", "210", "Kiel Hbf",  "nur Schultage"),
+        ("08:20", "210", "Kiel Hbf",  "nur Ferientage"),
+        ("12:22", "210", "Kiel Hbf",  ""),
+        ("14:22", "210", "Kiel Hbf",  ""),
+        # --- bis 16:00 ---
+        ("15:53", "210", "Kiel Hbf",  ""),
     ]
 
-    def zeige_abfahrten(fahrplan, haltestellenname, richtung_label):
-        now = datetime.now()
-        cutoff = now.replace(second=0, microsecond=0)
+    # -----------------------------------------------------------------------
+    # DARSTELLUNG
+    # -----------------------------------------------------------------------
 
-        treffer = []
-        for eintrag in fahrplan:
-            zeit_str, linie, ziel, hinweis = eintrag
-            h, m = map(int, zeit_str.split(":"))
-            abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
-            diff_min = int((abfahrt - cutoff).total_seconds() / 60)
-            if 0 <= diff_min <= 120:
-                treffer.append((abfahrt, linie, ziel, hinweis, diff_min))
+    LINE_COLORS = {"200": "#D32F2F", "201": "#1565C0", "210": "#2E7D32"}
+
+    def zeige_tabelle(fahrplan, haltestellenname, richtung_label):
+        """Gibt alle Fahrten im Fenster 06:30–16:00 als Karten-Tabelle aus."""
+        now = datetime.now()
+        naechste_markiert = False
 
         if now.weekday() >= 5:
             st.warning("⚠️ Dieser Fahrplan gilt nur Montag–Freitag.")
-            return
 
-        if not treffer:
-            st.info(f"Keine Abfahrten in den nächsten 120 Min. ab **{haltestellenname}**.")
-            return
+        st.caption(f"📍 **{haltestellenname}** ➔ {richtung_label} | Mo–Fr, 06:30–16:00 Uhr | Quelle: VKP 2025")
 
-        st.caption(f"Ab **{haltestellenname}** {richtung_label} — Stand {now.strftime('%H:%M')} Uhr")
-        for abfahrt, linie, ziel, hinweis, diff_min in sorted(treffer, key=lambda x: x[0]):
-            if diff_min <= 5:
-                zeit_label = f"⚡ in {diff_min} Min."
-                farbe = "#FF4B4B"
-            elif diff_min <= 15:
-                zeit_label = f"🕐 in {diff_min} Min."
-                farbe = "#FF8C00"
+        rows = []
+        for zeit_str, linie, ziel, hinweis in fahrplan:
+            h, m = map(int, zeit_str.split(":"))
+            abfahrt_heute = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            diff_min = int((abfahrt_heute - now.replace(second=0, microsecond=0)).total_seconds() / 60)
+            rows.append((zeit_str, linie, ziel, hinweis, diff_min))
+
+        for zeit_str, linie, ziel, hinweis, diff_min in rows:
+            # Nächste Abfahrt hervorheben
+            ist_naechste = (not naechste_markiert and diff_min >= 0)
+            if ist_naechste:
+                naechste_markiert = True
+
+            farbe = LINE_COLORS.get(linie, "#555555")
+
+            if ist_naechste:
+                rahmen = "3px solid #FF8C00"
+                bg = "#FFF8E1"
+                naechste_badge = '<span style="background:#FF8C00;color:white;font-size:0.72rem;padding:2px 7px;border-radius:8px;margin-left:8px;">▶ Nächste</span>'
             else:
-                zeit_label = f"🟢 in {diff_min} Min."
-                farbe = "#2E7D32"
-            hinweis_html = f'<span style="font-size:0.8rem;color:#888;"> ({hinweis})</span>' if hinweis else ""
+                rahmen = f"1px solid #e0e0e0"
+                bg = "white"
+                naechste_badge = ""
+
+            hinweis_html = f'<span style="font-size:0.78rem;color:#888;margin-left:6px;">({hinweis})</span>' if hinweis else ""
+
+            # Minuten-Anzeige nur wenn Fahrt heute noch kommt
+            if 0 <= diff_min <= 90:
+                min_text = f'<span style="color:#FF6F00;font-size:0.82rem;margin-left:4px;">in {diff_min} Min.</span>'
+            elif diff_min < 0:
+                min_text = f'<span style="color:#bbb;font-size:0.78rem;margin-left:4px;">abgefahren</span>'
+            else:
+                min_text = ""
+
             st.markdown(f"""
-            <div class="bus-card">
-                <div style="font-size:1.1rem;"><b>Linie {linie}</b> ➔ {ziel}</div>
-                <div style="font-size:1.0rem;">
-                    Abfahrt: <b>{abfahrt.strftime('%H:%M')} Uhr</b>
-                    <span style="color:{farbe};font-weight:bold;"> {zeit_label}</span>
-                    {hinweis_html}
-                </div>
+            <div style="background:{bg};border:{rahmen};border-left:6px solid {farbe};
+                        border-radius:10px;padding:10px 14px;margin-bottom:8px;
+                        box-shadow:1px 1px 4px rgba(0,0,0,0.06);">
+                <span style="font-size:1.25rem;font-weight:900;color:{farbe};">{zeit_str}</span>
+                <span style="font-size:0.95rem;font-weight:bold;margin-left:10px;">Linie {linie}</span>
+                <span style="font-size:0.9rem;color:#444;margin-left:6px;">➔ {ziel}</span>
+                {hinweis_html}{naechste_badge}{min_text}
             </div>
             """, unsafe_allow_html=True)
 
-    richtung = st.radio("Richtung wählen:", ["🏠 Heimweg (ab Seefischmarkt)", "🏫 Schulweg (ab Linas Diek / Amboßweg)"], horizontal=True)
+    # --- Haltestelle wählen ---
+    haltestelle = st.radio(
+        "Haltestelle wählen:",
+        ["🏠 Seefischmarkt → Schönberg / Schönberger Strand",
+         "🏫 Linas Diek → Kiel",
+         "🏫 Amboßweg → Kiel"],
+        horizontal=False
+    )
 
-    if richtung == "🏠 Heimweg (ab Seefischmarkt)":
-        zeige_abfahrten(HEIMWEG, "Seefischmarkt", "➔ Schönkirchen")
+    st.divider()
+
+    if haltestelle.startswith("🏠"):
+        zeige_tabelle(SEEFISCHMARKT, "Seefischmarkt", "Schönberg / Schönberger Strand")
+    elif "Linas Diek" in haltestelle:
+        zeige_tabelle(LINAS_DIEK, "Linas Diek", "Kiel Hbf")
     else:
-        col1, col2 = st.columns(2)
-        with col1:
-            zeige_abfahrten(LINAS_DIEK, "Linas Diek", "➔ Kiel")
-        with col2:
-            zeige_abfahrten(AMBOSSWEG, "Amboßweg", "➔ Kiel")
-
-    st.caption("📋 Fahrplan Linien 200 + 210, Mo–Fr | Quelle: VKP Fahrplan 2025 | Keine Echtzeit-Daten")
+        zeige_tabelle(AMBOSSWEG, "Amboßweg", "Kiel Hbf")
 
     if st.button("← Hauptmenü", use_container_width=True):
         st.session_state.view = 'start'; st.rerun()
