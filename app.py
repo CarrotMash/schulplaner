@@ -22,9 +22,9 @@ FERIEN_DATA = {
     2027: [{"Ferien": "Osterferien", "Zeitraum": "22.03.2027 - 03.04.2027"}, {"Ferien": "Sommerferien", "Zeitraum": "12.07.2027 - 21.08.2027"}, {"Ferien": "Herbstferien", "Zeitraum": "11.10.2027 - 23.10.2027"}, {"Ferien": "Weihnachtsferien", "Zeitraum": "20.12.2027 - 05.01.2028"}]
 }
 
-# --- INITIALISIERUNG ---
+# --- INITIALISIERUNG SESSION STATE ---
 if 'view' not in st.session_state: st.session_state.view = 'start'
-if 'cal_key' not in st.session_state: st.session_state.cal_key = str(uuid.uuid4())
+if 'cal_key' not in st.session_state: st.session_state.cal_key = "vFinal_1"
 if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_child = "Mila"
 if 'editing_grade' not in st.session_state: st.session_state.editing_grade = False
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
@@ -39,15 +39,19 @@ st.markdown("""
     .main-header { font-size: 2.2rem !important; font-weight: 900 !important; text-align: center; margin-top: -10px; margin-bottom: 20px; background-color: #000000; color: #FFFFFF !important; padding: 12px; border-radius: 10px; line-height: 1.1; white-space: nowrap; }
     [data-testid="stImage"] > img { width: 64% !important; margin-left: auto; margin-right: auto; display: block; border-radius: 10px; }
     
+    /* Kalender-Buttons Deutsch */
     .fc-button-primary { background-color: #FF4B4B !important; border-color: #FF4B4B !important; color: #FFFFFF !important; font-weight: bold !important; font-size: 0.8rem !important; text-transform: capitalize !important; }
     .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold !important; }
     .fc-event-title { font-size: 0.75rem !important; white-space: pre-wrap !important; font-weight: bold !important; line-height: 1.1 !important; }
     .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
+    .fc-list-event-time { display: none !important; }
 
+    /* Dashboard Buttons */
     div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: 100% !important; }
     div[data-testid="stHorizontalBlock"]:has(button[key^="child_sel_"]) div[data-testid="column"] { flex: 1 1 0% !important; min-width: 0 !important; }
 
-    .day-header { text-align: center; border-radius: 8px; padding: 8px; margin-top: 15px; margin-bottom: 10px; font-weight: bold; color: #FFFFFF !important; font-size: 1.1rem; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+    /* Stundenplan-Header */
+    .day-header { text-align: center; border-radius: 8px; padding: 8px; margin-top: 15px; margin-bottom: 8px; font-weight: bold; color: #FFFFFF !important; font-size: 1.1rem; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
     .time-label { font-size: 0.65rem; color: #555; font-weight: bold; margin-bottom: 0px; line-height: 1.1; }
     
     /* Bus-Monitor Design */
@@ -55,7 +59,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. DASHBOARD ---
+# --- 1. DASHBOARD (STARTSEITE) ---
 if st.session_state.view == 'start':
     st.markdown('<p class="main-header">Schulplaner</p>', unsafe_allow_html=True)
     if os.path.exists("startbild.jpg"): st.image("startbild.jpg")
@@ -85,9 +89,14 @@ elif st.session_state.view == 'klausuren':
                 st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
 
     cal_ev = [{"id": str(d["id"]), "title": d["titel"], "start": d["start_date"], "backgroundColor": d["color"], "allDay": True, "textColor": "white"} for d in k_data]
-    state = calendar(events=cal_ev, options={"headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"}, "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"}, "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False}, key=st.session_state.cal_key)
     
-    # Reload Fix
+    state = calendar(events=cal_ev, options={
+        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth,listMonth"},
+        "buttonText": {"today": "Heute", "month": "Monat", "list": "Liste"},
+        "initialView": "dayGridMonth", "locale": "de", "firstDay": 1, "weekends": False, "height": "auto", "selectable": True, "timeZone": "UTC", "displayEventTime": False
+    }, key=st.session_state.cal_key)
+    
+    # Reload-Schutz Logik
     if state.get("dateClick"):
         nd = state["dateClick"]["date"][:10]
         if st.session_state.selected_date != nd: st.session_state.selected_date = nd; st.session_state.edit_id = None; st.rerun()
@@ -95,32 +104,34 @@ elif st.session_state.view == 'klausuren':
         ni = state["eventClick"]["event"].get("id")
         if st.session_state.edit_id != ni: st.session_state.edit_id = ni; st.session_state.selected_date = None; st.rerun()
 
-    if st.session_state.selected_date:
+    if st.session_state.get('selected_date'):
         with st.form("q_f"):
             st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys())); qs = st.selectbox("Fach", SUBJECTS); qn = st.text_input("Notiz")
-            if st.form_submit_button("Speichern"):
+            c1, c2 = st.columns(2)
+            if c1.form_submit_button("Speichern"):
                 supabase.table("klausuren").insert({"datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'), "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date, "color": CHILD_COLORS[qc], "child": qc, "note": qn}).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if st.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
+            if c1.form_submit_button("Abbrechen"): st.session_state.selected_date = None; st.rerun()
 
-    if st.session_state.edit_id:
+    if st.session_state.get('edit_id'):
         try:
             edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("ed_f"):
                 new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()), index=list(CHILD_COLORS.keys()).index(edit_row['child'])); curr_s = edit_row['titel'].split('\n')[-1]
                 new_s = st.selectbox("Fach", SUBJECTS, index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0); new_d = st.date_input("Datum", datetime.strptime(edit_row['start_date'], '%Y-%m-%d'), format="DD.MM.YYYY"); new_n = st.text_input("Notiz", value=edit_row['note'])
                 c1, c2 = st.columns(2)
-                if c1.form_submit_button("💾 Speichern"):
+                if c1.form_submit_button("Speichern"):
                     supabase.table("klausuren").update({"datum": new_d.strftime('%d.%m.%Y'), "titel": f"{new_c}\n{new_s}", "start_date": str(new_d), "color": CHILD_COLORS[new_c], "child": new_c, "note": new_n}).eq("id", st.session_state.edit_id).execute()
                     st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-                if c2.form_submit_button("🗑️ Löschen"):
+                if c1.form_submit_button("🗑️ Löschen"):
                     supabase.table("klausuren").delete().eq("id", st.session_state.edit_id).execute(); st.session_state.edit_id = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
         except: st.session_state.edit_id = None
     
     if not k_df.empty:
         st.divider(); df_t = k_df.copy(); df_t['Anzeige'] = df_t['titel'].str.replace('\n', ': ')
         st.dataframe(df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum':'Wann', 'Anzeige':'Wer & Was'}), hide_index=True, use_container_width=True)
+    else: st.info("Keine Einträge vorhanden")
 
 # --- 3. STUNDENPLÄNE ---
 elif st.session_state.view == 'stundenplan':
@@ -168,22 +179,23 @@ elif st.session_state.view == 'stundenplan':
             if st.form_submit_button("Abbrechen"): del st.session_state.edit_cell; st.rerun()
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
 
-# --- 4. BUS-CHECK (DIE GARANTIE-LÖSUNG) ---
+# --- 4. BUS-CHECK (VERIFIZIERTE LINKS) ---
 elif st.session_state.view == 'bus':
     st.markdown('<p class="main-header">Bus-Check</p>', unsafe_allow_html=True)
-    st.info("Wähle eine Haltestelle, um den offiziellen Live-Monitor von NAH.SH zu öffnen.")
+    st.info("Wähle eine Haltestelle, um den offiziellen NAH.SH Live-Monitor zu öffnen.")
     
-    # Kachel 1
+    # Haltestellen-Konfiguration mit Such-Parametern (robustestes System)
+    # 1. Seefischmarkt
     st.markdown("<div class='bus-station-card'>Seefischmarkt<br><small>Schule ➔ Zuhause (Ri. Schönkirchen)</small></div>", unsafe_allow_html=True)
-    st.link_button("➔ Monitor öffnen", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/index.html?stopid=100273144", use_container_width=True)
+    st.link_button("➔ Monitor öffnen", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop=Kiel%2C+Seefischmarkt", use_container_width=True)
     
-    # Kachel 2
+    # 2. Amboßweg
     st.markdown("<div class='bus-station-card'>Amboßweg<br><small>Zuhause ➔ Schule (Ri. Kiel)</small></div>", unsafe_allow_html=True)
-    st.link_button("➔ Monitor öffnen", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/index.html?stopid=100273151", use_container_width=True)
+    st.link_button("➔ Monitor öffnen", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop=Sch%C3%B6nkirchen%2C+Ambo%C3%9Fweg", use_container_width=True)
     
-    # Kachel 3
+    # 3. Linas Diek
     st.markdown("<div class='bus-station-card'>Linas Diek<br><small>Zuhause ➔ Schule (Ri. Kiel)</small></div>", unsafe_allow_html=True)
-    st.link_button("➔ Monitor öffnen", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/index.html?stopid=100273152", use_container_width=True)
+    st.link_button("➔ Monitor öffnen", "https://www.nah.sh/de/fahrplan/abfahrtsmonitor/?stop=Sch%C3%B6nkirchen%2C+Linas+Diek", use_container_width=True)
     
     st.write("")
     if st.button("← Hauptmenü", use_container_width=True): st.session_state.view = 'start'; st.rerun()
