@@ -460,12 +460,25 @@ elif st.session_state.view == 'bus':
         """, unsafe_allow_html=True)
 
     def zeige_naechste_120min(fahrplan, haltestellenname, richtung):
+        from datetime import timedelta
         now    = datetime.now()
         cutoff = now.replace(second=0, microsecond=0)
 
+        # Wochentag-Namen für Ausgaben
+        WT = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+
+        # Nächsten Werktag berechnen
+        def naechster_werktag(von):
+            tage = 3 if von.weekday() == 4 else (2 if von.weekday() == 5 else 1)
+            t = von + timedelta(days=tage)
+            return t
+
         if now.weekday() >= 5:
-            st.warning("⚠️ Dieser Fahrplan gilt nur Montag–Freitag.")
-            return
+            nwt = naechster_werktag(now)
+            st.warning(
+                f"⚠️ Dieser Fahrplan gilt nur Montag–Freitag. "
+                f"Nächste Fahrten ab **{WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}**."
+            )
 
         treffer = []
         for zeit_str, linie, ausstieg, hinweis in fahrplan:
@@ -481,10 +494,35 @@ elif st.session_state.view == 'bus':
         )
 
         if not treffer:
-            st.info("Keine weiteren Abfahrten in den nächsten 120 Minuten.")
+            # Suche: noch heute später?
+            naechste_heute = None
+            for zeit_str, linie, ausstieg, hinweis in fahrplan:
+                h, m    = map(int, zeit_str.split(":"))
+                abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+                diff    = int((abfahrt - cutoff).total_seconds() / 60)
+                if diff > 120:
+                    naechste_heute = (zeit_str, linie, ausstieg, hinweis)
+                    break
+
+            if naechste_heute:
+                z, li, au, hi = naechste_heute
+                hinweis_txt = f" · _{hi}_" if hi else ""
+                st.info(
+                    f"Keine Abfahrten in den nächsten 120 Minuten.\n\n"
+                    f"🕐 **Nächste Abfahrt heute:** {z} Uhr · Linie {li} · Ausstieg {au}{hinweis_txt}"
+                )
+            else:
+                # Kein Bus mehr heute → erste Fahrt nächsten Werktag
+                nwt = naechster_werktag(now)
+                ez, el, ea, eh = fahrplan[0]
+                hinweis_txt = f" · _{eh}_" if eh else ""
+                st.info(
+                    f"Heute keine weiteren Abfahrten mehr.\n\n"
+                    f"🕐 **Erste Fahrt {WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}:** "
+                    f"{ez} Uhr · Linie {el} · Ausstieg {ea}{hinweis_txt}"
+                )
             return
 
-        naechste_markiert = False
         for i, (zeit_str, linie, ausstieg, hinweis, diff_min) in enumerate(treffer):
             ist_naechste = (i == 0)
             bus_card(zeit_str, linie, ausstieg, hinweis, diff_min, ist_naechste)
