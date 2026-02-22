@@ -71,6 +71,14 @@ st.markdown("""
     .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
     .fc-list-event-time { display: none !important; }
 
+    /* Einheitliche Button-Höhe im Bus-Check */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
+        height: 60px !important;
+        white-space: normal !important;
+        line-height: 1.3 !important;
+        font-size: 0.85rem !important;
+    }
+
     .bus-card {
         background: white; border: 1px solid #ddd; padding: 12px;
         border-radius: 10px; margin-bottom: 10px;
@@ -487,16 +495,24 @@ elif st.session_state.view == 'bus':
     if 'bus_halt' not in st.session_state:
         st.session_state.bus_halt = None
 
+    # Haltestellen-Buttons: gleiche Höhe via CSS, Zeilenumbruch via HTML
+    btn_labels = {
+        "seefisch": ("🏠", "Seefischmarkt", "→ Schönkirchen"),
+        "linas":    ("🏫", "Linas Diek",    "→ Seefischmarkt"),
+        "amboss":   ("🏫", "Amboßweg",      "→ Seefischmarkt"),
+    }
     c1, c2, c3 = st.columns(3)
-    if c1.button("🏠 Seefischmarkt\n→ Schönkirchen", use_container_width=True,
-                 type="primary" if st.session_state.bus_halt == "seefisch" else "secondary"):
-        st.session_state.bus_halt = "seefisch"; st.rerun()
-    if c2.button("🏫 Linas Diek\n→ Kiel", use_container_width=True,
-                 type="primary" if st.session_state.bus_halt == "linas" else "secondary"):
-        st.session_state.bus_halt = "linas"; st.rerun()
-    if c3.button("🏫 Amboßweg\n→ Kiel", use_container_width=True,
-                 type="primary" if st.session_state.bus_halt == "amboss" else "secondary"):
-        st.session_state.bus_halt = "amboss"; st.rerun()
+    for col, key in zip([c1, c2, c3], ["seefisch", "linas", "amboss"]):
+        icon, zeile1, zeile2 = btn_labels[key]
+        aktiv = st.session_state.bus_halt == key
+        with col:
+            if st.button(
+                f"{icon} {zeile1} {zeile2}",
+                key=f"bus_btn_{key}",
+                use_container_width=True,
+                type="primary" if aktiv else "secondary"
+            ):
+                st.session_state.bus_halt = key; st.rerun()
 
     st.divider()
 
