@@ -442,36 +442,42 @@ elif st.session_state.view == 'bus':
         ("16:00", "200", "Linas Diek",  ""),
     ]
 
-    # Quelle: VKP PDF 200i.pdf, Rückfahrten Mo–Fr, Spalte "Schönkirchen, Lina's Diek"
-    # Unterscheidung 200 vs 201: Fahrten OHNE Halt Söhren/Grenzgraben = direkte Route = Linie 201
-    # Fahrten MIT Halt Söhren = längere Route = Linie 200
+    # Quelle: VKP PDF 200i.pdf, Rückfahrten Mo–Fr, Seiten 7–9
+    # Spalte "Schönkirchen, Lina's Diek", direkt abgelesen, Stand 21.11.2024
+    # Linie 201 = Fahrt-Nr 201xx (direkte Route ohne Söhren, ~4 Min bis Seefischmarkt)
+    # Linie 200 = Fahrt-Nr 200xx (via Söhren/Steinbergskamp, ~7 Min bis Seefischmarkt)
+    # [E] = nur an Schultagen  [30] = 30er-Route (umgekehrte Haltefolge)
     LINAS_DIEK = [
-        ("06:01", "200", "Seefischmarkt", ""),   # 20003, via Söhren
+        ("05:18", "200", "Seefischmarkt", ""),   # 20001 [30], via Söhren
+        ("05:31", "201", "Seefischmarkt", ""),   # 20103, direkt
         ("06:15", "201", "Seefischmarkt", ""),   # 20105, direkt
-        ("06:38", "200", "Seefischmarkt", ""),   # 20003 (30er), via Söhren
+        ("06:38", "200", "Seefischmarkt", ""),   # 20003 [30], via Söhren
         ("06:45", "201", "Seefischmarkt", ""),   # 20107, direkt
-        ("07:30", "201", "Seefischmarkt", ""),   # 20109/E, direkt
-        ("07:33", "200", "Seefischmarkt", ""),   # 20011, via Söhren
-        ("08:06", "200", "Seefischmarkt", ""),   # 20013/E, via Söhren
-        ("08:14", "201", "Seefischmarkt", ""),   # 20113, direkt
+        ("07:30", "201", "Seefischmarkt", ""),   # 20109 [E], direkt
+        ("07:33", "200", "Seefischmarkt", ""),   # 20011 [E], via Söhren
+        ("08:09", "201", "Seefischmarkt", ""),   # 20113, direkt
         ("08:15", "201", "Seefischmarkt", ""),   # 20111, direkt
         ("09:30", "201", "Seefischmarkt", ""),   # 20115, direkt
+        ("09:43", "200", "Seefischmarkt", ""),   # 20015, via Steinbergskamp
         ("10:30", "201", "Seefischmarkt", ""),   # 20117, direkt
+        ("10:43", "200", "Seefischmarkt", ""),   # 20017, via Steinbergskamp
         ("11:30", "201", "Seefischmarkt", ""),   # 20121, direkt
-        ("11:38", "200", "Seefischmarkt", ""),   # 20019, via Söhren
+        ("11:43", "200", "Seefischmarkt", ""),   # 20019, via Steinbergskamp
         ("12:30", "201", "Seefischmarkt", ""),   # 20123, direkt
-        ("12:38", "200", "Seefischmarkt", ""),   # 20023, via Söhren
+        ("12:43", "200", "Seefischmarkt", ""),   # 20023, via Steinbergskamp
         ("13:30", "201", "Seefischmarkt", ""),   # 20125, direkt
-        ("13:38", "200", "Seefischmarkt", ""),   # 20025/E, via Söhren
+        ("13:43", "200", "Seefischmarkt", ""),   # 20025 [E], via Steinbergskamp
         ("14:30", "201", "Seefischmarkt", ""),   # 20127, direkt
         ("14:38", "200", "Seefischmarkt", ""),   # 20029, via Söhren
         ("15:30", "201", "Seefischmarkt", ""),   # 20129, direkt
-        ("15:38", "200", "Seefischmarkt", ""),   # 20035, via Söhren
+        ("15:43", "200", "Seefischmarkt", ""),   # 20035, via Steinbergskamp
         ("16:10", "201", "Seefischmarkt", ""),   # 20131, direkt
         ("16:30", "201", "Seefischmarkt", ""),   # 20133, direkt
-        ("16:40", "200", "Seefischmarkt", ""),   # 20043, via Söhren
-        ("17:30", "201", "Seefischmarkt", ""),   # 20141, direkt
+        ("16:43", "200", "Seefischmarkt", ""),   # 20043, via Söhren
+        ("17:10", "201", "Seefischmarkt", ""),   # 20135 [E], direkt
+        ("17:30", "201", "Seefischmarkt", ""),   # 20137, direkt
         ("17:38", "200", "Seefischmarkt", ""),   # 20051, via Söhren
+        ("18:30", "201", "Seefischmarkt", ""),   # 20141, direkt
     ]
 
     # Quelle: VKP PDF 210i.pdf, Spalte "Schönkirchen, Amboßweg", Richtung Kiel, Mo–Fr
