@@ -391,7 +391,7 @@ elif st.session_state.view == 'bus':
     #   200/201 Ausstieg: Linas Diek
     #   210     Ausstieg: Amboßweg
     #
-    # LINAS DIEK  → Kiel  (Linie 200, Ausstieg Seefischmarkt)
+    # LINAS DIEK  → Kiel  (Linie 200/201, Ausstieg Seefischmarkt)
     # AMBOßWEG    → Kiel  (Linie 210, Ausstieg Seefischmarkt)
     # -----------------------------------------------------------------------
 
@@ -442,22 +442,36 @@ elif st.session_state.view == 'bus':
         ("16:00", "200", "Linas Diek",  ""),
     ]
 
-    # Quelle: VKP PDF 200i.pdf, Spalte "Schönkirchen, Lina's Diek", Richtung Kiel, Mo–Fr
+    # Quelle: VKP PDF 200i.pdf, Rückfahrten Mo–Fr, Spalte "Schönkirchen, Lina's Diek"
+    # Unterscheidung 200 vs 201: Fahrten OHNE Halt Söhren/Grenzgraben = direkte Route = Linie 201
+    # Fahrten MIT Halt Söhren = längere Route = Linie 200
     LINAS_DIEK = [
-        ("06:01", "200", "Seefischmarkt", ""),
-        ("06:38", "200", "Seefischmarkt", ""),
-        ("07:33", "200", "Seefischmarkt", ""),
-        ("08:06", "200", "Seefischmarkt", ""),
-        ("09:30", "200", "Seefischmarkt", ""),
-        ("10:30", "200", "Seefischmarkt", ""),
-        ("11:30", "200", "Seefischmarkt", ""),
-        ("12:30", "200", "Seefischmarkt", ""),
-        ("13:30", "200", "Seefischmarkt", ""),
-        ("14:30", "200", "Seefischmarkt", ""),
-        ("14:34", "200", "Seefischmarkt", ""),
-        ("15:30", "200", "Seefischmarkt", ""),
-        ("15:37", "200", "Seefischmarkt", ""),
-        ("16:40", "200", "Seefischmarkt", ""),
+        ("06:01", "200", "Seefischmarkt", ""),   # 20003, via Söhren
+        ("06:15", "201", "Seefischmarkt", ""),   # 20105, direkt
+        ("06:38", "200", "Seefischmarkt", ""),   # 20003 (30er), via Söhren
+        ("06:45", "201", "Seefischmarkt", ""),   # 20107, direkt
+        ("07:30", "201", "Seefischmarkt", ""),   # 20109/E, direkt
+        ("07:33", "200", "Seefischmarkt", ""),   # 20011, via Söhren
+        ("08:06", "200", "Seefischmarkt", ""),   # 20013/E, via Söhren
+        ("08:14", "201", "Seefischmarkt", ""),   # 20113, direkt
+        ("08:15", "201", "Seefischmarkt", ""),   # 20111, direkt
+        ("09:30", "201", "Seefischmarkt", ""),   # 20115, direkt
+        ("10:30", "201", "Seefischmarkt", ""),   # 20117, direkt
+        ("11:30", "201", "Seefischmarkt", ""),   # 20121, direkt
+        ("11:38", "200", "Seefischmarkt", ""),   # 20019, via Söhren
+        ("12:30", "201", "Seefischmarkt", ""),   # 20123, direkt
+        ("12:38", "200", "Seefischmarkt", ""),   # 20023, via Söhren
+        ("13:30", "201", "Seefischmarkt", ""),   # 20125, direkt
+        ("13:38", "200", "Seefischmarkt", ""),   # 20025/E, via Söhren
+        ("14:30", "201", "Seefischmarkt", ""),   # 20127, direkt
+        ("14:38", "200", "Seefischmarkt", ""),   # 20029, via Söhren
+        ("15:30", "201", "Seefischmarkt", ""),   # 20129, direkt
+        ("15:38", "200", "Seefischmarkt", ""),   # 20035, via Söhren
+        ("16:10", "201", "Seefischmarkt", ""),   # 20131, direkt
+        ("16:30", "201", "Seefischmarkt", ""),   # 20133, direkt
+        ("16:40", "200", "Seefischmarkt", ""),   # 20043, via Söhren
+        ("17:30", "201", "Seefischmarkt", ""),   # 20141, direkt
+        ("17:38", "200", "Seefischmarkt", ""),   # 20051, via Söhren
     ]
 
     # Quelle: VKP PDF 210i.pdf, Spalte "Schönkirchen, Amboßweg", Richtung Kiel, Mo–Fr
@@ -522,8 +536,11 @@ elif st.session_state.view == 'bus':
                 f"Nächste Fahrten ab **{WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}**."
             )
 
+        # Fahrplan nach Zeit sortieren, damit Reihenfolge garantiert stimmt
+        fahrplan_sorted = sorted(fahrplan, key=lambda x: x[0])
+
         treffer = []
-        for zeit_str, linie, ausstieg, hinweis in fahrplan:
+        for zeit_str, linie, ausstieg, hinweis in fahrplan_sorted:
             h, m    = map(int, zeit_str.split(":"))
             abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
             diff    = int((abfahrt - cutoff).total_seconds() / 60)
@@ -538,7 +555,7 @@ elif st.session_state.view == 'bus':
         if not treffer:
             # Suche: noch heute später?
             naechste_heute = None
-            for zeit_str, linie, ausstieg, hinweis in fahrplan:
+            for zeit_str, linie, ausstieg, hinweis in fahrplan_sorted:
                 h, m    = map(int, zeit_str.split(":"))
                 abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
                 diff    = int((abfahrt - cutoff).total_seconds() / 60)
