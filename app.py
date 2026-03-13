@@ -305,10 +305,15 @@ elif st.session_state.view == 'klausuren':
     if not k_df.empty:
         df_t = k_df.copy()
         df_t['Anzeige'] = df_t['titel'].str.replace('\n', ': ')
-        st.dataframe(
-            df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum': 'Wann', 'Anzeige': 'Wer & Was'}),
-            hide_index=True, use_container_width=True
-        )
+        df_t['start_date_dt'] = pd.to_datetime(df_t['start_date']).dt.date
+        df_t = df_t[df_t['start_date_dt'] >= date.today()]
+        if not df_t.empty:
+            st.dataframe(
+                df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum': 'Wann', 'Anzeige': 'Wer & Was'}),
+                hide_index=True, use_container_width=True
+            )
+        else:
+            st.info("Keine bevorstehenden Klausuren.")
     else:
         st.info("Keine Einträge vorhanden.")
 
