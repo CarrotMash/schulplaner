@@ -420,6 +420,9 @@ elif st.session_state.view == 'klausuren':
     else:
         st.info("Keine Einträge vorhanden.")
 
+    if st.button("← Hauptmenü", use_container_width=True):
+        st.session_state.view = 'start'; st.rerun()
+
 
 # =============================================================================
 # --- 3. STUNDENPLÄNE ---
