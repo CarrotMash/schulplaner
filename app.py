@@ -72,7 +72,7 @@ st.markdown(
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    .block-container { padding-top: 2.7rem !important; padding-bottom: 0rem !important; }
+    .block-container { padding-top: 2.7rem !important; padding-bottom: 5rem !important; }
 
     .main-header {
         font-size: 2.2rem !important; font-weight: 900 !important;
@@ -82,7 +82,7 @@ st.markdown("""
     }
 
     [data-testid="stImage"] > img {
-        width: 44% !important; margin-left: auto; margin-right: auto;
+        width: 35% !important; margin-left: auto; margin-right: auto;
         display: block; border-radius: 10px;
     }
 
@@ -294,6 +294,9 @@ if st.session_state.view == 'start':
     with r2b:
         if st.button("🌴 FERIEN", use_container_width=True, type="primary", key="btn_fe"):
             st.session_state.view = 'ferien'; st.rerun()
+
+    # Abstandspuffer damit "Manage App"-Badge die Buttons nicht überlagert
+    st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
 
 
 # =============================================================================
