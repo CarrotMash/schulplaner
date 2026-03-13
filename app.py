@@ -88,6 +88,11 @@ st.markdown("""
     }
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
+    /* Streamlit-Branding ausblenden */
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    [data-testid="stDeployButton"] { display: none !important; }
+    .viewerBadge_container__r5tak { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -177,6 +182,11 @@ if st.session_state.view == 'start':
         line-height: 1.2 !important;
         min-height: 56px !important;
     }
+    /* Streamlit-Branding ausblenden */
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    [data-testid="stDeployButton"] { display: none !important; }
+    .viewerBadge_container__r5tak { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
