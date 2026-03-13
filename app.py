@@ -41,6 +41,7 @@ if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_chi
 if 'editing_grade' not in st.session_state: st.session_state.editing_grade = False
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'edit_id' not in st.session_state: st.session_state.edit_id = None
+if 'cancel_click' not in st.session_state: st.session_state.cancel_click = False
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
 
@@ -351,9 +352,12 @@ elif st.session_state.view == 'klausuren':
     )
 
     if state.get("dateClick"):
-        nd = state["dateClick"]["date"][:10]
-        if st.session_state.selected_date != nd:
-            st.session_state.selected_date = nd; st.session_state.edit_id = None; st.rerun()
+        if st.session_state.cancel_click:
+            st.session_state.cancel_click = False  # Flag verbraucht, nächsten Klick wieder zulassen
+        else:
+            nd = state["dateClick"]["date"][:10]
+            if st.session_state.selected_date != nd:
+                st.session_state.selected_date = nd; st.session_state.edit_id = None; st.rerun()
     if state.get("eventClick"):
         ni = state["eventClick"]["event"].get("id")
         if st.session_state.edit_id != ni:
@@ -374,7 +378,9 @@ elif st.session_state.view == 'klausuren':
                 }).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
         if st.button("✕ Abbrechen", use_container_width=True, key="btn_cancel_new"):
-            st.session_state.selected_date = None; st.rerun()
+            st.session_state.selected_date = None
+            st.session_state.cancel_click = True
+            st.rerun()
 
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
