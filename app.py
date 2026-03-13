@@ -44,6 +44,31 @@ if 'edit_id' not in st.session_state: st.session_state.edit_id = None
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
 
+# PWA-Manifest
+st.markdown(
+    '''
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlNjaHVscGxhbmVyIiwgInNob3J0X25hbWUiOiAiU2NodWxwbGFuZXIiLCAiZGVzY3JpcHRpb24iOiAiRmFtaWxpZW4tU2NodWxwbGFuZXIiLCAic3RhcnRfdXJsIjogIi8iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgIm9yaWVudGF0aW9uIjogInBvcnRyYWl0IiwgImJhY2tncm91bmRfY29sb3IiOiAiI0ZGRkZGRiIsICJ0aGVtZV9jb2xvciI6ICIjRkY0QjRCIiwgImljb25zIjogW3sic3JjIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9taWNyb3NvZnQvZmx1ZW50dWktZW1vamkvbWFpbi9hc3NldHMvU3BpcmFsJTIwY2FsZW5kYXIvM0Qvc3BpcmFsX2NhbGVuZGFyXzNkLnBuZyIsICJzaXplcyI6ICIyNTZ4MjU2IiwgInR5cGUiOiAiaW1hZ2UvcG5nIiwgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIn1dfQ==">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#FF4B4B">
+    <script>
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        setTimeout(function() {
+            if (window.deferredPrompt) {
+                window.deferredPrompt.prompt();
+                window.deferredPrompt.userChoice.then(function() {
+                    window.deferredPrompt = null;
+                });
+            }
+        }, 3000);
+    });
+    </script>
+    ''',
+    unsafe_allow_html=True
+)
+
+
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
@@ -88,11 +113,23 @@ st.markdown("""
     }
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
-    /* Streamlit-Branding ausblenden */
-    #MainMenu { visibility: hidden !important; }
-    footer { visibility: hidden !important; }
-    [data-testid="stDeployButton"] { display: none !important; }
-    .viewerBadge_container__r5tak { display: none !important; }
+    /* Streamlit-UI-Elemente ausblenden */
+    #MainMenu                                { display: none !important; }
+    footer                                   { display: none !important; }
+    header                                   { display: none !important; }
+    [data-testid="stDeployButton"]           { display: none !important; }
+    [data-testid="stToolbar"]                { display: none !important; }
+    [data-testid="stDecoration"]             { display: none !important; }
+    [data-testid="stMainMenuPopover"]        { display: none !important; }
+    .viewerBadge_container__r5tak           { display: none !important; }
+    .viewerBadge_link__qRIco                { display: none !important; }
+    /* "Manage App"-Badge unten rechts */
+    [data-testid="manage-app-button"]        { display: none !important; }
+    ._profileContainer_gzau3_53             { display: none !important; }
+    ._container_gzau3_1                     { display: none !important; }
+    /* Toolbar-Buttons oben rechts (Share, Favorit, Stift, GitHub) */
+    [data-testid="stActionButton"]           { display: none !important; }
+    [data-testid="baseButton-headerNoPadding"] { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -182,11 +219,23 @@ if st.session_state.view == 'start':
         line-height: 1.2 !important;
         min-height: 56px !important;
     }
-    /* Streamlit-Branding ausblenden */
-    #MainMenu { visibility: hidden !important; }
-    footer { visibility: hidden !important; }
-    [data-testid="stDeployButton"] { display: none !important; }
-    .viewerBadge_container__r5tak { display: none !important; }
+    /* Streamlit-UI-Elemente ausblenden */
+    #MainMenu                                { display: none !important; }
+    footer                                   { display: none !important; }
+    header                                   { display: none !important; }
+    [data-testid="stDeployButton"]           { display: none !important; }
+    [data-testid="stToolbar"]                { display: none !important; }
+    [data-testid="stDecoration"]             { display: none !important; }
+    [data-testid="stMainMenuPopover"]        { display: none !important; }
+    .viewerBadge_container__r5tak           { display: none !important; }
+    .viewerBadge_link__qRIco                { display: none !important; }
+    /* "Manage App"-Badge unten rechts */
+    [data-testid="manage-app-button"]        { display: none !important; }
+    ._profileContainer_gzau3_53             { display: none !important; }
+    ._container_gzau3_1                     { display: none !important; }
+    /* Toolbar-Buttons oben rechts (Share, Favorit, Stift, GitHub) */
+    [data-testid="stActionButton"]           { display: none !important; }
+    [data-testid="baseButton-headerNoPadding"] { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
