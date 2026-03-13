@@ -361,21 +361,20 @@ elif st.session_state.view == 'klausuren':
 
     if st.session_state.selected_date:
         st.divider()
-        with st.form("q_f"):
-            st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
+        st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
+        with st.form("q_f", clear_on_submit=True):
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys()))
             qs = st.selectbox("Fach", SUBJECTS)
             qn = st.text_input("Notiz")
-            c1, c2 = st.columns(2)
-            if c1.form_submit_button("Speichern"):
+            if st.form_submit_button("💾 Speichern", use_container_width=True):
                 supabase.table("klausuren").insert({
                     "datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'),
                     "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date,
                     "color": CHILD_COLORS[qc], "child": qc, "note": qn
                 }).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if c2.form_submit_button("Abbrechen"):
-                st.session_state.selected_date = None; st.rerun()
+        if st.button("✕ Abbrechen", use_container_width=True, key="btn_cancel_new"):
+            st.session_state.selected_date = None; st.rerun()
 
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
