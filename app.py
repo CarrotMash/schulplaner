@@ -137,6 +137,47 @@ st.markdown("""
 
 
 
+# Streamlit-UI per JavaScript dauerhaft entfernen (MutationObserver)
+st.markdown("""
+<script>
+(function() {
+    function removeStreamlitUI() {
+        // Alle bekannten Selektoren für Streamlit-UI-Elemente
+        var selectors = [
+            '[data-testid="manage-app-button"]',
+            '[data-testid="stDeployButton"]',
+            '[data-testid="stToolbar"]',
+            '[data-testid="stMainMenuPopover"]',
+            '[data-testid="stActionButton"]',
+            '._container_gzau3_1',
+            '._profileContainer_gzau3_53',
+            '.viewerBadge_container__r5tak',
+            '#MainMenu',
+            'footer',
+            'header'
+        ];
+        selectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(el) {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.remove();
+            });
+        });
+    }
+
+    // Sofort ausführen
+    removeStreamlitUI();
+
+    // Auch nach DOM-Änderungen (Streamlit rendert asynchron nach)
+    var observer = new MutationObserver(function() {
+        removeStreamlitUI();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+""", unsafe_allow_html=True)
+
+
 # =============================================================================
 # --- 1. DASHBOARD ---
 # =============================================================================
