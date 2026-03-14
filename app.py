@@ -316,23 +316,31 @@ if st.session_state.view == 'start':
                 zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
-            # Bubble mit vollem Inhalt + separater Löschen-Button darunter rechts
-            st.markdown(
-                f'<div style="background:#fafafa;border-left:4px solid {farbe};border-radius:10px;'
-                f'padding:10px 14px 8px 14px;margin-bottom:4px;">'
-                f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
-                f'<span style="font-weight:800;font-size:0.9rem;color:{farbe} !important;">{name}</span>'
-                f'<span style="font-size:0.72rem;color:#999 !important;">{zeit}</span>'
-                f'</div>'
-                f'<div style="font-size:0.92rem;color:#222 !important;margin-top:4px;">{text}</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-            # Löschen-Link als schlanker Button direkt unter der Bubble, rechtsbündig
-            _, del_col = st.columns([6, 1])
-            with del_col:
-                if st.button("✕", key=f"del_msg_{mid}", use_container_width=True,
-                             help="Nachricht löschen"):
+            # Bubble + Mülleimer in einer Zeile: breite Textspalte, schmale Icon-Spalte
+            bcol, dcol = st.columns([15, 1])
+            with bcol:
+                st.markdown(
+                    f'<div style="background:#f8f8f8;border-left:4px solid {farbe};'
+                    f'border-radius:10px;padding:10px 14px 8px 14px;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                    f'<span style="font-weight:800;font-size:0.9rem;color:{farbe} !important;">{name}</span>'
+                    f'<span style="font-size:0.72rem;color:#888 !important;">{zeit}</span>'
+                    f'</div>'
+                    f'<div style="font-size:0.92rem;color:#222 !important;margin-top:4px;">{text}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+            with dcol:
+                st.markdown(
+                    '<style>'
+                    'div[data-testid="stVerticalBlockBorderWrapper"] button[kind="secondary"] {'
+                    'padding:2px 4px !important;min-height:0 !important;'
+                    'font-size:0.8rem !important;background:none !important;'
+                    'border:none !important;color:#bbb !important;box-shadow:none !important;}'
+                    '</style>',
+                    unsafe_allow_html=True
+                )
+                if st.button("🗑", key=f"del_msg_{mid}"):
                     supabase.table("nachrichten").delete().eq("id", mid).execute()
                     st.rerun()
     else:
