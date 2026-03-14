@@ -639,19 +639,19 @@ elif st.session_state.view == 'bus':
         "seefisch": {
             "label":    "🏠 Seefischmarkt",
             "sub":      "→ Schönkirchen",
-            "name":     "Seefischmarkt, Kiel",
+            "id":       "7038984",
             "richtung": "Richtung Schönkirchen / Schönberg",
         },
         "linas": {
             "label":    "🏫 Linas Diek",
             "sub":      "→ Seefischmarkt",
-            "name":     "Linas Diek, Schönkirchen",
+            "id":       "7039308",
             "richtung": "Richtung Kiel Seefischmarkt",
         },
         "amboss": {
             "label":    "🏫 Amboßweg",
             "sub":      "→ Seefischmarkt",
-            "name":     "Amboßweg, Schönkirchen",
+            "id":       "7039271",
             "richtung": "Richtung Kiel Seefischmarkt",
         },
     }
@@ -659,13 +659,10 @@ elif st.session_state.view == 'bus':
     LINE_COLORS  = {"200":"#C62828","201":"#1565C0","210":"#2E7D32"}
     LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
 
-    def hole_abfahrten(halt_name: str, results: int = 10):
-        """Abfahrten via dbf.finalrewind.org (NAH.SH HAFAS) abrufen."""
-        # dbf.finalrewind.org liefert JSON mit ?hafas=NAH.SH&version=3
-        # Haltestellen-Name URL-kodiert übergeben
-        import urllib.parse
-        encoded = urllib.parse.quote(halt_name)
-        url = f"https://dbf.finalrewind.org/{encoded}.json"
+    def hole_abfahrten(stop_id: str, results: int = 10):
+        """Abfahrten via dbf.finalrewind.org mit EVA-ID (NAH.SH HAFAS) abrufen."""
+        # DBF unterstützt EVA-IDs direkt in der URL
+        url = f"https://dbf.finalrewind.org/{stop_id}.json"
         params = {"hafas": "NAH.SH", "version": "3", "limit": results}
         errors = []
         try:
@@ -675,8 +672,7 @@ elif st.session_state.view == 'bus':
                 data = r.json()
                 if "departures" in data:
                     return data["departures"], None
-                else:
-                    errors.append(f"Kein 'departures'-Feld: {str(data)[:300]}")
+                errors.append(f"Kein 'departures'-Feld: {str(data)[:300]}")
             else:
                 errors.append(f"HTTP {r.status_code}: {r.text[:300]}")
         except Exception as e:
@@ -758,7 +754,7 @@ elif st.session_state.view == 'bus':
 
     if st.session_state.bus_halt:
         cfg     = HALTESTELLEN[st.session_state.bus_halt]
-        halt_name = cfg["name"]
+
 
         st.caption(
             f"📍 **{cfg['label'].split(' ',1)[1]}** · {cfg['richtung']} · "
@@ -766,7 +762,7 @@ elif st.session_state.view == 'bus':
         )
 
         with st.spinner("Abfahrten werden geladen …"):
-            deps, errors = hole_abfahrten(cfg["name"])
+            deps, errors = hole_abfahrten(cfg["id"])
 
         if deps is None:
             st.error("⚠️ Verbindung zur Echtzeit-API nicht möglich.")
