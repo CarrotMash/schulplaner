@@ -225,23 +225,61 @@ if st.session_state.view == 'start':
     heute = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin"))
     wt_namen = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
 
-    # Bild links, Titel + Datum rechts
+    # Bild links, Logo-Block rechts
     img_col, txt_col = st.columns([1, 2])
     with img_col:
         if os.path.exists("startbild.jpg"):
             st.image("startbild.jpg", use_container_width=True)
     with txt_col:
-        st.markdown(
-            f'<div style="display:flex;flex-direction:column;justify-content:center;height:100%;'
-            f'padding-left:8px;">'
-            f'<div style="font-size:1.7rem;font-weight:900;color:#FF4B4B;line-height:1.1;">📅 Schulplaner</div>'
-            f'<div style="margin-top:8px;font-size:1.05rem;font-weight:700;color:#333;">'
-            f'{wt_namen[heute.weekday()]}</div>'
-            f'<div style="font-size:1.3rem;font-weight:900;color:#222;">'
-            f'{heute.strftime("%d.%m.%Y")}</div>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
+        tag_nr   = heute.strftime("%d")
+        monat    = heute.strftime("%b").upper()
+        jahr     = heute.strftime("%Y")
+        wt       = wt_namen[heute.weekday()]
+        st.markdown(f'''
+        <div style="
+            background: linear-gradient(150deg, #FF4B4B 0%, #c0392b 100%);
+            border-radius: 16px;
+            padding: 14px 16px 12px 16px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 14px rgba(255,75,75,0.35);
+        ">
+            <!-- App-Name -->
+            <div style="
+                font-size: 1.45rem;
+                font-weight: 900;
+                color: white;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                line-height: 1;
+            ">Schul<span style="opacity:0.65;">planer</span></div>
+
+            <!-- Trennlinie -->
+            <div style="height:1px; background:rgba(255,255,255,0.25); margin:8px 0;"></div>
+
+            <!-- Datum-Block -->
+            <div style="display:flex; align-items:flex-end; gap:6px;">
+                <div style="
+                    background: rgba(255,255,255,0.18);
+                    border-radius: 10px;
+                    padding: 4px 10px;
+                    text-align: center;
+                    min-width: 42px;
+                ">
+                    <div style="font-size:1.6rem;font-weight:900;color:white;line-height:1;">{tag_nr}</div>
+                    <div style="font-size:0.65rem;font-weight:700;color:rgba(255,255,255,0.75);letter-spacing:1px;">{monat} {jahr}</div>
+                </div>
+                <div style="
+                    font-size: 0.82rem;
+                    font-weight: 600;
+                    color: rgba(255,255,255,0.85);
+                    padding-bottom: 4px;
+                ">{wt}</div>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
 
     # Klausur-Frühwarnung
     try:
