@@ -1068,11 +1068,12 @@ elif st.session_state.view == 'quiz':
                     farbe2 = PINNWAND_FARBEN.get(n, "#888")
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;'
-                        f'padding:6px 10px;border-radius:8px;margin-bottom:4px;'
-                        f'background:#f8f8f8;border:1px solid #eee;">'
-                        f'<span style="color:#222 !important;">{medals[idx2]} '
-                        f'<b style="color:{farbe2} !important;">{n}</b></span>'
-                        f'<span style="font-weight:700;color:{farbe2} !important;">{p} Pkt.</span>'
+                        f'padding:8px 12px;border-radius:8px;margin-bottom:5px;'
+                        f'background:white;border-left:4px solid {farbe2};'
+                        f'box-shadow:0 1px 3px rgba(0,0,0,0.08);">'
+                        f'<span style="color:#111;font-size:0.95rem;">{medals[idx2]} '
+                        f'<b style="color:{farbe2};">{n}</b></span>'
+                        f'<span style="font-weight:800;color:#111;">{p} <span style="color:{farbe2};">Pkt.</span></span>'
                         f'</div>',
                         unsafe_allow_html=True
                     )
@@ -1099,9 +1100,11 @@ elif st.session_state.view == 'quiz':
         # Fortschrittsbalken
         fortschritt = idx / total
         st.markdown(
-            f'<div style="background:#eee;border-radius:10px;height:8px;margin-bottom:12px;">' 
-            f'<div style="background:{farbe_n};width:{fortschritt*100:.0f}%;'
-            f'height:8px;border-radius:10px;transition:width 0.3s;"></div></div>',
+            f'<div style="background:#e0e0e0;border-radius:10px;height:10px;margin-bottom:12px;">'
+            f'<div style="background:{farbe_n};width:{max(fortschritt*100,3):.0f}%;'
+            f'height:10px;border-radius:10px;min-width:8px;"></div>'
+            f'<div style="font-size:0.72rem;color:#666;text-align:right;margin-top:2px;">'
+            f'Frage {idx+1} / {total}</div></div>',
             unsafe_allow_html=True
         )
 
