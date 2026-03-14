@@ -659,18 +659,30 @@ elif st.session_state.view == 'bus':
     LINE_COLORS  = {"200":"#C62828","201":"#1565C0","210":"#2E7D32"}
     LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
 
-    def hole_abfahrten(stop_id: str, results: int = 8):
-        """Abfahrten von v6.db.transport.rest abrufen."""
-        try:
-            url = f"https://v6.db.transport.rest/stops/{stop_id}/departures"
-            params = {"results": results, "duration": 120, "language": "de"}
-            r = _req.get(url, params=params, timeout=8)
-            if r.status_code == 200:
-                data = r.json()
-                return data.get("departures", [])
-        except Exception:
-            pass
-        return None
+    def hole_abfahrten(stop_id: str, results: int = 10):
+        """Abfahrten von v6.db.transport.rest abrufen – mehrere Endpunkte versuchen."""
+        # Endpunkt 1: v6.db.transport.rest
+        urls = [
+            (f"https://v6.db.transport.rest/stops/{stop_id}/departures",
+             {"results": results, "duration": 120, "language": "de"}),
+            # Endpunkt 2: v5 als Fallback
+            (f"https://v5.db.transport.rest/stops/{stop_id}/departures",
+             {"results": results, "duration": 120}),
+        ]
+        errors = []
+        for url, params in urls:
+            try:
+                r = _req.get(url, params=params, timeout=10,
+                             headers={"Accept": "application/json"})
+                if r.status_code == 200:
+                    data = r.json()
+                    deps = data.get("departures", data if isinstance(data, list) else [])
+                    return deps, None
+                else:
+                    errors.append(f"{url}: HTTP {r.status_code} – {r.text[:200]}")
+            except Exception as e:
+                errors.append(f"{url}: {str(e)}")
+        return None, errors
 
     def bus_card_rt(dep):
         """Bus-Card mit Echtzeit-Daten rendern."""
@@ -758,10 +770,13 @@ elif st.session_state.view == 'bus':
         )
 
         with st.spinner("Abfahrten werden geladen …"):
-            deps = hole_abfahrten(stop_id)
+            deps, errors = hole_abfahrten(stop_id)
 
         if deps is None:
-            st.error("⚠️ Verbindung zur Echtzeit-API nicht möglich. Bitte später erneut versuchen.")
+            st.error("⚠️ Verbindung zur Echtzeit-API nicht möglich.")
+            with st.expander("🔍 Fehlerdetails (für Entwickler)"):
+                for e in (errors or []):
+                    st.code(e)
         elif len(deps) == 0:
             st.info("Keine Abfahrten in den nächsten 120 Minuten gefunden.")
         else:
