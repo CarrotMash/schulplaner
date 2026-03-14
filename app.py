@@ -47,6 +47,7 @@ if 'editing_grade'     not in st.session_state: st.session_state.editing_grade =
 if 'selected_date'     not in st.session_state: st.session_state.selected_date = None
 if 'edit_id'           not in st.session_state: st.session_state.edit_id = None
 if 'cancel_click'      not in st.session_state: st.session_state.cancel_click = False
+if 'active_msg'        not in st.session_state: st.session_state.active_msg   = None
 if 'bus_halt'          not in st.session_state: st.session_state.bus_halt = None
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
@@ -307,42 +308,44 @@ if st.session_state.view == 'start':
 
     if msgs:
         for msg in msgs:
-            farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
-            name  = msg.get("name","?")
-            text  = msg.get("text","")
-            mid   = msg['id']
+            farbe   = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
+            name    = msg.get("name","?")
+            text    = msg.get("text","")
+            mid     = msg['id']
+            aktiv   = st.session_state.active_msg == mid
             try:
                 ts   = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
                 zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
-            # Bubble + Mülleimer in einer Zeile: breite Textspalte, schmale Icon-Spalte
-            bcol, dcol = st.columns([15, 1])
-            with bcol:
-                st.markdown(
-                    f'<div style="background:#f8f8f8;border-left:4px solid {farbe};'
-                    f'border-radius:10px;padding:10px 14px 8px 14px;">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-                    f'<span style="font-weight:800;font-size:0.9rem;color:{farbe};">{name}</span>'
-                    f'<span style="font-size:0.72rem;color:#888;">{zeit}</span>'
-                    f'</div>'
-                    f'<p style="font-size:0.92rem;color:#111;font-weight:500;margin:4px 0 0 0;">{text}</p>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-            with dcol:
-                st.markdown(
-                    '<style>'
-                    'div[data-testid="stVerticalBlockBorderWrapper"] button[kind="secondary"] {'
-                    'padding:2px 4px !important;min-height:0 !important;'
-                    'font-size:0.8rem !important;background:none !important;'
-                    'border:none !important;color:#bbb !important;box-shadow:none !important;}'
-                    '</style>',
-                    unsafe_allow_html=True
-                )
-                if st.button("🗑", key=f"del_msg_{mid}"):
-                    supabase.table("nachrichten").delete().eq("id", mid).execute()
-                    st.rerun()
+
+            rand   = f"2px solid {farbe}" if aktiv else f"1px solid #eee"
+            bg     = "#fff" if aktiv else "#f8f8f8"
+
+            # Nachricht anklicken → aktiviert Löschoption
+            btn_label = f"👤 {name}   {zeit}\n{text}"
+            if st.button(
+                btn_label,
+                key=f"msg_btn_{mid}",
+                use_container_width=True,
+            ):
+                st.session_state.active_msg = None if aktiv else mid
+                st.rerun()
+
+            # Lösch- und Abbrechen-Button nur bei aktiver Nachricht
+            if aktiv:
+                ca, cb = st.columns(2)
+                with ca:
+                    if st.button("🗑 Löschen", key=f"del_{mid}",
+                                 use_container_width=True, type="primary"):
+                        supabase.table("nachrichten").delete().eq("id", mid).execute()
+                        st.session_state.active_msg = None
+                        st.rerun()
+                with cb:
+                    if st.button("✕ Abbrechen", key=f"cancel_{mid}",
+                                 use_container_width=True):
+                        st.session_state.active_msg = None
+                        st.rerun()
     else:
         st.caption("Noch keine Nachrichten.")
 
