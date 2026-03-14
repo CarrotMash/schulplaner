@@ -252,32 +252,31 @@ if st.session_state.view == 'start':
         )
         st.markdown(logo_html, unsafe_allow_html=True)
 
-        # Klausur-Frühwarnung direkt unter dem Logo
-        try:
-            res_warn = supabase.table("klausuren").select("*").execute()
-            heute_d  = date.today()
-            bald = []
-            for k in res_warn.data:
-                try:
-                    delta = (date.fromisoformat(k["start_date"]) - heute_d).days
-                    if 0 <= delta <= 2:
-                        bald.append((delta, k))
-                except Exception:
-                    pass
-            for delta, k in sorted(bald, key=lambda x: x[0]):
-                titel = k["titel"].replace("\n", " · ")
-                icon  = {0: "⚡", 1: "⏰"}.get(delta, "📅")
-                wann  = {0: "heute!", 1: "morgen"}.get(delta, "übermorgen")
-                st.markdown(
-                    f'<div style="margin-top:6px;background:#FFF3E0;border-left:4px solid #FF6F00;'
-                    f'border-radius:8px;padding:6px 10px;font-size:0.78rem;color:#333 !important;">'
-                    f'<b style="color:#E65100;">{icon} {wann}</b> · {titel}'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-        except Exception:
-            pass
-
+    # Klausur-Frühwarnung – volle Breite unterhalb von Logo + Bild
+    try:
+        res_warn = supabase.table("klausuren").select("*").execute()
+        heute_d  = date.today()
+        bald = []
+        for k in res_warn.data:
+            try:
+                delta = (date.fromisoformat(k["start_date"]) - heute_d).days
+                if 0 <= delta <= 2:
+                    bald.append((delta, k))
+            except Exception:
+                pass
+        for delta, k in sorted(bald, key=lambda x: x[0]):
+            titel = k["titel"].replace("\n", " · ")
+            icon  = {0: "⚡", 1: "⏰"}.get(delta, "📅")
+            wann  = {0: "heute!", 1: "morgen"}.get(delta, "übermorgen")
+            st.markdown(
+                f'<div style="margin-top:8px;background:#FFF3E0;border-left:4px solid #FF6F00;'
+                f'border-radius:8px;padding:8px 12px;font-size:0.85rem;color:#333 !important;">'
+                f'<b style="color:#E65100;">{icon} Klausur {wann}:</b> {titel}'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+    except Exception:
+        pass
 
     # Navigations-Buttons 2×2
     r1a, r1b = st.columns(2)
@@ -304,8 +303,6 @@ if st.session_state.view == 'start':
     except Exception:
         msgs = []
 
-    st.markdown('<style>div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] { align-self: center !important; }</style>', unsafe_allow_html=True)
-
     if msgs:
         for msg in msgs:
             farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
@@ -317,6 +314,7 @@ if st.session_state.view == 'start':
                 zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
+            # Nachricht (7/8) + Löschbutton (1/8) in einer Zeile
             dcol, mcol = st.columns([7, 1])
             with dcol:
                 st.markdown(
@@ -328,9 +326,14 @@ if st.session_state.view == 'start':
                     unsafe_allow_html=True
                 )
             with mcol:
+                # Button vertikal mittig via CSS margin
+                btn_top = "8px" if len(text) < 60 else "14px"
+                st.markdown(f"<div style='margin-top:{btn_top};'>", unsafe_allow_html=True)
                 if st.button("🗑", key=f"del_msg_{mid}", use_container_width=True):
                     supabase.table("nachrichten").delete().eq("id", mid).execute()
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom:2px'></div>", unsafe_allow_html=True)
     else:
         st.caption("Noch keine Nachrichten.")
 
