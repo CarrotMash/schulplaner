@@ -913,27 +913,35 @@ elif st.session_state.view == 'quiz':
     # -----------------------------------------------------------------------
     VOKABELN = {
         "en": [
-            ("Hund","dog"),("Katze","cat"),("Haus","house"),("Schule","school"),
-            ("Freund","friend"),("Familie","family"),("Essen","food"),("Wasser","water"),
-            ("Buch","book"),("Zeit","time"),("Jahr","year"),("Tag","day"),
-            ("Mensch","person"),("Hand","hand"),("Land","country"),("Stadt","city"),
-            ("Arbeit","work"),("Leben","life"),("Kind","child"),("Wort","word"),
-            ("Straße","street"),("Auto","car"),("Geld","money"),("Tür","door"),
-            ("Tisch","table"),("Stuhl","chair"),("Fenster","window"),("Bett","bed"),
-            ("Küche","kitchen"),("Garten","garden"),("Sonne","sun"),("Mond","moon"),
-            ("Regen","rain"),("Wind","wind"),("Baum","tree"),("Blume","flower"),
-            ("Vogel","bird"),("Fisch","fish"),("Pferd","horse"),("Kuh","cow"),
-            ("Brot","bread"),("Milch","milk"),("Apfel","apple"),("Fleisch","meat"),
-            ("Musik","music"),("Sport","sport"),("Film","film"),("Spiel","game"),
-            ("Farbe","color"),("Rot","red"),("Blau","blue"),("Grün","green"),
-            ("Groß","big"),("Klein","small"),("Neu","new"),("Alt","old"),
-            ("Gut","good"),("Schlecht","bad"),("Schnell","fast"),("Langsam","slow"),
-            ("Öffnen","open"),("Schließen","close"),("Kaufen","buy"),("Verkaufen","sell"),
-            ("Lernen","learn"),("Lehren","teach"),("Lesen","read"),("Schreiben","write"),
-            ("Laufen","run"),("Gehen","walk"),("Kommen","come"),("Gehen","go"),
-            ("Sehen","see"),("Hören","hear"),("Sprechen","speak"),("Fragen","ask"),
-            ("Antworten","answer"),("Helfen","help"),("Brauchen","need"),("Wollen","want"),
-            ("Können","can"),("Müssen","must"),("Dürfen","may"),("Sollen","should"),
+            # B1-B2 Niveau: weniger offensichtliche Vokabeln
+            ("Errungenschaft","achievement"),("Bekanntmachung","announcement"),
+            ("Verhalten","behaviour"),("Grenze","boundary"),("Herausforderung","challenge"),
+            ("Umstand","circumstance"),("Zusammenarbeit","collaboration"),
+            ("Konsequenz","consequence"),("Beitrag","contribution"),("Überzeugung","conviction"),
+            ("Entscheidend","crucial"),("Enttäuschung","disappointment"),
+            ("Eindruck","impression"),("Einfluss","influence"),("Initiative","initiative"),
+            ("Einblick","insight"),("Absicht","intention"),("Untersuchung","investigation"),
+            ("Urteil","judgment"),("Wissen","knowledge"),("Führung","leadership"),
+            ("Motivation","motivation"),("Gelegenheit","opportunity"),("Wahrnehmung","perception"),
+            ("Perspektive","perspective"),("Vorliebe","preference"),("Priorität","priority"),
+            ("Verfahren","procedure"),("Beziehung","relationship"),("Verantwortung","responsibility"),
+            ("Lösung","solution"),("Strategie","strategy"),("Struktur","structure"),
+            ("Vorschlag","suggestion"),("Unterstützung","support"),("Tendenz","tendency"),
+            ("Verständnis","understanding"),("Wert","value"),("Verschiedenheit","variety"),
+            ("Verletzlich","vulnerable"),("Überwindung","achievement"),("Bewusstsein","awareness"),
+            ("Fähigkeit","capability"),("Komplexität","complexity"),("Widerspruch","contradiction"),
+            ("Glaubwürdigkeit","credibility"),("Bestimmt","determined"),("Effizient","efficient"),
+            ("Wesentlich","essential"),("Flexibel","flexible"),("Erheblich","significant"),
+            ("Nachhaltig","sustainable"),("Transparent","transparent"),("Unbestreitbar","undeniable"),
+            ("Unerwünscht","unwanted"),("Wertvoll","valuable"),("Weit verbreitet","widespread"),
+            ("Abschwächen","mitigate"),("Voraussehen","anticipate"),("Einschätzen","assess"),
+            ("Koordinieren","coordinate"),("Delegieren","delegate"),("Betonen","emphasise"),
+            ("Erleichtern","facilitate"),("Identifizieren","identify"),("Integrieren","integrate"),
+            ("Rechtfertigen","justify"),("Aufrechterhalten","maintain"),("Verhandeln","negotiate"),
+            ("Optimieren","optimise"),("Überwinden","overcome"),("Priorisieren","prioritise"),
+            ("Erkennen","recognise"),("Stärken","strengthen"),("Transformieren","transform"),
+            ("Überprüfen","verify"),("Visualisieren","visualise"),("Erzielen","achieve"),
+            ("Anpassen","adapt"),("Bewerten","evaluate"),("Implementieren","implement"),
         ],
         "fr": [
             ("Hund","chien"),("Katze","chat"),("Haus","maison"),("Schule","école"),
@@ -1060,10 +1068,11 @@ elif st.session_state.view == 'quiz':
                     farbe2 = PINNWAND_FARBEN.get(n, "#888")
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;'
-                        f'padding:5px 8px;border-radius:8px;margin-bottom:4px;'
-                        f'background:#f8f8f8;">' 
-                        f'<span>{medals[idx2]} <b style="color:{farbe2};">{n}</b></span>'
-                        f'<span style="font-weight:700;color:{farbe2};">{p} Pkt.</span>'
+                        f'padding:6px 10px;border-radius:8px;margin-bottom:4px;'
+                        f'background:#f8f8f8;border:1px solid #eee;">'
+                        f'<span style="color:#222 !important;">{medals[idx2]} '
+                        f'<b style="color:{farbe2} !important;">{n}</b></span>'
+                        f'<span style="font-weight:700;color:{farbe2} !important;">{p} Pkt.</span>'
                         f'</div>',
                         unsafe_allow_html=True
                     )
@@ -1108,11 +1117,11 @@ elif st.session_state.view == 'quiz':
         # Frage
         st.markdown(
             f'<div style="background:#f8f8f8;border-radius:12px;padding:16px;'
-            f'text-align:center;margin-bottom:16px;">' 
-            f'<div style="font-size:0.8rem;color:#aaa;margin-bottom:6px;">'
+            f'text-align:center;margin-bottom:16px;border:1px solid #e8e8e8;">'
+            f'<div style="font-size:0.78rem;color:#666 !important;margin-bottom:6px;">'
             f'Frage {idx+1} von {total} · {SPRACHE_NAMEN[spr]}</div>'
-            f'<div style="font-size:1.4rem;font-weight:900;color:#222;">{frage["frage_de"]}</div>'
-            f'<div style="font-size:0.85rem;color:#888;margin-top:4px;">Wie heißt das auf {SPRACHE_NAMEN[spr].split()[-1]}?</div>'
+            f'<div style="font-size:1.4rem;font-weight:900;color:#111 !important;">{frage["frage_de"]}</div>'
+            f'<div style="font-size:0.85rem;color:#555 !important;margin-top:4px;">Wie heißt das auf {SPRACHE_NAMEN[spr].split()[-1]}?</div>'
             f'</div>',
             unsafe_allow_html=True
         )
@@ -1135,7 +1144,7 @@ elif st.session_state.view == 'quiz':
                 elif opt == st.session_state.quiz_antwort and not gew:
                     bg = "#C62828"; txt = "white"; prefix = "❌ "
                 else:
-                    bg = "#eee"; txt = "#888"; prefix = ""
+                    bg = "#f0f0f0"; txt = "#444"; prefix = ""
                 st.markdown(
                     f'<div style="background:{bg};color:{txt} !important;border-radius:8px;'
                     f'padding:10px 16px;margin-bottom:6px;font-weight:600;">'
@@ -1216,31 +1225,26 @@ elif st.session_state.view == 'quiz':
                     fp     = r["punkte"]
                     fb     = PINNWAND_FARBEN.get(fn, "#888")
                     is_me  = fn == name
-                    bg2    = f"{fb}22" if is_me else "#f8f8f8"
+                    bg2     = "#fff" if is_me else "#f8f8f8"
+                    border2 = f"2px solid {fb}" if is_me else "1px solid #eee"
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;'
-                        f'padding:6px 10px;border-radius:8px;margin-bottom:4px;background:{bg2};">' 
-                        f'<span>{medals[idx2] if idx2 < 5 else str(idx2+1)+"."} '
-                        f'<b style="color:{fb};">{fn}</b>'
+                        f'padding:7px 12px;border-radius:8px;margin-bottom:4px;'
+                        f'background:{bg2};border:{border2};">'
+                        f'<span style="color:#222 !important;">{medals[idx2] if idx2 < 5 else str(idx2+1)+"."} '
+                        f'<b style="color:{fb} !important;">{fn}</b>'
                         f'{"  ← du" if is_me else ""}</span>'
-                        f'<span style="font-weight:700;color:{fb};">{fp}/{total}</span>'
+                        f'<span style="font-weight:700;color:{fb} !important;">{fp}/{total}</span>'
                         f'</div>',
                         unsafe_allow_html=True
                     )
         except Exception:
             pass
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Nochmal", use_container_width=True):
-                st.session_state.quiz_phase  = 'name'
-                st.session_state.quiz_antwort = None
-                st.rerun()
-        with col2:
-            if st.button("← Hauptmenü", use_container_width=True, key="quiz_home"):
-                st.session_state.view       = 'start'
-                st.session_state.quiz_phase = 'name'
-                st.rerun()
+        if st.button("← Hauptmenü", use_container_width=True, key="quiz_home", type="primary"):
+            st.session_state.view       = 'start'
+            st.session_state.quiz_phase = 'name'
+            st.rerun()
 
     if st.session_state.quiz_phase == 'name':
         back_button()
