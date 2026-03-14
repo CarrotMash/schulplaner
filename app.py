@@ -225,8 +225,8 @@ if st.session_state.view == 'start':
     heute = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin"))
     wt_namen = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
 
-    # Bild links, Logo-Block rechts – gleiche Breite
-    img_col, txt_col = st.columns([1, 1])
+    # Logo links, Bild rechts – gleiche Breite
+    txt_col, img_col = st.columns([1, 1])
     with img_col:
         if os.path.exists("startbild.jpg"):
             st.image("startbild.jpg", use_container_width=True)
@@ -308,7 +308,7 @@ if st.session_state.view == 'start':
             except Exception:
                 zeit = ""
             # Nachricht + Löschbutton in einer Zeile
-            mcol, dcol = st.columns([1, 14])
+            dcol, mcol = st.columns([14, 1])
             with dcol:
                 st.markdown(
                     f'<div class="pin-bubble" style="border-left-color:{farbe};">'
