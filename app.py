@@ -637,21 +637,21 @@ elif st.session_state.view == 'bus':
     # IDs aus v6.db.transport.rest (öffentliche DB HAFAS API)
     HALTESTELLEN = {
         "seefisch": {
-            "label":   "🏠 Seefischmarkt",
-            "sub":     "→ Schönkirchen",
-            "id":      "7038984",
+            "label":    "🏠 Seefischmarkt",
+            "sub":      "→ Schönkirchen",
+            "name":     "Seefischmarkt, Kiel",
             "richtung": "Richtung Schönkirchen / Schönberg",
         },
         "linas": {
-            "label":   "🏫 Linas Diek",
-            "sub":     "→ Seefischmarkt",
-            "id":      "7039308",
+            "label":    "🏫 Linas Diek",
+            "sub":      "→ Seefischmarkt",
+            "name":     "Linas Diek, Schönkirchen",
             "richtung": "Richtung Kiel Seefischmarkt",
         },
         "amboss": {
-            "label":   "🏫 Amboßweg",
-            "sub":     "→ Seefischmarkt",
-            "id":      "7037765",   # Schönkirchener Straße als Fallback – wird beim ersten Abruf verifiziert
+            "label":    "🏫 Amboßweg",
+            "sub":      "→ Seefischmarkt",
+            "name":     "Amboßweg, Schönkirchen",
             "richtung": "Richtung Kiel Seefischmarkt",
         },
     }
@@ -659,75 +659,70 @@ elif st.session_state.view == 'bus':
     LINE_COLORS  = {"200":"#C62828","201":"#1565C0","210":"#2E7D32"}
     LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
 
-    def hole_abfahrten(stop_id: str, results: int = 10):
-        """Abfahrten von v6.db.transport.rest abrufen – mehrere Endpunkte versuchen."""
-        # Endpunkt 1: v6.db.transport.rest
-        urls = [
-            (f"https://v6.db.transport.rest/stops/{stop_id}/departures",
-             {"results": results, "duration": 120, "language": "de"}),
-            # Endpunkt 2: v5 als Fallback
-            (f"https://v5.db.transport.rest/stops/{stop_id}/departures",
-             {"results": results, "duration": 120}),
-        ]
+    def hole_abfahrten(halt_name: str, results: int = 10):
+        """Abfahrten via dbf.finalrewind.org (NAH.SH HAFAS) abrufen."""
+        # dbf.finalrewind.org liefert JSON mit ?hafas=NAH.SH&version=3
+        # Haltestellen-Name URL-kodiert übergeben
+        import urllib.parse
+        encoded = urllib.parse.quote(halt_name)
+        url = f"https://dbf.finalrewind.org/{encoded}.json"
+        params = {"hafas": "NAH.SH", "version": "3", "limit": results}
         errors = []
-        for url, params in urls:
-            try:
-                r = _req.get(url, params=params, timeout=10,
-                             headers={"Accept": "application/json"})
-                if r.status_code == 200:
-                    data = r.json()
-                    deps = data.get("departures", data if isinstance(data, list) else [])
-                    return deps, None
+        try:
+            r = _req.get(url, params=params, timeout=12,
+                         headers={"Accept": "application/json"})
+            if r.status_code == 200:
+                data = r.json()
+                if "departures" in data:
+                    return data["departures"], None
                 else:
-                    errors.append(f"{url}: HTTP {r.status_code} – {r.text[:200]}")
-            except Exception as e:
-                errors.append(f"{url}: {str(e)}")
+                    errors.append(f"Kein 'departures'-Feld: {str(data)[:300]}")
+            else:
+                errors.append(f"HTTP {r.status_code}: {r.text[:300]}")
+        except Exception as e:
+            errors.append(str(e))
         return None, errors
 
     def bus_card_rt(dep):
-        """Bus-Card mit Echtzeit-Daten rendern."""
-        linie = dep.get("line", {}).get("name", "?")
-        # Liniennummer extrahieren (z.B. "Bus 200" → "200")
-        linie_nr = linie.split()[-1] if " " in linie else linie
-
-        ziel  = dep.get("destination", {}).get("name", "?") if dep.get("destination") else "?"
-
-        # Planzeit
-        plan_str = dep.get("plannedWhen") or dep.get("when") or ""
-        # Echtzeit
-        rt_str   = dep.get("when") or plan_str
-        versp    = dep.get("delay") or 0  # Sekunden
-
-        def fmt_time(iso):
-            try:
-                dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
-                return dt.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
-            except Exception:
-                return "?"
-
-        plan_zeit = fmt_time(plan_str)
-        rt_zeit   = fmt_time(rt_str)
-        versp_min = round(versp / 60) if versp else 0
+        """Bus-Card mit DBF-JSON-Format rendern."""
+        # DBF version=3 Format:
+        # scheduledDeparture, departure (Echtzeit), delay (Min.), line, direction
+        plan_zeit = dep.get("scheduledDeparture", "?")
+        rt_zeit   = dep.get("departure") or plan_zeit
+        versp_min = dep.get("delay") or 0  # bereits in Minuten
+        linie_nr  = str(dep.get("line", "?"))
+        ziel      = dep.get("direction", "?")
+        gecancelt = dep.get("isCancelled", False)
 
         farbe = LINE_COLORS.get(linie_nr, "#555")
         bg    = LINE_BGLIGHT.get(linie_nr, "#f9f9f9")
 
         # Verspätungsanzeige
-        if versp_min == 0:
-            versp_html = '<span style="color:#2E7D32;font-weight:700;">pünktlich</span>'
+        if gecancelt:
+            versp_html = '<span style="color:#C62828;font-weight:700;">❌ Ausfall</span>'
+        elif versp_min == 0:
+            versp_html = '<span style="color:#2E7D32;font-weight:700;">✓ pünktlich</span>'
         elif versp_min > 0:
             versp_html = f'<span style="color:#C62828;font-weight:700;">+{versp_min} Min.</span>'
         else:
             versp_html = f'<span style="color:#1565C0;font-weight:700;">{versp_min} Min.</span>'
 
-        # Zeitanzeige: Planzeit ggf. durchgestrichen, Echtzeit daneben
-        if versp_min != 0:
+        # Zeitanzeige
+        if versp_min != 0 and not gecancelt and plan_zeit != rt_zeit:
             zeit_html = (
-                f'<span style="text-decoration:line-through;color:#aaa;font-size:1rem;">{plan_zeit}</span> '
+                f'<span style="text-decoration:line-through;color:#aaa;font-size:1rem;'
+                f'margin-right:4px;">{plan_zeit}</span>'
                 f'<span style="font-size:1.4rem;font-weight:900;color:{farbe};">{rt_zeit}</span>'
             )
+        elif gecancelt:
+            zeit_html = (
+                f'<span style="text-decoration:line-through;color:#aaa;'
+                f'font-size:1.4rem;font-weight:900;">{plan_zeit}</span>'
+            )
         else:
-            zeit_html = f'<span style="font-size:1.4rem;font-weight:900;color:{farbe};">{rt_zeit}</span>'
+            zeit_html = (
+                f'<span style="font-size:1.4rem;font-weight:900;color:{farbe};">{plan_zeit}</span>'
+            )
 
         html = (
             f'<div style="background:{bg};border-left:6px solid {farbe};border-radius:10px;'
@@ -739,7 +734,8 @@ elif st.session_state.view == 'bus':
             f'</div>'
             f'<div style="text-align:right;">{versp_html}</div>'
             f'</div>'
-            f'<div style="margin-top:5px;font-size:0.88rem;color:#333;">🎯 Richtung: <b>{ziel}</b></div>'
+            f'<div style="margin-top:5px;font-size:0.88rem;color:#333 !important;">'
+            f'🎯 <b style="color:#333 !important;">{ziel}</b></div>'
             f'</div>'
         )
         st.markdown(html, unsafe_allow_html=True)
@@ -762,15 +758,15 @@ elif st.session_state.view == 'bus':
 
     if st.session_state.bus_halt:
         cfg     = HALTESTELLEN[st.session_state.bus_halt]
-        stop_id = cfg["id"]
+        halt_name = cfg["name"]
 
         st.caption(
             f"📍 **{cfg['label'].split(' ',1)[1]}** · {cfg['richtung']} · "
-            f"nächste 120 Min. · Echtzeit via DB HAFAS"
+            f"Echtzeit via NAH.SH · Quelle: dbf.finalrewind.org"
         )
 
         with st.spinner("Abfahrten werden geladen …"):
-            deps, errors = hole_abfahrten(stop_id)
+            deps, errors = hole_abfahrten(cfg["name"])
 
         if deps is None:
             st.error("⚠️ Verbindung zur Echtzeit-API nicht möglich.")
