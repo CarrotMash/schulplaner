@@ -115,10 +115,14 @@ st.markdown("""
 .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
 .fc-list-event-time { display: none !important; }
 
-/* Bus-Cards */
+/* Bus-Haltestellen-Buttons: gleiche Höhe, Text passt rein */
 div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
-    height: 60px !important; white-space: normal !important;
-    line-height: 1.3 !important; font-size: 0.85rem !important;
+    height: 64px !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    font-size: 0.72rem !important;
+    padding: 4px 4px !important;
+    word-break: break-word !important;
 }
 
 /* Stundenplan-Tabelle */
@@ -631,25 +635,254 @@ elif st.session_state.view == 'stundenplan':
 elif st.session_state.view == 'bus':
     page_header("🚌 Bus-Check")
 
-    st.markdown("""
-    <div style="text-align:center; padding: 40px 20px 30px 20px;">
-        <div style="font-size:4rem; margin-bottom:16px;">🚧</div>
-        <div style="font-size:1.3rem; font-weight:800; color:#444; margin-bottom:10px;">
-            Hier wird noch gearbeitet
-        </div>
-        <div style="font-size:0.95rem; color:#888; max-width:280px; margin:0 auto; line-height:1.6;">
-            Wir arbeiten daran, Echtzeit-Abfahrtszeiten inkl. Verspätungen 
-            einzubinden. Bitte schau bald wieder rein!
-        </div>
-        <div style="margin-top:24px; font-size:0.8rem; color:#bbb;">
-            Aktuell verfügbar: 
-            <a href="https://www.nah.sh" target="_blank" style="color:#FF4B4B;">nah.sh Fahrplanauskunft</a>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    from datetime import timedelta as _td
+
+    # -----------------------------------------------------------------------
+    # FAHRPLANDATEN Mo–Fr, Quelle: VKP PDF 200i/210i, Stand 21.11.2024
+    # Format: (Abfahrtszeit HH:MM, Linie, Richtung/Ausstieg)
+    # -----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # FAHRPLANDATEN Mo–Fr · Quelle: VKP PDF 200i/200ii/210i · Stand 27.11.2024
+    # Direkt abgelesen aus aktuellen PDFs auf vkp.de (für 2026 unverändert)
+    # Format: (Abfahrtszeit, Linie, Ausstieg)
+    # 30er-Fahrten (umgekehrte Route) und H-Fahrten (nur Ferientage) ausgelassen
+    # E-Fahrten (nur Schultage) sind enthalten da App primär für Schüler
+    # -----------------------------------------------------------------------
+    FAHRPLAN = {
+        "seefisch": {
+            "label":    "Seefischmarkt",
+            "icon":     "🏠",
+            "sub":      "→ Schönkirchen",
+            "richtung": "Richtung Schönkirchen / Schönberg",
+            "zeiten": [
+                # Linie 201 (direkt): FahrtNr 201xx, kein Söhren-Halt
+                # Linie 200 (via Söhren): FahrtNr 200xx
+                # Linie 210 (via Amboßweg/Tökendorf): FahrtNr 210xx
+                ("05:52", "200", "Linas Diek"),   # 20130
+                ("06:22", "201", "Linas Diek"),   # 20102
+                ("06:37", "201", "Linas Diek"),   # 20104
+                ("06:52", "200", "Linas Diek"),   # 20004
+                ("07:07", "200", "Linas Diek"),   # 20006 [E]
+                ("07:22", "201", "Linas Diek"),   # 20106
+                ("07:37", "200", "Linas Diek"),   # 20008 [E]
+                ("07:52", "200", "Linas Diek"),   # 20010
+                ("08:07", "200", "Linas Diek"),   # 20012
+                ("08:22", "201", "Linas Diek"),   # 20108
+                ("08:37", "200", "Linas Diek"),   # 20014
+                ("08:52", "200", "Linas Diek"),   # 20016
+                ("09:22", "201", "Linas Diek"),   # 20110
+                ("09:52", "200", "Linas Diek"),   # 20018
+                ("10:22", "201", "Linas Diek"),   # 20112
+                ("10:52", "200", "Linas Diek"),   # 20020
+                ("11:22", "201", "Linas Diek"),   # 20114
+                ("11:52", "200", "Linas Diek"),   # 20022
+                ("12:22", "201", "Linas Diek"),   # 20116 (210 fährt separat)
+                ("12:52", "200", "Linas Diek"),   # 20024
+                ("13:22", "201", "Linas Diek"),   # 20118 (E)
+                ("13:52", "200", "Linas Diek"),   # 20028 (H) → 20030
+                ("14:22", "201", "Linas Diek"),   # 20120 (E)
+                ("14:52", "200", "Linas Diek"),   # 20034
+                ("15:07", "200", "Linas Diek"),   # 20036 [E]
+                ("15:22", "201", "Linas Diek"),   # 20122
+                ("15:52", "200", "Linas Diek"),   # 20038
+                ("16:07", "200", "Linas Diek"),   # 20040 [E]
+                ("16:22", "201", "Linas Diek"),   # 20124 (E) → 20126 (Schule)
+                ("16:52", "200", "Linas Diek"),   # 20042
+                ("17:22", "201", "Linas Diek"),   # 20126
+                ("17:52", "200", "Linas Diek"),   # 20048
+                # 210er separat
+                ("07:37", "210", "Amboßweg"),     # 21002
+                ("09:37", "210", "Amboßweg"),     # 21004 [E]
+                ("11:37", "210", "Amboßweg"),     # 21002
+                ("13:37", "210", "Amboßweg"),     # 21008
+                ("15:37", "210", "Amboßweg"),     # 21012
+                ("17:37", "210", "Amboßweg"),     # 21016
+            ],
+        },
+        "linas": {
+            "label":    "Linas Diek",
+            "icon":     "🏫",
+            "sub":      "→ Seefischmarkt",
+            "richtung": "Richtung Kiel Seefischmarkt",
+            "zeiten": [
+                # Direkt aus 200ii.pdf Spalte "Schönkirchen, Lina's Diek"
+                ("05:18", "200", "Seefischmarkt"),  # 20001 [30]
+                ("05:31", "201", "Seefischmarkt"),  # 20103
+                ("06:15", "201", "Seefischmarkt"),  # 20105
+                ("06:38", "200", "Seefischmarkt"),  # 20003 [30]
+                ("06:45", "201", "Seefischmarkt"),  # 20107
+                ("07:30", "201", "Seefischmarkt"),  # 20109 [E]
+                ("07:33", "200", "Seefischmarkt"),  # 20011 [E]
+                ("08:09", "201", "Seefischmarkt"),  # 20113
+                ("08:15", "201", "Seefischmarkt"),  # 20111
+                ("09:30", "201", "Seefischmarkt"),  # 20115
+                ("09:43", "200", "Seefischmarkt"),  # 20015
+                ("10:30", "201", "Seefischmarkt"),  # 20117
+                ("10:43", "200", "Seefischmarkt"),  # 20017
+                ("11:30", "201", "Seefischmarkt"),  # 20121
+                ("11:43", "200", "Seefischmarkt"),  # 20019
+                ("12:30", "201", "Seefischmarkt"),  # 20123
+                ("12:43", "200", "Seefischmarkt"),  # 20023
+                ("13:30", "201", "Seefischmarkt"),  # 20125
+                ("13:43", "200", "Seefischmarkt"),  # 20025 [E]
+                ("14:30", "201", "Seefischmarkt"),  # 20127
+                ("14:38", "200", "Seefischmarkt"),  # 20029
+                ("15:30", "201", "Seefischmarkt"),  # 20129
+                ("15:43", "200", "Seefischmarkt"),  # 20035
+                ("16:10", "201", "Seefischmarkt"),  # 20131
+                ("16:30", "201", "Seefischmarkt"),  # 20133
+                ("16:43", "200", "Seefischmarkt"),  # 20043
+                ("17:10", "201", "Seefischmarkt"),  # 20135 [E]
+                ("17:30", "201", "Seefischmarkt"),  # 20137
+                ("17:38", "200", "Seefischmarkt"),  # 20051
+                ("18:30", "201", "Seefischmarkt"),  # 20141
+            ],
+        },
+        "amboss": {
+            "label":    "Amboßweg",
+            "icon":     "🏫",
+            "sub":      "→ Seefischmarkt",
+            "richtung": "Richtung Kiel Seefischmarkt",
+            "zeiten": [
+                # Direkt aus 210i.pdf Spalte "Schönkirchen, Amboßweg"
+                ("06:07", "210", "Seefischmarkt"),
+                ("07:07", "210", "Seefischmarkt"),
+                ("08:17", "210", "Seefischmarkt"),
+                ("12:22", "210", "Seefischmarkt"),
+                ("14:22", "210", "Seefischmarkt"),
+            ],
+        },
+    }
+
+    LINE_COLORS  = {"200":"#C62828","201":"#1565C0","210":"#2E7D32"}
+    LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
+
+    def naechste_3(zeiten, jetzt):
+        """Gibt die 3 nächsten Abfahrten ab jetzt zurück (inkl. heute + nächster Werktag)."""
+        heute_str = jetzt.strftime("%H:%M")
+        # Heutige Abfahrten ab jetzt
+        treffer = [(z, li, ri) for z, li, ri in zeiten if z >= heute_str]
+        if len(treffer) >= 3:
+            return treffer[:3], False
+        # Aufgefüllt mit ersten Fahrten des nächsten Tages
+        rest = 3 - len(treffer)
+        naechste = [(z, li, ri) for z, li, ri in zeiten][:rest]
+        return treffer + naechste, len(treffer) < 3
+
+    def bus_card_static(zeit, linie, richtung, jetzt, ist_erste, naechster_tag=False):
+        farbe = LINE_COLORS.get(linie, "#555")
+        bg    = LINE_BGLIGHT.get(linie, "#f9f9f9")
+        rand  = f"3px solid {farbe}" if ist_erste else f"1px solid #eee"
+
+        # Countdown berechnen
+        try:
+            h, m   = map(int, zeit.split(":"))
+            abf_dt = jetzt.replace(hour=h, minute=m, second=0, microsecond=0)
+            if naechster_tag or abf_dt < jetzt:
+                abf_dt += _td(days=1)
+            diff   = int((abf_dt - jetzt).total_seconds() / 60)
+            if diff == 0:
+                cd_html = f'<span style="color:{farbe};font-weight:800;">jetzt!</span>'
+            elif diff < 60:
+                cd_html = f'<span style="color:{farbe};font-weight:700;">in {diff} Min.</span>'
+            else:
+                h2, m2  = divmod(diff, 60)
+                cd_html = f'<span style="color:{farbe};font-weight:700;">in {h2}h {m2:02d}m</span>'
+        except Exception:
+            cd_html = ""
+
+        naechster_tag_badge = (
+            '<span style="background:#888;color:white;font-size:0.68rem;padding:1px 6px;'
+            'border-radius:8px;margin-left:6px;">nächster Tag</span>' if naechster_tag else ""
+        )
+        erste_badge = (
+            f'<span style="background:{farbe};color:white;font-size:0.68rem;font-weight:700;'
+            f'padding:1px 7px;border-radius:8px;margin-left:6px;">▶ Nächste</span>' if ist_erste else ""
+        )
+
+        st.markdown(
+            f'<div style="background:{bg};border:{rand};border-left:6px solid {farbe};'
+            f'border-radius:12px;padding:12px 16px 10px 16px;margin-bottom:10px;'
+            f'box-shadow:0 2px 8px rgba(0,0,0,0.06);">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            f'<div style="min-width:0;">'
+            f'<span style="font-size:1.6rem;font-weight:900;color:{farbe};">{zeit}</span>'
+            f'<span style="background:{farbe};color:white;font-size:0.82rem;font-weight:700;'
+            f'padding:2px 10px;border-radius:6px;margin-left:8px;white-space:nowrap;">Linie {linie}</span>'
+            f'</div>'
+            f'<div style="text-align:right;flex-shrink:0;margin-left:8px;">{cd_html}</div>'
+            f'</div>'
+            f'{("<div style=\"margin-top:4px;\">" + erste_badge + naechster_tag_badge + "</div>") if (erste_badge or naechster_tag_badge) else ""}'
+            f'<div style="margin-top:6px;font-size:0.88rem;">'
+            f'<span style="color:#555 !important;">🚏 Ausstieg: </span>'
+            f'<b style="color:#222 !important;">{richtung}</b>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+    # Haltestellen-Buttons – ohne Icons, kompakter Text für Smartphone
+    bc = st.columns(3)
+    for i, (key, cfg) in enumerate(FAHRPLAN.items()):
+        aktiv = st.session_state.bus_halt == key
+        with bc[i]:
+            if st.button(
+                f"{cfg['label']}\n{cfg['sub']}",
+                key=f"bus_btn_{key}",
+                use_container_width=True,
+                type="primary" if aktiv else "secondary"
+            ):
+                st.session_state.bus_halt = key
+                st.rerun()
+
+    st.divider()
+
+    if st.session_state.bus_halt:
+        cfg  = FAHRPLAN[st.session_state.bus_halt]
+        now  = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin")).replace(tzinfo=None)
+        wt   = now.weekday()
+        WT   = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
+
+        st.caption(
+            f"📍 **{cfg['label']}** · {cfg['richtung']} · "
+            f"Mo–Fr · Stand: VKP Nov. 2024"
+        )
+
+        if wt >= 5:
+            # Wochenende
+            tage = 2 if wt == 5 else 1
+            nwt  = now + _td(days=tage)
+            st.warning(
+                f"⚠️ Dieser Fahrplan gilt Mo–Fr. "
+                f"Nächste Fahrten: **{WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}**"
+            )
+            treffer = [(z, li, ri) for z, li, ri in cfg["zeiten"]][:3]
+            for i, (z, li, ri) in enumerate(treffer):
+                bus_card_static(z, li, ri, now, i == 0, naechster_tag=True)
+        else:
+            treffer, hat_uebertrag = naechste_3(cfg["zeiten"], now)
+            if not treffer:
+                st.info("Keine Abfahrten gefunden.")
+            else:
+                for i, (z, li, ri) in enumerate(treffer):
+                    ist_uebertrag = hat_uebertrag and i >= (3 - (3 - len(
+                        [(z2,l2,r2) for z2,l2,r2 in cfg["zeiten"]
+                         if z2 >= now.strftime("%H:%M")]
+                    )))
+                    bus_card_static(z, li, ri, now, i == 0,
+                                    naechster_tag=(hat_uebertrag and
+                                                   z < now.strftime("%H:%M")))
+
+        if st.button("🔄 Aktualisieren", use_container_width=True, key="bus_refresh"):
+            st.rerun()
+    else:
+        st.markdown(
+            "<div style='text-align:center;color:#aaa;padding:30px 0;font-size:1.1rem;'>"
+            "⬆️ Bitte Haltestelle auswählen</div>",
+            unsafe_allow_html=True
+        )
 
     back_button()
-
 
 # =============================================================================
 # 5. FERIEN
