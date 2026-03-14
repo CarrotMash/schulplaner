@@ -751,7 +751,7 @@ elif st.session_state.view == 'bus':
                 except Exception:
                     continue
 
-            return deps, None, res
+            return deps, None, data
         except Exception as e:
             errors.append(str(e))
         return None, errors, {}
