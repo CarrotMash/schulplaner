@@ -115,10 +115,14 @@ st.markdown("""
 .fc-day-sat, .fc-day-sun { background-color: #F0F2F6 !important; }
 .fc-list-event-time { display: none !important; }
 
-/* Bus-Cards */
+/* Bus-Haltestellen-Buttons: gleiche Höhe, Text passt rein */
 div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
-    height: 60px !important; white-space: normal !important;
-    line-height: 1.3 !important; font-size: 0.85rem !important;
+    height: 64px !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    font-size: 0.72rem !important;
+    padding: 4px 4px !important;
+    word-break: break-word !important;
 }
 
 /* Stundenplan-Tabelle */
@@ -801,14 +805,14 @@ elif st.session_state.view == 'bus':
             f'border-radius:12px;padding:12px 16px 10px 16px;margin-bottom:10px;'
             f'box-shadow:0 2px 8px rgba(0,0,0,0.06);">'
             f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-            f'<div>'
+            f'<div style="min-width:0;">'
             f'<span style="font-size:1.6rem;font-weight:900;color:{farbe};">{zeit}</span>'
             f'<span style="background:{farbe};color:white;font-size:0.82rem;font-weight:700;'
-            f'padding:2px 10px;border-radius:6px;margin-left:8px;">Linie {linie}</span>'
-            f'{erste_badge}{naechster_tag_badge}'
+            f'padding:2px 10px;border-radius:6px;margin-left:8px;white-space:nowrap;">Linie {linie}</span>'
             f'</div>'
-            f'<div style="text-align:right;">{cd_html}</div>'
+            f'<div style="text-align:right;flex-shrink:0;margin-left:8px;">{cd_html}</div>'
             f'</div>'
+            f'{("<div style=\"margin-top:4px;\">" + erste_badge + naechster_tag_badge + "</div>") if (erste_badge or naechster_tag_badge) else ""}'
             f'<div style="margin-top:6px;font-size:0.88rem;">'
             f'<span style="color:#555 !important;">🚏 Ausstieg: </span>'
             f'<b style="color:#222 !important;">{richtung}</b>'
