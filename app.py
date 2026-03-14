@@ -631,22 +631,150 @@ elif st.session_state.view == 'stundenplan':
 elif st.session_state.view == 'bus':
     page_header("🚌 Bus-Check")
 
-    st.markdown("""
-    <div style="text-align:center; padding: 40px 20px 30px 20px;">
-        <div style="font-size:4rem; margin-bottom:16px;">🚧</div>
-        <div style="font-size:1.3rem; font-weight:800; color:#444; margin-bottom:10px;">
-            Hier wird noch gearbeitet
-        </div>
-        <div style="font-size:0.95rem; color:#888; max-width:280px; margin:0 auto; line-height:1.6;">
-            Wir arbeiten daran, Echtzeit-Abfahrtszeiten inkl. Verspätungen 
-            einzubinden. Bitte schau bald wieder rein!
-        </div>
-        <div style="margin-top:24px; font-size:0.8rem; color:#bbb;">
-            Aktuell verfügbar: 
-            <a href="https://www.nah.sh" target="_blank" style="color:#FF4B4B;">nah.sh Fahrplanauskunft</a>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    import requests as _req
+
+    # Haltestellenkonfiguration
+    # IDs aus v6.db.transport.rest (öffentliche DB HAFAS API)
+    HALTESTELLEN = {
+        "seefisch": {
+            "label":   "🏠 Seefischmarkt",
+            "sub":     "→ Schönkirchen",
+            "id":      "7038984",
+            "richtung": "Richtung Schönkirchen / Schönberg",
+        },
+        "linas": {
+            "label":   "🏫 Linas Diek",
+            "sub":     "→ Seefischmarkt",
+            "id":      "7039308",
+            "richtung": "Richtung Kiel Seefischmarkt",
+        },
+        "amboss": {
+            "label":   "🏫 Amboßweg",
+            "sub":     "→ Seefischmarkt",
+            "id":      "7037765",   # Schönkirchener Straße als Fallback – wird beim ersten Abruf verifiziert
+            "richtung": "Richtung Kiel Seefischmarkt",
+        },
+    }
+
+    LINE_COLORS  = {"200":"#C62828","201":"#1565C0","210":"#2E7D32"}
+    LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
+
+    def hole_abfahrten(stop_id: str, results: int = 8):
+        """Abfahrten von v6.db.transport.rest abrufen."""
+        try:
+            url = f"https://v6.db.transport.rest/stops/{stop_id}/departures"
+            params = {"results": results, "duration": 120, "language": "de"}
+            r = _req.get(url, params=params, timeout=8)
+            if r.status_code == 200:
+                data = r.json()
+                return data.get("departures", [])
+        except Exception:
+            pass
+        return None
+
+    def bus_card_rt(dep):
+        """Bus-Card mit Echtzeit-Daten rendern."""
+        linie = dep.get("line", {}).get("name", "?")
+        # Liniennummer extrahieren (z.B. "Bus 200" → "200")
+        linie_nr = linie.split()[-1] if " " in linie else linie
+
+        ziel  = dep.get("destination", {}).get("name", "?") if dep.get("destination") else "?"
+
+        # Planzeit
+        plan_str = dep.get("plannedWhen") or dep.get("when") or ""
+        # Echtzeit
+        rt_str   = dep.get("when") or plan_str
+        versp    = dep.get("delay") or 0  # Sekunden
+
+        def fmt_time(iso):
+            try:
+                dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+                return dt.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
+            except Exception:
+                return "?"
+
+        plan_zeit = fmt_time(plan_str)
+        rt_zeit   = fmt_time(rt_str)
+        versp_min = round(versp / 60) if versp else 0
+
+        farbe = LINE_COLORS.get(linie_nr, "#555")
+        bg    = LINE_BGLIGHT.get(linie_nr, "#f9f9f9")
+
+        # Verspätungsanzeige
+        if versp_min == 0:
+            versp_html = '<span style="color:#2E7D32;font-weight:700;">pünktlich</span>'
+        elif versp_min > 0:
+            versp_html = f'<span style="color:#C62828;font-weight:700;">+{versp_min} Min.</span>'
+        else:
+            versp_html = f'<span style="color:#1565C0;font-weight:700;">{versp_min} Min.</span>'
+
+        # Zeitanzeige: Planzeit ggf. durchgestrichen, Echtzeit daneben
+        if versp_min != 0:
+            zeit_html = (
+                f'<span style="text-decoration:line-through;color:#aaa;font-size:1rem;">{plan_zeit}</span> '
+                f'<span style="font-size:1.4rem;font-weight:900;color:{farbe};">{rt_zeit}</span>'
+            )
+        else:
+            zeit_html = f'<span style="font-size:1.4rem;font-weight:900;color:{farbe};">{rt_zeit}</span>'
+
+        html = (
+            f'<div style="background:{bg};border-left:6px solid {farbe};border-radius:10px;'
+            f'padding:10px 14px 8px 14px;margin-bottom:8px;box-shadow:1px 2px 5px rgba(0,0,0,0.05);">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            f'<div>{zeit_html}'
+            f'<span style="background:{farbe};color:white;font-size:0.82rem;font-weight:700;'
+            f'padding:2px 9px;border-radius:6px;margin-left:8px;">Linie {linie_nr}</span>'
+            f'</div>'
+            f'<div style="text-align:right;">{versp_html}</div>'
+            f'</div>'
+            f'<div style="margin-top:5px;font-size:0.88rem;color:#333;">🎯 Richtung: <b>{ziel}</b></div>'
+            f'</div>'
+        )
+        st.markdown(html, unsafe_allow_html=True)
+
+    # Haltestellen-Buttons
+    bc = st.columns(3)
+    for i, (key, cfg) in enumerate(HALTESTELLEN.items()):
+        aktiv = st.session_state.bus_halt == key
+        with bc[i]:
+            if st.button(
+                f"{cfg['label']}\n{cfg['sub']}",
+                key=f"bus_btn_{key}",
+                use_container_width=True,
+                type="primary" if aktiv else "secondary"
+            ):
+                st.session_state.bus_halt = key
+                st.rerun()
+
+    st.divider()
+
+    if st.session_state.bus_halt:
+        cfg     = HALTESTELLEN[st.session_state.bus_halt]
+        stop_id = cfg["id"]
+
+        st.caption(
+            f"📍 **{cfg['label'].split(' ',1)[1]}** · {cfg['richtung']} · "
+            f"nächste 120 Min. · Echtzeit via DB HAFAS"
+        )
+
+        with st.spinner("Abfahrten werden geladen …"):
+            deps = hole_abfahrten(stop_id)
+
+        if deps is None:
+            st.error("⚠️ Verbindung zur Echtzeit-API nicht möglich. Bitte später erneut versuchen.")
+        elif len(deps) == 0:
+            st.info("Keine Abfahrten in den nächsten 120 Minuten gefunden.")
+        else:
+            for dep in deps:
+                bus_card_rt(dep)
+
+        if st.button("🔄 Aktualisieren", use_container_width=True):
+            st.rerun()
+    else:
+        st.markdown(
+            "<div style='text-align:center;color:#aaa;padding:30px 0;'>⬆️ Bitte Haltestelle auswählen</div>",
+            unsafe_allow_html=True
+        )
 
     back_button()
 
