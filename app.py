@@ -817,13 +817,13 @@ elif st.session_state.view == 'bus':
             unsafe_allow_html=True
         )
 
-    # Haltestellen-Buttons
+    # Haltestellen-Buttons – ohne Icons, kompakter Text für Smartphone
     bc = st.columns(3)
     for i, (key, cfg) in enumerate(FAHRPLAN.items()):
         aktiv = st.session_state.bus_halt == key
         with bc[i]:
             if st.button(
-                f"{cfg['icon']} {cfg['label']}\n{cfg['sub']}",
+                f"{cfg['label']}\n{cfg['sub']}",
                 key=f"bus_btn_{key}",
                 use_container_width=True,
                 type="primary" if aktiv else "secondary"
