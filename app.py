@@ -160,9 +160,9 @@ div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
     border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;
     border-left: 4px solid #ddd; background: #fafafa;
 }
-.pin-name  { font-weight:800; font-size:0.88rem; }
-.pin-zeit  { font-size:0.72rem; color:#bbb; margin-left:8px; }
-.pin-text  { font-size:0.92rem; margin-top:3px; }
+.pin-name  { font-weight:800; font-size:0.88rem; color:#222 !important; }
+.pin-zeit  { font-size:0.72rem; color:#999 !important; margin-left:8px; }
+.pin-text  { font-size:0.92rem; margin-top:3px; color:#333 !important; }
 
 /* Streamlit-Branding ausblenden */
 #MainMenu, footer, header,
