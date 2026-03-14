@@ -751,10 +751,10 @@ elif st.session_state.view == 'bus':
                 except Exception:
                     continue
 
-            return deps, None
+            return deps, None, res
         except Exception as e:
             errors.append(str(e))
-        return None, errors
+        return None, errors, {}
 
     def bus_card_rt(dep):
         linie_nr  = str(dep.get("line", "?"))
@@ -827,21 +827,22 @@ elif st.session_state.view == 'bus':
         )
 
         with st.spinner("Abfahrten werden geladen …"):
-            deps, errors = hole_abfahrten(stop_id)
+            deps, errors, _raw_debug = hole_abfahrten(stop_id)
 
         if deps is None:
             st.error("⚠️ Verbindung zur Echtzeit-API nicht möglich.")
             with st.expander("🔍 Fehlerdetails"):
                 for e in (errors or []):
                     st.code(e)
-            # Fallback: Link zur NAH.SH Website
             st.markdown(
                 f'<a href="{cfg["url"]}" target="_blank" style="color:#FF4B4B;font-weight:600;">'
                 f'🔗 Abfahrten auf nah.sh öffnen</a>',
                 unsafe_allow_html=True
             )
         elif len(deps) == 0:
-            st.info("Keine Abfahrten in den nächsten 120 Minuten gefunden.")
+            st.warning("Keine Abfahrten gefunden.")
+            with st.expander("🔍 API-Rohausgabe (Debug)"):
+                st.code(str(_raw_debug))
         else:
             for dep in deps:
                 bus_card_rt(dep)
