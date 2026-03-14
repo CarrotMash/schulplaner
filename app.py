@@ -662,71 +662,78 @@ elif st.session_state.view == 'bus':
     def hole_abfahrten(stop_id: str, results: int = 10):
         """Abfahrten von nah.sh.hafas.de per HTML-Scraping abrufen."""
         from bs4 import BeautifulSoup
-        from datetime import datetime as _dt
+        from datetime import datetime as _dt, timedelta as _td
         import re as _re
 
         now = _dt.now(zoneinfo.ZoneInfo("Europe/Berlin"))
-        url = "https://nah.sh.hafas.de/bin/stboard.exe/dn"
+
+        # Korrekte NAH.SH HAFAS URL (HTTP, nicht HTTPS, /dn Suffix)
+        url = "http://nah.sh.hafas.de/bin/stboard.exe/dn"
         params = {
-            "input":           stop_id,
-            "boardType":       "dep",
-            "time":            now.strftime("%H:%M"),
-            "date":            now.strftime("%d.%m.%y"),
-            "productsFilter":  "1111111111",
-            "selectDate":      "today",
-            "maxJourneys":     results,
-            "start":           "yes",
-            "L":               "vs_java",  # kompaktes Format
+            "input":          stop_id,
+            "boardType":      "dep",
+            "time":           now.strftime("%H:%M"),
+            "date":           now.strftime("%d.%m.%y"),
+            "productsFilter": "1111111111",
+            "selectDate":     "today",
+            "maxJourneys":    results,
+            "start":          "yes",
         }
         errors = []
         try:
             r = _req.get(url, params=params, timeout=12,
-                         headers={"User-Agent": "Mozilla/5.0"})
+                         headers={"User-Agent": "Mozilla/5.0"},
+                         allow_redirects=True)
             if r.status_code != 200:
-                errors.append(f"HTTP {r.status_code}: {r.text[:200]}")
+                errors.append(f"HTTP {r.status_code}: {r.text[:300]}")
                 return None, errors
 
             soup = BeautifulSoup(r.content, "lxml")
             deps = []
 
-            # NAH.SH stboard liefert Zeilen mit class "stboard-entry" oder Tabellen-Rows
-            rows = soup.select("tr.zebra, tr.noBg") or soup.select("table.result tr")[1:]
+            # NAH.SH Abfahrtstabelle: Zeilen mit class "zebra" oder "noBg"
+            rows = soup.select("tr.zebra, tr.noBg")
+            if not rows:
+                # Fallback: alle Tabellenzeilen mit mindestens 3 Zellen
+                rows = [r for r in soup.select("table tr")
+                        if len(r.find_all("td")) >= 3]
 
             for row in rows:
                 cells = row.find_all("td")
                 if len(cells) < 3:
                     continue
                 try:
-                    zeit_cell  = cells[0].get_text(strip=True)
-                    linie_cell = cells[1].get_text(strip=True)
-                    ziel_cell  = cells[2].get_text(strip=True)
+                    zeit_cell  = cells[0].get_text(" ", strip=True)
+                    linie_cell = cells[1].get_text(" ", strip=True)
+                    ziel_cell  = cells[2].get_text(" ", strip=True)
 
-                    # Verspätung: suche nach delay-span
-                    delay_span = row.find("span", class_="delay")
-                    ontime_span= row.find("span", class_="ontime")
-                    versp_min  = 0
+                    # Planzeit: erstes HH:MM in der Zeitelle
+                    m_time = _re.search(r"[0-9]{1,2}:[0-9]{2}", zeit_cell)
+                    plan_zeit = m_time.group() if m_time else zeit_cell[:5]
+
+                    # Verspätung
+                    delay_span  = row.find("span", class_="delay")
+                    versp_min   = 0
                     if delay_span:
-                        m = _re.search(r"[+-]?[0-9]+", delay_span.get_text())
-                        if m:
-                            versp_min = int(m.group())
-                    gecancelt  = bool(row.find("span", class_="cancelled"))
+                        m_d = _re.search(r"[0-9]+", delay_span.get_text())
+                        if m_d:
+                            versp_min = int(m_d.group())
+                    gecancelt = bool(row.find("span", class_="cancelled"))
 
-                    # Planzeit und Echtzeit
-                    plan_zeit = zeit_cell[:5] if len(zeit_cell) >= 5 else zeit_cell
-                    if versp_min != 0 and not gecancelt:
+                    # Echtzeit berechnen
+                    if versp_min and not gecancelt:
                         try:
-                            h, mi = map(int, plan_zeit.split(":"))
-                            from datetime import timedelta as _td
-                            rt_dt  = _dt.now().replace(hour=h, minute=mi, second=0)
-                            rt_dt += _td(minutes=versp_min)
+                            h, mi   = map(int, plan_zeit.split(":"))
+                            rt_dt   = now.replace(hour=h, minute=mi, second=0,
+                                                  microsecond=0) + _td(minutes=versp_min)
                             rt_zeit = rt_dt.strftime("%H:%M")
                         except Exception:
                             rt_zeit = plan_zeit
                     else:
                         rt_zeit = plan_zeit
 
-                    # Liniennummer bereinigen
-                    linie_nr = _re.sub(r"^(Bus|Faehre|S|U|R) *", "", linie_cell).strip()
+                    # Liniennummer: letztes Wort (z.B. "Bus 200" → "200")
+                    linie_nr = linie_cell.split()[-1] if linie_cell.split() else linie_cell
 
                     deps.append({
                         "scheduledDeparture": plan_zeit,
@@ -738,6 +745,11 @@ elif st.session_state.view == 'bus':
                     })
                 except Exception:
                     continue
+
+            if not deps:
+                errors.append(f"HTML geparst, aber keine Zeilen gefunden. "
+                               f"Erster HTML-Ausschnitt: {str(soup)[:400]}")
+                return None, errors
 
             return deps, None
         except Exception as e:
