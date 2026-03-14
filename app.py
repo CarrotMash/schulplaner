@@ -323,10 +323,10 @@ if st.session_state.view == 'start':
                     f'<div style="background:#f8f8f8;border-left:4px solid {farbe};'
                     f'border-radius:10px;padding:10px 14px 8px 14px;">'
                     f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-                    f'<span style="font-weight:800;font-size:0.9rem;color:{farbe} !important;">{name}</span>'
-                    f'<span style="font-size:0.72rem;color:#888 !important;">{zeit}</span>'
+                    f'<span style="font-weight:800;font-size:0.9rem;color:{farbe};">{name}</span>'
+                    f'<span style="font-size:0.72rem;color:#888;">{zeit}</span>'
                     f'</div>'
-                    f'<div style="font-size:0.92rem;color:#222 !important;margin-top:4px;">{text}</div>'
+                    f'<p style="font-size:0.92rem;color:#111;font-weight:500;margin:4px 0 0 0;">{text}</p>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
