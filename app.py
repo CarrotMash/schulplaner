@@ -304,7 +304,7 @@ if st.session_state.view == 'start':
                 zeit  = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
-            col_msg, col_del = st.columns([11, 1])
+            col_msg, col_del = st.columns([20, 1])
             with col_msg:
                 st.markdown(
                     f'<div class="pin-bubble" style="border-left-color:{farbe};">'
