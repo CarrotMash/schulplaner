@@ -315,7 +315,9 @@ if st.session_state.view == 'start':
             aktiv   = st.session_state.active_msg == mid
             try:
                 ts   = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
-                zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
+                datum_str = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m.")
+                uhr_str   = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
+                zeit      = f"{datum_str} um {uhr_str}"
             except Exception:
                 zeit = ""
 
@@ -323,7 +325,7 @@ if st.session_state.view == 'start':
             bg     = "#fff" if aktiv else "#f8f8f8"
 
             # Nachricht anklicken → aktiviert Löschoption
-            btn_label = f"👤 {name}   {zeit}\n{text}"
+            btn_label = f"👤 {name} – {zeit}: {text}"
             if st.button(
                 btn_label,
                 key=f"msg_btn_{mid}",
