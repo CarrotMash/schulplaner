@@ -662,19 +662,18 @@ elif st.session_state.view == 'bus':
     LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
 
     def hole_abfahrten(stop_id: str, results: int = 10):
-        """Abfahrten via RVSH/NAH.SH HAFAS mgate.exe abrufen."""
+        """Abfahrten via GVH HAFAS (deckt ganz Schleswig-Holstein ab)."""
         from datetime import datetime as _dt
-        import json as _json
 
         now = _dt.now(zoneinfo.ZoneInfo("Europe/Berlin"))
 
-        # NAH.SH HAFAS mgate.exe endpoint (mobile API)
-        url = "https://nah.sh.hafas.de/bin/mgate.exe"
+        # GVH mgate.exe - deckt NAH.SH / Schleswig-Holstein ab
+        url = "https://gvh.hafas.de/bin/mgate.exe"
         payload = {
             "ver": "1.42",
             "lang": "deu",
-            "auth": {"type": "AID", "aid": "r0Ot9FLFNAFyTkHF"},
-            "client": {"id": "NAHSH", "v": "6000000", "type": "IPH", "name": "NAHSH"},
+            "auth": {"type": "AID", "aid": "GVH-Backend-Key"},
+            "client": {"id": "GVH", "type": "IPH", "name": "GVH", "v": "100000"},
             "formatted": False,
             "svcReqL": [{
                 "meth": "StationBoard",
@@ -682,8 +681,8 @@ elif st.session_state.view == 'bus':
                     "type": "DEP",
                     "stbLoc": {"type": "S", "lid": f"A=1@L={stop_id}@"},
                     "maxJny": results,
-                    "date": now.strftime("%Y%m%d"),
-                    "time": now.strftime("%H%M%S"),
+                    "date":   now.strftime("%Y%m%d"),
+                    "time":   now.strftime("%H%M%S"),
                 }
             }]
         }
@@ -694,58 +693,54 @@ elif st.session_state.view == 'bus':
                                    "User-Agent": "Mozilla/5.0"})
             if r.status_code != 200:
                 errors.append(f"HTTP {r.status_code}: {r.text[:300]}")
-                return None, errors
+                return None, errors, {}
 
-            data = r.json()
-            svc  = data.get("svcResL", [{}])[0]
-            err  = svc.get("err", "OK")
+            data  = r.json()
+            svc   = data.get("svcResL", [{}])[0]
+            err   = svc.get("err", "OK")
             if err != "OK":
-                errors.append(f"HAFAS Fehler: {err} – {svc.get('errTxt','')}")
-                return None, errors
+                errors.append(f"HAFAS: {err} – {svc.get('errTxt','')}")
+                return None, errors, data
 
             res    = svc.get("res", {})
             jrny   = res.get("jnyL", [])
             common = res.get("common", {})
             prods  = common.get("prodL", [])
             deps   = []
+
             for j in jrny:
                 try:
                     stbStop  = j.get("stbStop", {})
-                    dTimeS   = stbStop.get("dTimeS", "")   # geplant HHMMSS
-                    dTimeR   = stbStop.get("dTimeR", dTimeS)  # Echtzeit
+                    dTimeS   = stbStop.get("dTimeS", "")
+                    dTimeR   = stbStop.get("dTimeR", dTimeS)
                     dCncl    = stbStop.get("dCncl", False)
 
                     def fmt(t):
+                        t = t[-6:] if len(t) > 6 else t  # day-overflow kürzen
                         return t[:2] + ":" + t[2:4] if len(t) >= 4 else "?"
 
                     plan_zeit = fmt(dTimeS)
                     rt_zeit   = fmt(dTimeR)
 
-                    # Verspätung in Minuten
+                    versp_min = 0
                     if dTimeS and dTimeR and dTimeS != dTimeR:
                         try:
-                            ps = int(dTimeS[:2])*60 + int(dTimeS[2:4])
-                            pr = int(dTimeR[:2])*60 + int(dTimeR[2:4])
+                            ps = int(dTimeS[-6:-4])*60 + int(dTimeS[-4:-2])
+                            pr = int(dTimeR[-6:-4])*60 + int(dTimeR[-4:-2])
                             versp_min = pr - ps
                         except Exception:
-                            versp_min = 0
-                    else:
-                        versp_min = 0
+                            pass
 
-                    # Linie
                     prod_idx = j.get("prodX", 0)
                     prod     = prods[prod_idx] if prod_idx < len(prods) else {}
                     linie_nr = prod.get("num", prod.get("name", "?")).strip()
-
-                    # Richtung
-                    dirs = j.get("dirTxt", "?")
 
                     deps.append({
                         "scheduledDeparture": plan_zeit,
                         "departure":          rt_zeit,
                         "delay":              versp_min,
                         "line":               linie_nr,
-                        "direction":          dirs,
+                        "direction":          j.get("dirTxt", "?"),
                         "isCancelled":        dCncl,
                     })
                 except Exception:
@@ -755,7 +750,6 @@ elif st.session_state.view == 'bus':
         except Exception as e:
             errors.append(str(e))
         return None, errors, {}
-
     def bus_card_rt(dep):
         linie_nr  = str(dep.get("line", "?"))
         ziel      = dep.get("direction", "?")
