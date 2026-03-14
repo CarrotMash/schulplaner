@@ -660,21 +660,86 @@ elif st.session_state.view == 'bus':
     LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
 
     def hole_abfahrten(stop_id: str, results: int = 10):
-        """Abfahrten via dbf.finalrewind.org mit EVA-ID (NAH.SH HAFAS) abrufen."""
-        # DBF unterstützt EVA-IDs direkt in der URL
-        url = f"https://dbf.finalrewind.org/{stop_id}.json"
-        params = {"hafas": "NAH.SH", "version": "3", "limit": results}
+        """Abfahrten von nah.sh.hafas.de per HTML-Scraping abrufen."""
+        from bs4 import BeautifulSoup
+        from datetime import datetime as _dt
+        import re as _re
+
+        now = _dt.now(zoneinfo.ZoneInfo("Europe/Berlin"))
+        url = "https://nah.sh.hafas.de/bin/stboard.exe/dn"
+        params = {
+            "input":           stop_id,
+            "boardType":       "dep",
+            "time":            now.strftime("%H:%M"),
+            "date":            now.strftime("%d.%m.%y"),
+            "productsFilter":  "1111111111",
+            "selectDate":      "today",
+            "maxJourneys":     results,
+            "start":           "yes",
+            "L":               "vs_java",  # kompaktes Format
+        }
         errors = []
         try:
             r = _req.get(url, params=params, timeout=12,
-                         headers={"Accept": "application/json"})
-            if r.status_code == 200:
-                data = r.json()
-                if "departures" in data:
-                    return data["departures"], None
-                errors.append(f"Kein 'departures'-Feld: {str(data)[:300]}")
-            else:
-                errors.append(f"HTTP {r.status_code}: {r.text[:300]}")
+                         headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code != 200:
+                errors.append(f"HTTP {r.status_code}: {r.text[:200]}")
+                return None, errors
+
+            soup = BeautifulSoup(r.content, "lxml")
+            deps = []
+
+            # NAH.SH stboard liefert Zeilen mit class "stboard-entry" oder Tabellen-Rows
+            rows = soup.select("tr.zebra, tr.noBg") or soup.select("table.result tr")[1:]
+
+            for row in rows:
+                cells = row.find_all("td")
+                if len(cells) < 3:
+                    continue
+                try:
+                    zeit_cell  = cells[0].get_text(strip=True)
+                    linie_cell = cells[1].get_text(strip=True)
+                    ziel_cell  = cells[2].get_text(strip=True)
+
+                    # Verspätung: suche nach delay-span
+                    delay_span = row.find("span", class_="delay")
+                    ontime_span= row.find("span", class_="ontime")
+                    versp_min  = 0
+                    if delay_span:
+                        m = _re.search(r"[+-]?[0-9]+", delay_span.get_text())
+                        if m:
+                            versp_min = int(m.group())
+                    gecancelt  = bool(row.find("span", class_="cancelled"))
+
+                    # Planzeit und Echtzeit
+                    plan_zeit = zeit_cell[:5] if len(zeit_cell) >= 5 else zeit_cell
+                    if versp_min != 0 and not gecancelt:
+                        try:
+                            h, mi = map(int, plan_zeit.split(":"))
+                            from datetime import timedelta as _td
+                            rt_dt  = _dt.now().replace(hour=h, minute=mi, second=0)
+                            rt_dt += _td(minutes=versp_min)
+                            rt_zeit = rt_dt.strftime("%H:%M")
+                        except Exception:
+                            rt_zeit = plan_zeit
+                    else:
+                        rt_zeit = plan_zeit
+
+                    # Liniennummer bereinigen
+                    linie_nr = _re.sub(r"^(Bus|Faehre|S|U|R) *", "", linie_cell).strip()
+
+                    deps.append({
+                        "scheduledDeparture": plan_zeit,
+                        "departure":          rt_zeit,
+                        "delay":              versp_min,
+                        "line":               linie_nr,
+                        "direction":          ziel_cell,
+                        "isCancelled":        gecancelt,
+                    })
+                except Exception:
+                    continue
+
+            return deps, None
         except Exception as e:
             errors.append(str(e))
         return None, errors

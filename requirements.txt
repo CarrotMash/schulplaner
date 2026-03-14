@@ -3,3 +3,5 @@ supabase
 streamlit-calendar
 pandas
 requests
+beautifulsoup4
+lxml
