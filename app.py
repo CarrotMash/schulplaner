@@ -41,13 +41,39 @@ if 'stundenplan_child' not in st.session_state: st.session_state.stundenplan_chi
 if 'editing_grade' not in st.session_state: st.session_state.editing_grade = False
 if 'selected_date' not in st.session_state: st.session_state.selected_date = None
 if 'edit_id' not in st.session_state: st.session_state.edit_id = None
+if 'cancel_click' not in st.session_state: st.session_state.cancel_click = False
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
+
+# PWA-Manifest
+st.markdown(
+    '''
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlNjaHVscGxhbmVyIiwgInNob3J0X25hbWUiOiAiU2NodWxwbGFuZXIiLCAiZGVzY3JpcHRpb24iOiAiRmFtaWxpZW4tU2NodWxwbGFuZXIiLCAic3RhcnRfdXJsIjogIi8iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgIm9yaWVudGF0aW9uIjogInBvcnRyYWl0IiwgImJhY2tncm91bmRfY29sb3IiOiAiI0ZGRkZGRiIsICJ0aGVtZV9jb2xvciI6ICIjRkY0QjRCIiwgImljb25zIjogW3sic3JjIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9taWNyb3NvZnQvZmx1ZW50dWktZW1vamkvbWFpbi9hc3NldHMvU3BpcmFsJTIwY2FsZW5kYXIvM0Qvc3BpcmFsX2NhbGVuZGFyXzNkLnBuZyIsICJzaXplcyI6ICIyNTZ4MjU2IiwgInR5cGUiOiAiaW1hZ2UvcG5nIiwgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIn1dfQ==">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#FF4B4B">
+    <script>
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        setTimeout(function() {
+            if (window.deferredPrompt) {
+                window.deferredPrompt.prompt();
+                window.deferredPrompt.userChoice.then(function() {
+                    window.deferredPrompt = null;
+                });
+            }
+        }, 3000);
+    });
+    </script>
+    ''',
+    unsafe_allow_html=True
+)
+
 
 # --- CUSTOM DESIGN (CSS) ---
 st.markdown("""
     <style>
-    .block-container { padding-top: 2.7rem !important; padding-bottom: 0rem !important; }
+    .block-container { padding-top: 2.7rem !important; padding-bottom: 5rem !important; }
 
     .main-header {
         font-size: 2.2rem !important; font-weight: 900 !important;
@@ -57,7 +83,7 @@ st.markdown("""
     }
 
     [data-testid="stImage"] > img {
-        width: 44% !important; margin-left: auto; margin-right: auto;
+        width: 35% !important; margin-left: auto; margin-right: auto;
         display: block; border-radius: 10px;
     }
 
@@ -88,11 +114,69 @@ st.markdown("""
     }
     .delay { color: #FF4B4B; font-weight: bold; }
     .ontime { color: #2E7D32; font-weight: bold; }
+    /* Streamlit-UI-Elemente ausblenden */
+    #MainMenu                                { display: none !important; }
+    footer                                   { display: none !important; }
+    header                                   { display: none !important; }
+    [data-testid="stDeployButton"]           { display: none !important; }
+    [data-testid="stToolbar"]                { display: none !important; }
+    [data-testid="stDecoration"]             { display: none !important; }
+    [data-testid="stMainMenuPopover"]        { display: none !important; }
+    .viewerBadge_container__r5tak           { display: none !important; }
+    .viewerBadge_link__qRIco                { display: none !important; }
+    /* "Manage App"-Badge unten rechts */
+    [data-testid="manage-app-button"]        { display: none !important; }
+    ._profileContainer_gzau3_53             { display: none !important; }
+    ._container_gzau3_1                     { display: none !important; }
+    /* Toolbar-Buttons oben rechts (Share, Favorit, Stift, GitHub) */
+    [data-testid="stActionButton"]           { display: none !important; }
+    [data-testid="baseButton-headerNoPadding"] { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
 
 
+
+
+# Streamlit-UI per JavaScript dauerhaft entfernen (MutationObserver)
+st.markdown("""
+<script>
+(function() {
+    function removeStreamlitUI() {
+        // Alle bekannten Selektoren für Streamlit-UI-Elemente
+        var selectors = [
+            '[data-testid="manage-app-button"]',
+            '[data-testid="stDeployButton"]',
+            '[data-testid="stToolbar"]',
+            '[data-testid="stMainMenuPopover"]',
+            '[data-testid="stActionButton"]',
+            '._container_gzau3_1',
+            '._profileContainer_gzau3_53',
+            '.viewerBadge_container__r5tak',
+            '#MainMenu',
+            'footer',
+            'header'
+        ];
+        selectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(el) {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.remove();
+            });
+        });
+    }
+
+    // Sofort ausführen
+    removeStreamlitUI();
+
+    // Auch nach DOM-Änderungen (Streamlit rendert asynchron nach)
+    var observer = new MutationObserver(function() {
+        removeStreamlitUI();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+""", unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -177,6 +261,23 @@ if st.session_state.view == 'start':
         line-height: 1.2 !important;
         min-height: 56px !important;
     }
+    /* Streamlit-UI-Elemente ausblenden */
+    #MainMenu                                { display: none !important; }
+    footer                                   { display: none !important; }
+    header                                   { display: none !important; }
+    [data-testid="stDeployButton"]           { display: none !important; }
+    [data-testid="stToolbar"]                { display: none !important; }
+    [data-testid="stDecoration"]             { display: none !important; }
+    [data-testid="stMainMenuPopover"]        { display: none !important; }
+    .viewerBadge_container__r5tak           { display: none !important; }
+    .viewerBadge_link__qRIco                { display: none !important; }
+    /* "Manage App"-Badge unten rechts */
+    [data-testid="manage-app-button"]        { display: none !important; }
+    ._profileContainer_gzau3_53             { display: none !important; }
+    ._container_gzau3_1                     { display: none !important; }
+    /* Toolbar-Buttons oben rechts (Share, Favorit, Stift, GitHub) */
+    [data-testid="stActionButton"]           { display: none !important; }
+    [data-testid="baseButton-headerNoPadding"] { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -194,6 +295,9 @@ if st.session_state.view == 'start':
     with r2b:
         if st.button("🌴 FERIEN", use_container_width=True, type="primary", key="btn_fe"):
             st.session_state.view = 'ferien'; st.rerun()
+
+    # Abstandspuffer damit "Manage App"-Badge die Buttons nicht überlagert
+    st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -248,9 +352,12 @@ elif st.session_state.view == 'klausuren':
     )
 
     if state.get("dateClick"):
-        nd = state["dateClick"]["date"][:10]
-        if st.session_state.selected_date != nd:
-            st.session_state.selected_date = nd; st.session_state.edit_id = None; st.rerun()
+        if st.session_state.cancel_click:
+            st.session_state.cancel_click = False  # Flag verbraucht, nächsten Klick wieder zulassen
+        else:
+            nd = state["dateClick"]["date"][:10]
+            if st.session_state.selected_date != nd:
+                st.session_state.selected_date = nd; st.session_state.edit_id = None; st.rerun()
     if state.get("eventClick"):
         ni = state["eventClick"]["event"].get("id")
         if st.session_state.edit_id != ni:
@@ -258,21 +365,22 @@ elif st.session_state.view == 'klausuren':
 
     if st.session_state.selected_date:
         st.divider()
-        with st.form("q_f"):
-            st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
+        st.write(f"**Neu am {datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y')}**")
+        with st.form("q_f", clear_on_submit=True):
             qc = st.selectbox("Kind", list(CHILD_COLORS.keys()))
             qs = st.selectbox("Fach", SUBJECTS)
             qn = st.text_input("Notiz")
-            c1, c2 = st.columns(2)
-            if c1.form_submit_button("Speichern"):
+            if st.form_submit_button("💾 Speichern", use_container_width=True):
                 supabase.table("klausuren").insert({
                     "datum": datetime.strptime(st.session_state.selected_date, '%Y-%m-%d').strftime('%d.%m.%Y'),
                     "titel": f"{qc}\n{qs}", "start_date": st.session_state.selected_date,
                     "color": CHILD_COLORS[qc], "child": qc, "note": qn
                 }).execute()
                 st.session_state.selected_date = None; st.session_state.cal_key = str(uuid.uuid4()); st.rerun()
-            if c2.form_submit_button("Abbrechen"):
-                st.session_state.selected_date = None; st.rerun()
+        if st.button("✕ Abbrechen", use_container_width=True, key="btn_cancel_new"):
+            st.session_state.selected_date = None
+            st.session_state.cancel_click = True
+            st.rerun()
 
     if st.session_state.edit_id and st.session_state.edit_id != "undefined":
         st.divider()
@@ -305,12 +413,20 @@ elif st.session_state.view == 'klausuren':
     if not k_df.empty:
         df_t = k_df.copy()
         df_t['Anzeige'] = df_t['titel'].str.replace('\n', ': ')
-        st.dataframe(
-            df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum': 'Wann', 'Anzeige': 'Wer & Was'}),
-            hide_index=True, use_container_width=True
-        )
+        df_t['start_date_dt'] = pd.to_datetime(df_t['start_date']).dt.date
+        df_t = df_t[df_t['start_date_dt'] >= date.today()]
+        if not df_t.empty:
+            st.dataframe(
+                df_t.sort_values(by='start_date')[['datum', 'Anzeige']].rename(columns={'datum': 'Wann', 'Anzeige': 'Wer & Was'}),
+                hide_index=True, use_container_width=True
+            )
+        else:
+            st.info("Keine bevorstehenden Klausuren.")
     else:
         st.info("Keine Einträge vorhanden.")
+
+    if st.button("← Hauptmenü", use_container_width=True):
+        st.session_state.view = 'start'; st.rerun()
 
 
 # =============================================================================
@@ -391,7 +507,7 @@ elif st.session_state.view == 'bus':
     #   200/201 Ausstieg: Linas Diek
     #   210     Ausstieg: Amboßweg
     #
-    # LINAS DIEK  → Kiel  (Linie 200, Ausstieg Seefischmarkt)
+    # LINAS DIEK  → Kiel  (Linie 200/201, Ausstieg Seefischmarkt)
     # AMBOßWEG    → Kiel  (Linie 210, Ausstieg Seefischmarkt)
     # -----------------------------------------------------------------------
 
@@ -442,22 +558,42 @@ elif st.session_state.view == 'bus':
         ("16:00", "200", "Linas Diek",  ""),
     ]
 
-    # Quelle: VKP PDF 200i.pdf, Spalte "Schönkirchen, Lina's Diek", Richtung Kiel, Mo–Fr
+    # Quelle: VKP PDF 200i.pdf, Rückfahrten Mo–Fr, Seiten 7–9
+    # Spalte "Schönkirchen, Lina's Diek", direkt abgelesen, Stand 21.11.2024
+    # Linie 201 = Fahrt-Nr 201xx (direkte Route ohne Söhren, ~4 Min bis Seefischmarkt)
+    # Linie 200 = Fahrt-Nr 200xx (via Söhren/Steinbergskamp, ~7 Min bis Seefischmarkt)
+    # [E] = nur an Schultagen  [30] = 30er-Route (umgekehrte Haltefolge)
     LINAS_DIEK = [
-        ("06:01", "200", "Seefischmarkt", ""),
-        ("06:38", "200", "Seefischmarkt", ""),
-        ("07:33", "200", "Seefischmarkt", ""),
-        ("08:06", "200", "Seefischmarkt", ""),
-        ("09:30", "200", "Seefischmarkt", ""),
-        ("10:30", "200", "Seefischmarkt", ""),
-        ("11:30", "200", "Seefischmarkt", ""),
-        ("12:30", "200", "Seefischmarkt", ""),
-        ("13:30", "200", "Seefischmarkt", ""),
-        ("14:30", "200", "Seefischmarkt", ""),
-        ("14:34", "200", "Seefischmarkt", ""),
-        ("15:30", "200", "Seefischmarkt", ""),
-        ("15:37", "200", "Seefischmarkt", ""),
-        ("16:40", "200", "Seefischmarkt", ""),
+        ("05:18", "200", "Seefischmarkt", ""),   # 20001 [30], via Söhren
+        ("05:31", "201", "Seefischmarkt", ""),   # 20103, direkt
+        ("06:15", "201", "Seefischmarkt", ""),   # 20105, direkt
+        ("06:38", "200", "Seefischmarkt", ""),   # 20003 [30], via Söhren
+        ("06:45", "201", "Seefischmarkt", ""),   # 20107, direkt
+        ("07:30", "201", "Seefischmarkt", ""),   # 20109 [E], direkt
+        ("07:33", "200", "Seefischmarkt", ""),   # 20011 [E], via Söhren
+        ("08:09", "201", "Seefischmarkt", ""),   # 20113, direkt
+        ("08:15", "201", "Seefischmarkt", ""),   # 20111, direkt
+        ("09:30", "201", "Seefischmarkt", ""),   # 20115, direkt
+        ("09:43", "200", "Seefischmarkt", ""),   # 20015, via Steinbergskamp
+        ("10:30", "201", "Seefischmarkt", ""),   # 20117, direkt
+        ("10:43", "200", "Seefischmarkt", ""),   # 20017, via Steinbergskamp
+        ("11:30", "201", "Seefischmarkt", ""),   # 20121, direkt
+        ("11:43", "200", "Seefischmarkt", ""),   # 20019, via Steinbergskamp
+        ("12:30", "201", "Seefischmarkt", ""),   # 20123, direkt
+        ("12:43", "200", "Seefischmarkt", ""),   # 20023, via Steinbergskamp
+        ("13:30", "201", "Seefischmarkt", ""),   # 20125, direkt
+        ("13:43", "200", "Seefischmarkt", ""),   # 20025 [E], via Steinbergskamp
+        ("14:30", "201", "Seefischmarkt", ""),   # 20127, direkt
+        ("14:38", "200", "Seefischmarkt", ""),   # 20029, via Söhren
+        ("15:30", "201", "Seefischmarkt", ""),   # 20129, direkt
+        ("15:43", "200", "Seefischmarkt", ""),   # 20035, via Steinbergskamp
+        ("16:10", "201", "Seefischmarkt", ""),   # 20131, direkt
+        ("16:30", "201", "Seefischmarkt", ""),   # 20133, direkt
+        ("16:43", "200", "Seefischmarkt", ""),   # 20043, via Söhren
+        ("17:10", "201", "Seefischmarkt", ""),   # 20135 [E], direkt
+        ("17:30", "201", "Seefischmarkt", ""),   # 20137, direkt
+        ("17:38", "200", "Seefischmarkt", ""),   # 20051, via Söhren
+        ("18:30", "201", "Seefischmarkt", ""),   # 20141, direkt
     ]
 
     # Quelle: VKP PDF 210i.pdf, Spalte "Schönkirchen, Amboßweg", Richtung Kiel, Mo–Fr
@@ -477,60 +613,29 @@ elif st.session_state.view == 'bus':
     LINE_BGLIGHT = {"200": "#FFEBEE", "201": "#E3F2FD", "210": "#E8F5E9"}
 
     def bus_card(zeit_str, linie, ausstieg, hinweis, diff_min, ist_naechste):
-        farbe  = LINE_COLORS.get(linie,  "#555")
-        bg_l   = LINE_BGLIGHT.get(linie, "#fafafa")
+        farbe = LINE_COLORS.get(linie, "#555")
+        bg    = LINE_BGLIGHT.get(linie, "#fafafa") if ist_naechste else "white"
+        rand  = f"2px solid {farbe}" if ist_naechste else "1px solid #e8e8e8"
 
-        bg     = bg_l if ist_naechste else "white"
-        rahmen = f"2px solid {farbe}" if ist_naechste else "1px solid #e8e8e8"
-
-        # Badge "Nächste"
-        naechste_badge = (
-            f'<span style="background:{farbe};color:white;font-size:0.7rem;'
-            f'padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;">'
-            f'▶ Nächste</span>'
-        ) if ist_naechste else ""
-
-        # Minuten-Countdown
+        badge    = f'<span style="background:{farbe};color:white;font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;">▶ Nächste</span>' if ist_naechste else ""
         if diff_min == 0:
-            countdown = f'<span style="color:{farbe};font-weight:bold;font-size:0.85rem;margin-left:6px;">jetzt!</span>'
+            cd = f'<span style="color:{farbe};font-weight:bold;font-size:0.85rem;">jetzt!</span>'
         elif 0 < diff_min <= 120:
-            countdown = f'<span style="color:{farbe};font-size:0.85rem;margin-left:6px;">in <b>{diff_min} Min.</b></span>'
+            cd = f'<span style="color:{farbe};font-size:0.85rem;">in <b>{diff_min} Min.</b></span>'
         else:
-            countdown = ""
+            cd = ""
+        hw = f'<div style="font-size:0.75rem;color:#999;margin-top:2px;">ℹ️ {hinweis}</div>' if hinweis else ""
 
-        hinweis_html = (
-            f'<div style="font-size:0.75rem;color:#999;margin-top:2px;">ℹ️ {hinweis}</div>'
-        ) if hinweis else ""
-
-        st.markdown(f"""
-        <div style="
-            background:{bg};
-            border:{rahmen};
-            border-left:6px solid {farbe};
-            border-radius:10px;
-            padding:11px 14px 9px 14px;
-            margin-bottom:9px;
-            box-shadow:1px 2px 5px rgba(0,0,0,0.06);
-        ">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
-                <div>
-                    <span style="font-size:1.4rem;font-weight:900;color:{farbe};">{zeit_str}</span>
-                    <span style="font-size:0.9rem;font-weight:700;
-                                 background:{farbe};color:white;
-                                 padding:2px 8px;border-radius:6px;
-                                 margin-left:8px;">Linie {linie}</span>
-                    {naechste_badge}
-                </div>
-                <div style="text-align:right;">
-                    {countdown}
-                </div>
-            </div>
-            <div style="margin-top:5px;font-size:0.9rem;color:#444;">
-                🚏 Ausstieg: <b>{ausstieg}</b>
-            </div>
-            {hinweis_html}
-        </div>
-        """, unsafe_allow_html=True)
+        html = (
+            f'<div style="background:{bg};border:{rand};border-left:6px solid {farbe};border-radius:10px;padding:11px 14px 9px 14px;margin-bottom:9px;box-shadow:1px 2px 5px rgba(0,0,0,0.06);">' +
+            f'<div style="display:flex;align-items:center;justify-content:space-between;">' +
+            f'<div><span style="font-size:1.4rem;font-weight:900;color:{farbe};">{zeit_str}</span>' +
+            f'<span style="font-size:0.9rem;font-weight:700;background:{farbe};color:white;padding:2px 8px;border-radius:6px;margin-left:8px;">Linie {linie}</span>' +
+            f'{badge}</div><div>{cd}</div></div>' +
+            f'<div style="margin-top:5px;font-size:0.9rem;color:#444;">🚏 Ausstieg: <b>{ausstieg}</b></div>' +
+            f'{hw}</div>'
+        )
+        st.markdown(html, unsafe_allow_html=True)
 
     def zeige_naechste_120min(fahrplan, haltestellenname, richtung):
         from datetime import timedelta
@@ -553,8 +658,11 @@ elif st.session_state.view == 'bus':
                 f"Nächste Fahrten ab **{WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}**."
             )
 
+        # Fahrplan nach Zeit sortieren, damit Reihenfolge garantiert stimmt
+        fahrplan_sorted = sorted(fahrplan, key=lambda x: x[0])
+
         treffer = []
-        for zeit_str, linie, ausstieg, hinweis in fahrplan:
+        for zeit_str, linie, ausstieg, hinweis in fahrplan_sorted:
             h, m    = map(int, zeit_str.split(":"))
             abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
             diff    = int((abfahrt - cutoff).total_seconds() / 60)
@@ -569,7 +677,7 @@ elif st.session_state.view == 'bus':
         if not treffer:
             # Suche: noch heute später?
             naechste_heute = None
-            for zeit_str, linie, ausstieg, hinweis in fahrplan:
+            for zeit_str, linie, ausstieg, hinweis in fahrplan_sorted:
                 h, m    = map(int, zeit_str.split(":"))
                 abfahrt = now.replace(hour=h, minute=m, second=0, microsecond=0)
                 diff    = int((abfahrt - cutoff).total_seconds() / 60)
