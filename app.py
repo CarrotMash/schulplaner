@@ -631,152 +631,199 @@ elif st.session_state.view == 'stundenplan':
 elif st.session_state.view == 'bus':
     page_header("🚌 Bus-Check")
 
-    import requests as _req
+    from datetime import timedelta as _td
 
-    # Haltestellenkonfiguration mit NAH.SH Abfahrtstafel-URLs
-    # HVV Station-IDs (Geofox-Format)
-    # Seefischmarkt: Master=hvv-id kommt via /gti/public/checkName
-    # Vorläufig mit bekannten IDs - Debug zeigt korrekte IDs wenn falsch
-    HALTESTELLEN = {
+    # -----------------------------------------------------------------------
+    # FAHRPLANDATEN Mo–Fr, Quelle: VKP PDF 200i/210i, Stand 21.11.2024
+    # Format: (Abfahrtszeit HH:MM, Linie, Richtung/Ausstieg)
+    # -----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # FAHRPLANDATEN Mo–Fr · Quelle: VKP PDF 200i/200ii/210i · Stand 27.11.2024
+    # Direkt abgelesen aus aktuellen PDFs auf vkp.de (für 2026 unverändert)
+    # Format: (Abfahrtszeit, Linie, Ausstieg)
+    # 30er-Fahrten (umgekehrte Route) und H-Fahrten (nur Ferientage) ausgelassen
+    # E-Fahrten (nur Schultage) sind enthalten da App primär für Schüler
+    # -----------------------------------------------------------------------
+    FAHRPLAN = {
         "seefisch": {
-            "label":    "🏠 Seefischmarkt",
+            "label":    "Seefischmarkt",
+            "icon":     "🏠",
             "sub":      "→ Schönkirchen",
-            "url":      "https://www.hvv.de/",
             "richtung": "Richtung Schönkirchen / Schönberg",
-            "id":       "Master:9911150",
+            "zeiten": [
+                # Linie 201 (direkt): FahrtNr 201xx, kein Söhren-Halt
+                # Linie 200 (via Söhren): FahrtNr 200xx
+                # Linie 210 (via Amboßweg/Tökendorf): FahrtNr 210xx
+                ("05:52", "200", "Linas Diek"),   # 20130
+                ("06:22", "201", "Linas Diek"),   # 20102
+                ("06:37", "201", "Linas Diek"),   # 20104
+                ("06:52", "200", "Linas Diek"),   # 20004
+                ("07:07", "200", "Linas Diek"),   # 20006 [E]
+                ("07:22", "201", "Linas Diek"),   # 20106
+                ("07:37", "200", "Linas Diek"),   # 20008 [E]
+                ("07:52", "200", "Linas Diek"),   # 20010
+                ("08:07", "200", "Linas Diek"),   # 20012
+                ("08:22", "201", "Linas Diek"),   # 20108
+                ("08:37", "200", "Linas Diek"),   # 20014
+                ("08:52", "200", "Linas Diek"),   # 20016
+                ("09:22", "201", "Linas Diek"),   # 20110
+                ("09:52", "200", "Linas Diek"),   # 20018
+                ("10:22", "201", "Linas Diek"),   # 20112
+                ("10:52", "200", "Linas Diek"),   # 20020
+                ("11:22", "201", "Linas Diek"),   # 20114
+                ("11:52", "200", "Linas Diek"),   # 20022
+                ("12:22", "201", "Linas Diek"),   # 20116 (210 fährt separat)
+                ("12:52", "200", "Linas Diek"),   # 20024
+                ("13:22", "201", "Linas Diek"),   # 20118 (E)
+                ("13:52", "200", "Linas Diek"),   # 20028 (H) → 20030
+                ("14:22", "201", "Linas Diek"),   # 20120 (E)
+                ("14:52", "200", "Linas Diek"),   # 20034
+                ("15:07", "200", "Linas Diek"),   # 20036 [E]
+                ("15:22", "201", "Linas Diek"),   # 20122
+                ("15:52", "200", "Linas Diek"),   # 20038
+                ("16:07", "200", "Linas Diek"),   # 20040 [E]
+                ("16:22", "201", "Linas Diek"),   # 20124 (E) → 20126 (Schule)
+                ("16:52", "200", "Linas Diek"),   # 20042
+                ("17:22", "201", "Linas Diek"),   # 20126
+                ("17:52", "200", "Linas Diek"),   # 20048
+                # 210er separat
+                ("07:37", "210", "Amboßweg"),     # 21002
+                ("09:37", "210", "Amboßweg"),     # 21004 [E]
+                ("11:37", "210", "Amboßweg"),     # 21002
+                ("13:37", "210", "Amboßweg"),     # 21008
+                ("15:37", "210", "Amboßweg"),     # 21012
+                ("17:37", "210", "Amboßweg"),     # 21016
+            ],
         },
         "linas": {
-            "label":    "🏫 Linas Diek",
+            "label":    "Linas Diek",
+            "icon":     "🏫",
             "sub":      "→ Seefischmarkt",
-            "url":      "https://www.hvv.de/",
             "richtung": "Richtung Kiel Seefischmarkt",
-            "id":       "Master:9911207",
+            "zeiten": [
+                # Direkt aus 200ii.pdf Spalte "Schönkirchen, Lina's Diek"
+                ("05:18", "200", "Seefischmarkt"),  # 20001 [30]
+                ("05:31", "201", "Seefischmarkt"),  # 20103
+                ("06:15", "201", "Seefischmarkt"),  # 20105
+                ("06:38", "200", "Seefischmarkt"),  # 20003 [30]
+                ("06:45", "201", "Seefischmarkt"),  # 20107
+                ("07:30", "201", "Seefischmarkt"),  # 20109 [E]
+                ("07:33", "200", "Seefischmarkt"),  # 20011 [E]
+                ("08:09", "201", "Seefischmarkt"),  # 20113
+                ("08:15", "201", "Seefischmarkt"),  # 20111
+                ("09:30", "201", "Seefischmarkt"),  # 20115
+                ("09:43", "200", "Seefischmarkt"),  # 20015
+                ("10:30", "201", "Seefischmarkt"),  # 20117
+                ("10:43", "200", "Seefischmarkt"),  # 20017
+                ("11:30", "201", "Seefischmarkt"),  # 20121
+                ("11:43", "200", "Seefischmarkt"),  # 20019
+                ("12:30", "201", "Seefischmarkt"),  # 20123
+                ("12:43", "200", "Seefischmarkt"),  # 20023
+                ("13:30", "201", "Seefischmarkt"),  # 20125
+                ("13:43", "200", "Seefischmarkt"),  # 20025 [E]
+                ("14:30", "201", "Seefischmarkt"),  # 20127
+                ("14:38", "200", "Seefischmarkt"),  # 20029
+                ("15:30", "201", "Seefischmarkt"),  # 20129
+                ("15:43", "200", "Seefischmarkt"),  # 20035
+                ("16:10", "201", "Seefischmarkt"),  # 20131
+                ("16:30", "201", "Seefischmarkt"),  # 20133
+                ("16:43", "200", "Seefischmarkt"),  # 20043
+                ("17:10", "201", "Seefischmarkt"),  # 20135 [E]
+                ("17:30", "201", "Seefischmarkt"),  # 20137
+                ("17:38", "200", "Seefischmarkt"),  # 20051
+                ("18:30", "201", "Seefischmarkt"),  # 20141
+            ],
         },
         "amboss": {
-            "label":    "🏫 Amboßweg",
+            "label":    "Amboßweg",
+            "icon":     "🏫",
             "sub":      "→ Seefischmarkt",
-            "url":      "https://www.hvv.de/",
             "richtung": "Richtung Kiel Seefischmarkt",
-            "id":       "Master:9911208",
+            "zeiten": [
+                # Direkt aus 210i.pdf Spalte "Schönkirchen, Amboßweg"
+                ("06:07", "210", "Seefischmarkt"),
+                ("07:07", "210", "Seefischmarkt"),
+                ("08:17", "210", "Seefischmarkt"),
+                ("12:22", "210", "Seefischmarkt"),
+                ("14:22", "210", "Seefischmarkt"),
+            ],
         },
     }
 
     LINE_COLORS  = {"200":"#C62828","201":"#1565C0","210":"#2E7D32"}
     LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
 
-    def hole_abfahrten(stop_id: str, results: int = 10):
-        """Abfahrten via HVV/Stadtbahn REST API – deckt NAH.SH / SH vollständig ab."""
-        from datetime import datetime as _dt
+    def naechste_3(zeiten, jetzt):
+        """Gibt die 3 nächsten Abfahrten ab jetzt zurück (inkl. heute + nächster Werktag)."""
+        heute_str = jetzt.strftime("%H:%M")
+        # Heutige Abfahrten ab jetzt
+        treffer = [(z, li, ri) for z, li, ri in zeiten if z >= heute_str]
+        if len(treffer) >= 3:
+            return treffer[:3], False
+        # Aufgefüllt mit ersten Fahrten des nächsten Tages
+        rest = 3 - len(treffer)
+        naechste = [(z, li, ri) for z, li, ri in zeiten][:rest]
+        return treffer + naechste, len(treffer) < 3
 
-        now = _dt.now(zoneinfo.ZoneInfo("Europe/Berlin"))
+    def bus_card_static(zeit, linie, richtung, jetzt, ist_erste, naechster_tag=False):
+        farbe = LINE_COLORS.get(linie, "#555")
+        bg    = LINE_BGLIGHT.get(linie, "#f9f9f9")
+        rand  = f"3px solid {farbe}" if ist_erste else f"1px solid #eee"
 
-        # HVV REST API (öffentlich, kein Auth nötig für Basisfunktionen)
-        url = "https://hvv-app.de/gti/public/getDepartures"
-        payload = {
-            "stationId": {"id": stop_id, "type": "STATION"},
-            "time":      {"date": now.strftime("%d.%m.%Y"),
-                          "time": now.strftime("%H:%M")},
-            "maxList":   results,
-            "useRealtime": True,
-        }
-        errors = []
+        # Countdown berechnen
         try:
-            r = _req.post(
-                url, json=payload, timeout=10,
-                headers={
-                    "Content-Type":  "application/json",
-                    "Accept":        "application/json",
-                    "X-HVV-Lang":    "de",
-                    "geofox-auth-signature": "",
-                    "geofox-auth-user": "lgvhh-prd",
-                    "geofox-auth-type": "HmacSHA1",
-                }
-            )
-            if r.status_code != 200:
-                errors.append(f"HTTP {r.status_code}: {r.text[:300]}")
-                return None, errors, {}
+            h, m   = map(int, zeit.split(":"))
+            abf_dt = jetzt.replace(hour=h, minute=m, second=0, microsecond=0)
+            if naechster_tag or abf_dt < jetzt:
+                abf_dt += _td(days=1)
+            diff   = int((abf_dt - jetzt).total_seconds() / 60)
+            if diff == 0:
+                cd_html = f'<span style="color:{farbe};font-weight:800;">jetzt!</span>'
+            elif diff < 60:
+                cd_html = f'<span style="color:{farbe};font-weight:700;">in {diff} Min.</span>'
+            else:
+                h2, m2  = divmod(diff, 60)
+                cd_html = f'<span style="color:{farbe};font-weight:700;">in {h2}h {m2:02d}m</span>'
+        except Exception:
+            cd_html = ""
 
-            data = r.json()
-            raw_deps = data.get("departures", [])
-            deps = []
-            for d in raw_deps:
-                try:
-                    line_info  = d.get("line", {})
-                    linie_nr   = line_info.get("name", "?").replace("Bus ", "").strip()
-                    ziel       = d.get("direction", "?")
-                    t_plan     = d.get("timeOffset", {})
-                    t_rt       = d.get("realTimeOffset", t_plan)
-                    # timeOffset = Minuten ab Abfragezeitpunkt
-                    from datetime import timedelta as _td
-                    plan_dt   = now + _td(minutes=int(t_plan) if t_plan else 0)
-                    rt_dt     = now + _td(minutes=int(t_rt)   if t_rt   else 0)
-                    versp_min = int(t_rt or 0) - int(t_plan or 0)
-                    deps.append({
-                        "scheduledDeparture": plan_dt.strftime("%H:%M"),
-                        "departure":          rt_dt.strftime("%H:%M"),
-                        "delay":              versp_min,
-                        "line":               linie_nr,
-                        "direction":          ziel,
-                        "isCancelled":        d.get("cancelled", False),
-                    })
-                except Exception:
-                    continue
-            return deps, None, data
-        except Exception as e:
-            errors.append(str(e))
-        return None, errors, {}
-    def bus_card_rt(dep):
-        linie_nr  = str(dep.get("line", "?"))
-        ziel      = dep.get("direction", "?")
-        plan_zeit = dep.get("scheduledDeparture", "?")
-        rt_zeit   = dep.get("departure", plan_zeit)
-        versp_min = dep.get("delay", 0) or 0
-        gecancelt = dep.get("isCancelled", False)
-
-        farbe = LINE_COLORS.get(linie_nr, "#555")
-        bg    = LINE_BGLIGHT.get(linie_nr, "#f9f9f9")
-
-        if gecancelt:
-            versp_html = '<span style="color:#C62828;font-weight:700;">❌ Ausfall</span>'
-        elif versp_min == 0:
-            versp_html = '<span style="color:#2E7D32;font-weight:700;">✓ pünktlich</span>'
-        elif versp_min > 0:
-            versp_html = f'<span style="color:#C62828;font-weight:700;">+{versp_min} Min.</span>'
-        else:
-            versp_html = f'<span style="color:#1565C0;font-weight:700;">{versp_min} Min.</span>'
-
-        if versp_min != 0 and not gecancelt and plan_zeit != rt_zeit:
-            zeit_html = (
-                f'<span style="text-decoration:line-through;color:#aaa;font-size:1rem;margin-right:4px;">'
-                f'{plan_zeit}</span>'
-                f'<span style="font-size:1.4rem;font-weight:900;color:{farbe};">{rt_zeit}</span>'
-            )
-        elif gecancelt:
-            zeit_html = f'<span style="text-decoration:line-through;color:#aaa;font-size:1.4rem;font-weight:900;">{plan_zeit}</span>'
-        else:
-            zeit_html = f'<span style="font-size:1.4rem;font-weight:900;color:{farbe};">{plan_zeit}</span>'
-
-        html = (
-            f'<div style="background:{bg};border-left:6px solid {farbe};border-radius:10px;'
-            f'padding:10px 14px 8px 14px;margin-bottom:8px;box-shadow:1px 2px 5px rgba(0,0,0,0.05);">'
-            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-            f'<div>{zeit_html}'
-            f'<span style="background:{farbe};color:white;font-size:0.82rem;font-weight:700;'
-            f'padding:2px 9px;border-radius:6px;margin-left:8px;">Linie {linie_nr}</span>'
-            f'</div><div>{versp_html}</div></div>'
-            f'<div style="margin-top:5px;font-size:0.88rem;">'
-            f'<b style="color:#333 !important;">🎯 {ziel}</b></div>'
-            f'</div>'
+        naechster_tag_badge = (
+            '<span style="background:#888;color:white;font-size:0.68rem;padding:1px 6px;'
+            'border-radius:8px;margin-left:6px;">nächster Tag</span>' if naechster_tag else ""
         )
-        st.markdown(html, unsafe_allow_html=True)
+        erste_badge = (
+            f'<span style="background:{farbe};color:white;font-size:0.68rem;font-weight:700;'
+            f'padding:1px 7px;border-radius:8px;margin-left:6px;">▶ Nächste</span>' if ist_erste else ""
+        )
+
+        st.markdown(
+            f'<div style="background:{bg};border:{rand};border-left:6px solid {farbe};'
+            f'border-radius:12px;padding:12px 16px 10px 16px;margin-bottom:10px;'
+            f'box-shadow:0 2px 8px rgba(0,0,0,0.06);">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            f'<div>'
+            f'<span style="font-size:1.6rem;font-weight:900;color:{farbe};">{zeit}</span>'
+            f'<span style="background:{farbe};color:white;font-size:0.82rem;font-weight:700;'
+            f'padding:2px 10px;border-radius:6px;margin-left:8px;">Linie {linie}</span>'
+            f'{erste_badge}{naechster_tag_badge}'
+            f'</div>'
+            f'<div style="text-align:right;">{cd_html}</div>'
+            f'</div>'
+            f'<div style="margin-top:6px;font-size:0.88rem;">'
+            f'<span style="color:#555 !important;">🚏 Ausstieg: </span>'
+            f'<b style="color:#222 !important;">{richtung}</b>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
     # Haltestellen-Buttons
     bc = st.columns(3)
-    for i, (key, cfg) in enumerate(HALTESTELLEN.items()):
+    for i, (key, cfg) in enumerate(FAHRPLAN.items()):
         aktiv = st.session_state.bus_halt == key
         with bc[i]:
             if st.button(
-                f"{cfg['label']}\n{cfg['sub']}",
+                f"{cfg['icon']} {cfg['label']}\n{cfg['sub']}",
                 key=f"bus_btn_{key}",
                 use_container_width=True,
                 type="primary" if aktiv else "secondary"
@@ -787,46 +834,51 @@ elif st.session_state.view == 'bus':
     st.divider()
 
     if st.session_state.bus_halt:
-        cfg     = HALTESTELLEN[st.session_state.bus_halt]
-        stop_id = cfg["id"]
+        cfg  = FAHRPLAN[st.session_state.bus_halt]
+        now  = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin")).replace(tzinfo=None)
+        wt   = now.weekday()
+        WT   = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
 
         st.caption(
-            f"📍 **{cfg['label'].split(' ',1)[1]}** · {cfg['richtung']} · "
-            f"Echtzeit via NAH.SH HAFAS"
+            f"📍 **{cfg['label']}** · {cfg['richtung']} · "
+            f"Mo–Fr · Stand: VKP Nov. 2024"
         )
 
-        with st.spinner("Abfahrten werden geladen …"):
-            deps, errors, _raw_debug = hole_abfahrten(stop_id)
-
-        if deps is None:
-            st.error("⚠️ Verbindung zur Echtzeit-API nicht möglich.")
-            with st.expander("🔍 Fehlerdetails"):
-                for e in (errors or []):
-                    st.code(e)
-            st.markdown(
-                f'<a href="{cfg["url"]}" target="_blank" style="color:#FF4B4B;font-weight:600;">'
-                f'🔗 Abfahrten auf nah.sh öffnen</a>',
-                unsafe_allow_html=True
+        if wt >= 5:
+            # Wochenende
+            tage = 2 if wt == 5 else 1
+            nwt  = now + _td(days=tage)
+            st.warning(
+                f"⚠️ Dieser Fahrplan gilt Mo–Fr. "
+                f"Nächste Fahrten: **{WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}**"
             )
-        elif len(deps) == 0:
-            st.warning("Keine Abfahrten gefunden.")
-            with st.expander("🔍 API-Rohausgabe (Debug)"):
-                st.code(str(_raw_debug))
+            treffer = [(z, li, ri) for z, li, ri in cfg["zeiten"]][:3]
+            for i, (z, li, ri) in enumerate(treffer):
+                bus_card_static(z, li, ri, now, i == 0, naechster_tag=True)
         else:
-            for dep in deps:
-                bus_card_rt(dep)
+            treffer, hat_uebertrag = naechste_3(cfg["zeiten"], now)
+            if not treffer:
+                st.info("Keine Abfahrten gefunden.")
+            else:
+                for i, (z, li, ri) in enumerate(treffer):
+                    ist_uebertrag = hat_uebertrag and i >= (3 - (3 - len(
+                        [(z2,l2,r2) for z2,l2,r2 in cfg["zeiten"]
+                         if z2 >= now.strftime("%H:%M")]
+                    )))
+                    bus_card_static(z, li, ri, now, i == 0,
+                                    naechster_tag=(hat_uebertrag and
+                                                   z < now.strftime("%H:%M")))
 
-        if st.button("🔄 Aktualisieren", use_container_width=True):
+        if st.button("🔄 Aktualisieren", use_container_width=True, key="bus_refresh"):
             st.rerun()
     else:
         st.markdown(
-            "<div style='text-align:center;color:#aaa;padding:30px 0;'>"
+            "<div style='text-align:center;color:#aaa;padding:30px 0;font-size:1.1rem;'>"
             "⬆️ Bitte Haltestelle auswählen</div>",
             unsafe_allow_html=True
         )
 
     back_button()
-
 
 # =============================================================================
 # 5. FERIEN
