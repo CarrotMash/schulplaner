@@ -47,6 +47,7 @@ if 'editing_grade'     not in st.session_state: st.session_state.editing_grade =
 if 'selected_date'     not in st.session_state: st.session_state.selected_date = None
 if 'edit_id'           not in st.session_state: st.session_state.edit_id = None
 if 'cancel_click'      not in st.session_state: st.session_state.cancel_click = False
+if 'active_msg'        not in st.session_state: st.session_state.active_msg   = None
 if 'bus_halt'          not in st.session_state: st.session_state.bus_halt = None
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
@@ -252,7 +253,7 @@ if st.session_state.view == 'start':
         )
         st.markdown(logo_html, unsafe_allow_html=True)
 
-    # Klausur-Frühwarnung
+    # Klausur-Frühwarnung – volle Breite unterhalb von Logo + Bild
     try:
         res_warn = supabase.table("klausuren").select("*").execute()
         heute_d  = date.today()
@@ -266,10 +267,19 @@ if st.session_state.view == 'start':
                 pass
         for delta, k in sorted(bald, key=lambda x: x[0]):
             titel = k["titel"].replace("\n", " · ")
-            wann  = {0:"⚡ **heute!**", 1:"⏰ **morgen**"}.get(delta, "📅 **übermorgen**")
-            st.warning(f"🔔 Klausur {wann}: **{titel}**")
+            icon  = {0: "⚡", 1: "⏰"}.get(delta, "📅")
+            wann  = {0: "heute!", 1: "morgen"}.get(delta, "übermorgen")
+            st.markdown(
+                f'<div style="margin-top:8px;background:#FF6F00;border-radius:8px;'
+                f'padding:8px 12px;font-size:0.85rem;color:#FFFFFF !important;">'
+                f'<b style="color:#FFFFFF;">{icon} Klausur {wann}:</b> {titel}'
+                f'</div>',
+                unsafe_allow_html=True
+            )
     except Exception:
         pass
+
+    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
 
     # Navigations-Buttons 2×2
     r1a, r1b = st.columns(2)
@@ -298,32 +308,46 @@ if st.session_state.view == 'start':
 
     if msgs:
         for msg in msgs:
-            farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
-            name  = msg.get("name","?")
-            text  = msg.get("text","")
-            mid   = msg['id']
+            farbe   = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
+            name    = msg.get("name","?")
+            text    = msg.get("text","")
+            mid     = msg['id']
+            aktiv   = st.session_state.active_msg == mid
             try:
                 ts   = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
-                zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
+                datum_str = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m.")
+                uhr_str   = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
+                zeit      = f"{datum_str} um {uhr_str}"
             except Exception:
                 zeit = ""
-            # Nachricht + Löschbutton in einer Zeile
-            dcol, mcol = st.columns([14, 1])
-            with dcol:
-                st.markdown(
-                    f'<div class="pin-bubble" style="border-left-color:{farbe};">'
-                    f'<span class="pin-name" style="color:{farbe};">{name}</span>'
-                    f'<span class="pin-zeit">{zeit}</span>'
-                    f'<div class="pin-text">{text}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-            with mcol:
-                st.markdown("<div style='margin-top:10px'>", unsafe_allow_html=True)
-                if st.button("🗑", key=f"del_msg_{mid}"):
-                    supabase.table("nachrichten").delete().eq("id", mid).execute()
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+
+            rand   = f"2px solid {farbe}" if aktiv else f"1px solid #eee"
+            bg     = "#fff" if aktiv else "#f8f8f8"
+
+            # Nachricht anklicken → aktiviert Löschoption
+            btn_label = f"👤 {name} – {zeit}: {text}"
+            if st.button(
+                btn_label,
+                key=f"msg_btn_{mid}",
+                use_container_width=True,
+            ):
+                st.session_state.active_msg = None if aktiv else mid
+                st.rerun()
+
+            # Lösch- und Abbrechen-Button nur bei aktiver Nachricht
+            if aktiv:
+                ca, cb = st.columns(2)
+                with ca:
+                    if st.button("🗑 Löschen", key=f"del_{mid}",
+                                 use_container_width=True, type="primary"):
+                        supabase.table("nachrichten").delete().eq("id", mid).execute()
+                        st.session_state.active_msg = None
+                        st.rerun()
+                with cb:
+                    if st.button("✕ Abbrechen", key=f"cancel_{mid}",
+                                 use_container_width=True):
+                        st.session_state.active_msg = None
+                        st.rerun()
     else:
         st.caption("Noch keine Nachrichten.")
 
