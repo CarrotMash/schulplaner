@@ -246,7 +246,6 @@ if st.session_state.view == 'start':
             justify-content: space-between;
             box-shadow: 0 4px 14px rgba(255,75,75,0.35);
         ">
-            <!-- App-Name -->
             <div style="
                 font-size: 1.45rem;
                 font-weight: 900;
@@ -256,10 +255,8 @@ if st.session_state.view == 'start':
                 line-height: 1;
             ">Schul<span style="opacity:0.65;">planer</span></div>
 
-            <!-- Trennlinie -->
             <div style="height:1px; background:rgba(255,255,255,0.25); margin:8px 0;"></div>
 
-            <!-- Datum-Block -->
             <div style="display:flex; align-items:flex-end; gap:6px;">
                 <div style="
                     background: rgba(255,255,255,0.18);
