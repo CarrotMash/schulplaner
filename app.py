@@ -225,8 +225,8 @@ if st.session_state.view == 'start':
     heute = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin"))
     wt_namen = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
 
-    # Bild links, Logo-Block rechts
-    img_col, txt_col = st.columns([1, 2])
+    # Bild links, Logo-Block rechts – gleiche Breite
+    img_col, txt_col = st.columns([1, 1])
     with img_col:
         if os.path.exists("startbild.jpg"):
             st.image("startbild.jpg", use_container_width=True)
@@ -236,8 +236,10 @@ if st.session_state.view == 'start':
         jahr   = heute.strftime("%Y")
         wt     = wt_namen[heute.weekday()]
         logo_html = (
-            f'<div style="background:linear-gradient(150deg,#FF4B4B,#c0392b);border-radius:16px;padding:14px 16px 12px 16px;box-shadow:0 4px 14px rgba(255,75,75,0.35);">'
-            f'<div style="font-size:1.9rem;font-weight:900;color:white;letter-spacing:2px;text-transform:uppercase;line-height:1;">Schul<span style="opacity:0.6;">planer</span></div>'
+            f'<div style="background:linear-gradient(150deg,#FF4B4B,#c0392b);border-radius:16px;'
+            f'padding:14px 16px 12px 16px;box-shadow:0 4px 14px rgba(255,75,75,0.35);'
+            f'height:100%;min-height:140px;display:flex;flex-direction:column;justify-content:space-between;">'
+            f'<div style="font-size:1.9rem;font-weight:900;color:white;letter-spacing:2px;text-transform:uppercase;line-height:1.1;">SCHUL<br><span style="opacity:0.6;">PLANER</span></div>'
             f'<div style="height:1px;background:rgba(255,255,255,0.25);margin:8px 0;"></div>'
             f'<div style="display:flex;align-items:flex-end;gap:6px;">'
             f'<div style="background:rgba(255,255,255,0.18);border-radius:10px;padding:4px 10px;text-align:center;min-width:42px;">'
@@ -305,24 +307,23 @@ if st.session_state.view == 'start':
                 zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
-            # Nachricht volle Breite
-            st.markdown(
-                f'<div class="pin-bubble" style="border-left-color:{farbe};'
-                f'display:flex;justify-content:space-between;align-items:flex-start;">'
-                f'<div style="flex:1;">'
-                f'<span class="pin-name" style="color:{farbe};">{name}</span>'
-                f'<span class="pin-zeit">{zeit}</span>'
-                f'<div class="pin-text">{text}</div>'
-                f'</div></div>',
-                unsafe_allow_html=True
-            )
-            # Lösch-Button schmal, direkt darunter rechtsbündig
-            bcol1, bcol2 = st.columns([10, 1])
-            with bcol2:
+            # Nachricht + Löschbutton in einer Zeile
+            mcol, dcol = st.columns([1, 14])
+            with dcol:
+                st.markdown(
+                    f'<div class="pin-bubble" style="border-left-color:{farbe};">'
+                    f'<span class="pin-name" style="color:{farbe};">{name}</span>'
+                    f'<span class="pin-zeit">{zeit}</span>'
+                    f'<div class="pin-text">{text}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+            with mcol:
+                st.markdown("<div style='margin-top:10px'>", unsafe_allow_html=True)
                 if st.button("🗑", key=f"del_msg_{mid}"):
                     supabase.table("nachrichten").delete().eq("id", mid).execute()
                     st.rerun()
-            st.markdown("<div style='margin-top:-18px'></div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.caption("Noch keine Nachrichten.")
 
