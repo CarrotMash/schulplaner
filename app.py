@@ -316,26 +316,25 @@ if st.session_state.view == 'start':
                 zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
-            # Nachricht (7/8) + Löschbutton (1/8) in einer Zeile
-            dcol, mcol = st.columns([7, 1])
-            with dcol:
-                st.markdown(
-                    f'<div class="pin-bubble" style="border-left-color:{farbe};margin-bottom:0;">'
-                    f'<span class="pin-name" style="color:{farbe};">{name}</span>'
-                    f'<span class="pin-zeit">{zeit}</span>'
-                    f'<div class="pin-text">{text}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-            with mcol:
-                # Button vertikal mittig via CSS margin
-                btn_top = "8px" if len(text) < 60 else "14px"
-                st.markdown(f"<div style='margin-top:{btn_top};'>", unsafe_allow_html=True)
-                if st.button("🗑", key=f"del_msg_{mid}", use_container_width=True):
+            # Bubble mit vollem Inhalt + separater Löschen-Button darunter rechts
+            st.markdown(
+                f'<div style="background:#fafafa;border-left:4px solid {farbe};border-radius:10px;'
+                f'padding:10px 14px 8px 14px;margin-bottom:4px;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
+                f'<span style="font-weight:800;font-size:0.9rem;color:{farbe} !important;">{name}</span>'
+                f'<span style="font-size:0.72rem;color:#999 !important;">{zeit}</span>'
+                f'</div>'
+                f'<div style="font-size:0.92rem;color:#222 !important;margin-top:4px;">{text}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+            # Löschen-Link als schlanker Button direkt unter der Bubble, rechtsbündig
+            _, del_col = st.columns([6, 1])
+            with del_col:
+                if st.button("✕", key=f"del_msg_{mid}", use_container_width=True,
+                             help="Nachricht löschen"):
                     supabase.table("nachrichten").delete().eq("id", mid).execute()
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("<div style='margin-bottom:2px'></div>", unsafe_allow_html=True)
     else:
         st.caption("Noch keine Nachrichten.")
 
