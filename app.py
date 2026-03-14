@@ -231,52 +231,24 @@ if st.session_state.view == 'start':
         if os.path.exists("startbild.jpg"):
             st.image("startbild.jpg", use_container_width=True)
     with txt_col:
-        tag_nr   = heute.strftime("%d")
-        monat    = heute.strftime("%b").upper()
-        jahr     = heute.strftime("%Y")
-        wt       = wt_namen[heute.weekday()]
-        st.markdown(f'''
-        <div style="
-            background: linear-gradient(150deg, #FF4B4B 0%, #c0392b 100%);
-            border-radius: 16px;
-            padding: 14px 16px 12px 16px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            box-shadow: 0 4px 14px rgba(255,75,75,0.35);
-        ">
-            <div style="
-                font-size: 1.45rem;
-                font-weight: 900;
-                color: white;
-                letter-spacing: 1px;
-                text-transform: uppercase;
-                line-height: 1;
-            ">Schul<span style="opacity:0.65;">planer</span></div>
-
-            <div style="height:1px; background:rgba(255,255,255,0.25); margin:8px 0;"></div>
-
-            <div style="display:flex; align-items:flex-end; gap:6px;">
-                <div style="
-                    background: rgba(255,255,255,0.18);
-                    border-radius: 10px;
-                    padding: 4px 10px;
-                    text-align: center;
-                    min-width: 42px;
-                ">
-                    <div style="font-size:1.6rem;font-weight:900;color:white;line-height:1;">{tag_nr}</div>
-                    <div style="font-size:0.65rem;font-weight:700;color:rgba(255,255,255,0.75);letter-spacing:1px;">{monat} {jahr}</div>
-                </div>
-                <div style="
-                    font-size: 0.82rem;
-                    font-weight: 600;
-                    color: rgba(255,255,255,0.85);
-                    padding-bottom: 4px;
-                ">{wt}</div>
-            </div>
-        </div>
-        ''', unsafe_allow_html=True)
+        tag_nr = heute.strftime("%d")
+        monat  = heute.strftime("%b").upper()
+        jahr   = heute.strftime("%Y")
+        wt     = wt_namen[heute.weekday()]
+        logo_html = (
+            f'<div style="background:linear-gradient(150deg,#FF4B4B,#c0392b);border-radius:16px;padding:14px 16px 12px 16px;box-shadow:0 4px 14px rgba(255,75,75,0.35);">'
+            f'<div style="font-size:1.45rem;font-weight:900;color:white;letter-spacing:1px;text-transform:uppercase;line-height:1;">Schul<span style="opacity:0.65;">planer</span></div>'
+            f'<div style="height:1px;background:rgba(255,255,255,0.25);margin:8px 0;"></div>'
+            f'<div style="display:flex;align-items:flex-end;gap:6px;">'
+            f'<div style="background:rgba(255,255,255,0.18);border-radius:10px;padding:4px 10px;text-align:center;min-width:42px;">'
+            f'<div style="font-size:1.6rem;font-weight:900;color:white;line-height:1;">{tag_nr}</div>'
+            f'<div style="font-size:0.65rem;font-weight:700;color:rgba(255,255,255,0.75);letter-spacing:1px;">{monat} {jahr}</div>'
+            f'</div>'
+            f'<div style="font-size:0.82rem;font-weight:600;color:rgba(255,255,255,0.85);padding-bottom:4px;">{wt}</div>'
+            f'</div>'
+            f'</div>'
+        )
+        st.markdown(logo_html, unsafe_allow_html=True)
 
     # Klausur-Frühwarnung
     try:
