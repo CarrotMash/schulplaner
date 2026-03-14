@@ -304,6 +304,8 @@ if st.session_state.view == 'start':
     except Exception:
         msgs = []
 
+    st.markdown('<style>div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] { align-self: center !important; }</style>', unsafe_allow_html=True)
+
     if msgs:
         for msg in msgs:
             farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
@@ -315,23 +317,20 @@ if st.session_state.view == 'start':
                 zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
-            # Nachricht volle Breite + Button darunter rechtsbündig mit neg. margin
-            st.markdown(
-                f'<div class="pin-bubble" style="border-left-color:{farbe};margin-bottom:2px;">'
-                f'<span class="pin-name" style="color:{farbe};">{name}</span>'
-                f'<span class="pin-zeit">{zeit}</span>'
-                f'<div class="pin-text">{text}</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
             dcol, mcol = st.columns([7, 1])
+            with dcol:
+                st.markdown(
+                    f'<div class="pin-bubble" style="border-left-color:{farbe};margin-bottom:0;">'
+                    f'<span class="pin-name" style="color:{farbe};">{name}</span>'
+                    f'<span class="pin-zeit">{zeit}</span>'
+                    f'<div class="pin-text">{text}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
             with mcol:
                 if st.button("🗑", key=f"del_msg_{mid}", use_container_width=True):
                     supabase.table("nachrichten").delete().eq("id", mid).execute()
                     st.rerun()
-            # Negativer Abstand zieht Button näher an Bubble
-            st.markdown("<div style='margin-top:-52px;margin-bottom:10px;'></div>",
-                        unsafe_allow_html=True)
     else:
         st.caption("Noch keine Nachrichten.")
 
