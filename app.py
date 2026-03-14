@@ -232,6 +232,12 @@ if st.session_state.view == 'start':
 
     page_header("📅 Schulplaner")
 
+    # Startbild – klein und zentriert
+    if os.path.exists("startbild.jpg"):
+        col_l, col_m, col_r = st.columns([2, 1, 2])
+        with col_m:
+            st.image("startbild.jpg", use_container_width=True)
+
     # Klausur-Frühwarnung
     try:
         res_warn = supabase.table("klausuren").select("*").execute()
@@ -584,150 +590,22 @@ elif st.session_state.view == 'stundenplan':
 elif st.session_state.view == 'bus':
     page_header("🚌 Bus-Check")
 
-    SEEFISCHMARKT = [
-        ("06:37","200","Linas Diek",""),  ("06:52","200","Linas Diek",""),
-        ("07:05","201","Linas Diek","direkt, schneller"),
-        ("07:22","200","Linas Diek",""),  ("07:37","210","Amboßweg",""),
-        ("07:52","200","Linas Diek",""),  ("08:05","201","Linas Diek","direkt, schneller"),
-        ("08:07","200","Linas Diek",""),  ("08:22","200","Linas Diek",""),
-        ("08:37","210","Amboßweg",""),    ("08:52","200","Linas Diek",""),
-        ("09:05","201","Linas Diek","direkt, schneller"),
-        ("09:22","200","Linas Diek",""),  ("09:37","210","Amboßweg",""),
-        ("09:52","200","Linas Diek",""),  ("10:05","201","Linas Diek","direkt, schneller"),
-        ("10:22","200","Linas Diek",""),  ("10:37","210","Amboßweg",""),
-        ("10:52","200","Linas Diek",""),  ("11:05","201","Linas Diek","direkt, schneller"),
-        ("11:22","200","Linas Diek",""),  ("11:37","210","Amboßweg",""),
-        ("11:52","200","Linas Diek",""),  ("12:05","201","Linas Diek","direkt, schneller"),
-        ("12:22","200","Linas Diek",""),  ("12:37","210","Amboßweg",""),
-        ("12:52","200","Linas Diek",""),  ("13:05","201","Linas Diek","direkt, schneller"),
-        ("13:22","200","Linas Diek",""),  ("13:37","210","Amboßweg",""),
-        ("13:52","200","Linas Diek",""),  ("14:05","201","Linas Diek","direkt, schneller"),
-        ("14:08","200","Linas Diek",""),  ("14:22","200","Linas Diek",""),
-        ("14:37","210","Amboßweg",""),    ("14:52","200","Linas Diek",""),
-        ("15:05","201","Linas Diek","direkt, schneller"),
-        ("15:07","200","Linas Diek",""),  ("15:22","200","Linas Diek",""),
-        ("15:37","210","Amboßweg",""),    ("15:52","200","Linas Diek",""),
-        ("16:00","200","Linas Diek",""),
-    ]
-    LINAS_DIEK = [
-        ("05:18","200","Seefischmarkt",""), ("05:31","201","Seefischmarkt",""),
-        ("06:15","201","Seefischmarkt",""), ("06:38","200","Seefischmarkt",""),
-        ("06:45","201","Seefischmarkt",""), ("07:30","201","Seefischmarkt",""),
-        ("07:33","200","Seefischmarkt",""), ("08:09","201","Seefischmarkt",""),
-        ("08:15","201","Seefischmarkt",""), ("09:30","201","Seefischmarkt",""),
-        ("09:43","200","Seefischmarkt",""), ("10:30","201","Seefischmarkt",""),
-        ("10:43","200","Seefischmarkt",""), ("11:30","201","Seefischmarkt",""),
-        ("11:43","200","Seefischmarkt",""), ("12:30","201","Seefischmarkt",""),
-        ("12:43","200","Seefischmarkt",""), ("13:30","201","Seefischmarkt",""),
-        ("13:43","200","Seefischmarkt",""), ("14:30","201","Seefischmarkt",""),
-        ("14:38","200","Seefischmarkt",""), ("15:30","201","Seefischmarkt",""),
-        ("15:43","200","Seefischmarkt",""), ("16:10","201","Seefischmarkt",""),
-        ("16:30","201","Seefischmarkt",""), ("16:43","200","Seefischmarkt",""),
-        ("17:10","201","Seefischmarkt",""), ("17:30","201","Seefischmarkt",""),
-        ("17:38","200","Seefischmarkt",""), ("18:30","201","Seefischmarkt",""),
-    ]
-    AMBOSSWEG = [
-        ("06:07","210","Seefischmarkt",""), ("07:07","210","Seefischmarkt",""),
-        ("08:17","210","Seefischmarkt",""), ("12:22","210","Seefischmarkt",""),
-        ("14:22","210","Seefischmarkt",""),
-    ]
-
-    LINE_COLORS  = {"200":"#C62828","201":"#1565C0","210":"#2E7D32"}
-    LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
-
-    def bus_card(zeit_str, linie, ausstieg, hinweis, diff_min, ist_naechste):
-        farbe = LINE_COLORS.get(linie,"#555")
-        bg    = LINE_BGLIGHT.get(linie,"#fafafa") if ist_naechste else "white"
-        rand  = f"2px solid {farbe}" if ist_naechste else "1px solid #e8e8e8"
-        badge = (f'<span style="background:{farbe};color:white;font-size:0.7rem;'
-                 f'padding:2px 8px;border-radius:10px;margin-left:8px;">▶ Nächste</span>'
-                 if ist_naechste else "")
-        cd = (f'<span style="color:{farbe};font-weight:bold;font-size:0.85rem;">jetzt!</span>'
-              if diff_min == 0
-              else f'<span style="color:{farbe};font-size:0.85rem;">in <b>{diff_min} Min.</b></span>'
-              if diff_min <= 120 else "")
-        hw = (f'<div style="font-size:0.75rem;color:#999;margin-top:2px;">ℹ️ {hinweis}</div>'
-              if hinweis else "")
-        st.markdown(
-            f'<div style="background:{bg};border:{rand};border-left:6px solid {farbe};'
-            f'border-radius:10px;padding:11px 14px 9px 14px;margin-bottom:9px;'
-            f'box-shadow:1px 2px 5px rgba(0,0,0,0.06);">'
-            f'<div style="display:flex;align-items:center;justify-content:space-between;">'
-            f'<div><span style="font-size:1.4rem;font-weight:900;color:{farbe};">{zeit_str}</span>'
-            f'<span style="font-size:0.9rem;font-weight:700;background:{farbe};color:white;'
-            f'padding:2px 8px;border-radius:6px;margin-left:8px;">Linie {linie}</span>'
-            f'{badge}</div><div>{cd}</div></div>'
-            f'<div style="margin-top:5px;font-size:0.9rem;color:#444;">🚏 Ausstieg: <b>{ausstieg}</b></div>'
-            f'{hw}</div>',
-            unsafe_allow_html=True
-        )
-
-    def zeige_naechste_120min(fahrplan, haltestellenname, richtung):
-        now    = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin")).replace(tzinfo=None)
-        cutoff = now.replace(second=0, microsecond=0)
-        WT     = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
-
-        def naechster_werktag(von):
-            tage = 3 if von.weekday()==4 else (2 if von.weekday()==5 else 1)
-            return von + timedelta(days=tage)
-
-        if now.weekday() >= 5:
-            nwt = naechster_werktag(now)
-            st.warning(f"⚠️ Fahrplan gilt Mo–Fr. Nächste Fahrten ab **{WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}**.")
-
-        fp_sorted = sorted(fahrplan, key=lambda x: x[0])
-        treffer   = []
-        for zt, li, au, hi in fp_sorted:
-            h, m = map(int, zt.split(":"))
-            diff = int((now.replace(hour=h,minute=m,second=0,microsecond=0) - cutoff).total_seconds()/60)
-            if 0 <= diff <= 120:
-                treffer.append((zt, li, au, hi, diff))
-
-        st.caption(f"📍 **{haltestellenname}** ➔ {richtung} | ab {now.strftime('%H:%M')} | Mo–Fr | Quelle: VKP 2025")
-
-        if not treffer:
-            naechste = next(
-                ((zt,li,au,hi) for zt,li,au,hi in fp_sorted
-                 if int((now.replace(hour=int(zt[:2]),minute=int(zt[3:]),second=0,microsecond=0)-cutoff).total_seconds()/60) > 120),
-                None
-            )
-            if naechste:
-                z,li,au,hi = naechste
-                st.info(f"Keine Abfahrten in 120 Min.\n\n🕐 **Nächste heute:** {z} · Linie {li} · {au}" + (f" · _{hi}_" if hi else ""))
-            else:
-                nwt = naechster_werktag(now)
-                ez,el,ea,eh = fp_sorted[0]
-                st.info(f"Heute keine weiteren Abfahrten.\n\n🕐 **Erste Fahrt {WT[nwt.weekday()]}, {nwt.strftime('%d.%m.')}:** {ez} · Linie {el} · {ea}")
-            return
-
-        for i,(zt,li,au,hi,dm) in enumerate(treffer):
-            bus_card(zt, li, au, hi, dm, i==0)
-
-    # Haltestellen-Auswahl (bleibt gespeichert)
-    btn_labels = {
-        "seefisch": ("🏠","Seefischmarkt","→ Schönkirchen"),
-        "linas":    ("🏫","Linas Diek",   "→ Seefischmarkt"),
-        "amboss":   ("🏫","Amboßweg",     "→ Seefischmarkt"),
-    }
-    bc1, bc2, bc3 = st.columns(3)
-    for col, key in zip([bc1,bc2,bc3], ["seefisch","linas","amboss"]):
-        icon, z1, z2 = btn_labels[key]
-        with col:
-            if st.button(f"{icon} {z1} {z2}", key=f"bus_btn_{key}",
-                         use_container_width=True,
-                         type="primary" if st.session_state.bus_halt==key else "secondary"):
-                st.session_state.bus_halt = key; st.rerun()
-
-    st.divider()
-    if st.session_state.bus_halt == "seefisch":
-        zeige_naechste_120min(SEEFISCHMARKT, "Seefischmarkt", "Richtung Schönkirchen / Schönberg")
-    elif st.session_state.bus_halt == "linas":
-        zeige_naechste_120min(LINAS_DIEK, "Linas Diek", "Richtung Kiel")
-    elif st.session_state.bus_halt == "amboss":
-        zeige_naechste_120min(AMBOSSWEG, "Amboßweg", "Richtung Kiel")
-    else:
-        st.markdown("<div style='text-align:center;color:#aaa;padding:30px 0;'>⬆️ Bitte Haltestelle auswählen</div>",
-                    unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align:center; padding: 40px 20px 30px 20px;">
+        <div style="font-size:4rem; margin-bottom:16px;">🚧</div>
+        <div style="font-size:1.3rem; font-weight:800; color:#444; margin-bottom:10px;">
+            Hier wird noch gearbeitet
+        </div>
+        <div style="font-size:0.95rem; color:#888; max-width:280px; margin:0 auto; line-height:1.6;">
+            Wir arbeiten daran, Echtzeit-Abfahrtszeiten inkl. Verspätungen 
+            einzubinden. Bitte schau bald wieder rein!
+        </div>
+        <div style="margin-top:24px; font-size:0.8rem; color:#bbb;">
+            Aktuell verfügbar: 
+            <a href="https://www.nah.sh" target="_blank" style="color:#FF4B4B;">nah.sh Fahrplanauskunft</a>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     back_button()
 
@@ -747,10 +625,11 @@ elif st.session_state.view == 'ferien':
             tage_noch = (nf["end"] - heute).days
             st.markdown(
                 f'<div class="countdown-box">'
-                f'<div class="cd-label">🎉 Wir haben gerade</div>'
+                f'<div class="cd-label">🎉 Wir haben gerade Ferien!</div>'
                 f'<div class="cd-days">{tage_noch}</div>'
-                f'<div class="cd-name">{nf["name"]}</div>'
-                f'<div class="cd-date">noch {tage_noch} Tag{"e" if tage_noch!=1 else ""} frei · bis {nf["end"].strftime("%d.%m.%Y")}</div>'
+                f'<div class="cd-name">Tage noch frei</div>'
+                f'<div class="cd-name" style="font-size:0.95rem;margin-top:6px;">{nf["name"]} {nf["start"].year}</div>'
+                f'<div class="cd-date">bis {nf["end"].strftime("%d.%m.%Y")}</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -760,8 +639,9 @@ elif st.session_state.view == 'ferien':
                 f'<div class="countdown-box">'
                 f'<div class="cd-label">⏳ Noch</div>'
                 f'<div class="cd-days">{tage_bis}</div>'
-                f'<div class="cd-name">{nf["name"]}</div>'
-                f'<div class="cd-date">Tag{"e" if tage_bis!=1 else ""} bis zum {nf["start"].strftime("%d.%m.%Y")}</div>'
+                f'<div class="cd-name">Tag{"e" if tage_bis!=1 else ""}</div>'
+                f'<div class="cd-name" style="font-size:0.95rem;margin-top:6px;">bis zu den {nf["name"]} {nf["start"].year}</div>'
+                f'<div class="cd-date">Start am {nf["start"].strftime("%d.%m.%Y")}</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
