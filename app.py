@@ -269,14 +269,16 @@ if st.session_state.view == 'start':
             icon  = {0: "⚡", 1: "⏰"}.get(delta, "📅")
             wann  = {0: "heute!", 1: "morgen"}.get(delta, "übermorgen")
             st.markdown(
-                f'<div style="margin-top:8px;background:#FFF3E0;border-left:4px solid #FF6F00;'
-                f'border-radius:8px;padding:8px 12px;font-size:0.85rem;color:#333 !important;">'
-                f'<b style="color:#E65100;">{icon} Klausur {wann}:</b> {titel}'
+                f'<div style="margin-top:8px;background:#FF6F00;border-radius:8px;'
+                f'padding:8px 12px;font-size:0.85rem;color:#FFFFFF !important;">'
+                f'<b style="color:#FFFFFF;">{icon} Klausur {wann}:</b> {titel}'
                 f'</div>',
                 unsafe_allow_html=True
             )
     except Exception:
         pass
+
+    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
 
     # Navigations-Buttons 2×2
     r1a, r1b = st.columns(2)
