@@ -237,7 +237,7 @@ if st.session_state.view == 'start':
         wt     = wt_namen[heute.weekday()]
         logo_html = (
             f'<div style="background:linear-gradient(150deg,#FF4B4B,#c0392b);border-radius:16px;padding:14px 16px 12px 16px;box-shadow:0 4px 14px rgba(255,75,75,0.35);">'
-            f'<div style="font-size:1.45rem;font-weight:900;color:white;letter-spacing:1px;text-transform:uppercase;line-height:1;">Schul<span style="opacity:0.65;">planer</span></div>'
+            f'<div style="font-size:1.9rem;font-weight:900;color:white;letter-spacing:2px;text-transform:uppercase;line-height:1;">Schul<span style="opacity:0.6;">planer</span></div>'
             f'<div style="height:1px;background:rgba(255,255,255,0.25);margin:8px 0;"></div>'
             f'<div style="display:flex;align-items:flex-end;gap:6px;">'
             f'<div style="background:rgba(255,255,255,0.18);border-radius:10px;padding:4px 10px;text-align:center;min-width:42px;">'
@@ -299,26 +299,30 @@ if st.session_state.view == 'start':
             farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
             name  = msg.get("name","?")
             text  = msg.get("text","")
+            mid   = msg['id']
             try:
-                ts    = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
-                zeit  = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
+                ts   = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
+                zeit = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m. %H:%M")
             except Exception:
                 zeit = ""
-            col_msg, col_del = st.columns([20, 1])
-            with col_msg:
-                st.markdown(
-                    f'<div class="pin-bubble" style="border-left-color:{farbe};">'
-                    f'<span class="pin-name" style="color:{farbe};">{name}</span>'
-                    f'<span class="pin-zeit">{zeit}</span>'
-                    f'<div class="pin-text">{text}</div></div>',
-                    unsafe_allow_html=True
-                )
-            with col_del:
-                st.markdown("<div style='margin-top:8px'>", unsafe_allow_html=True)
-                if st.button("🗑", key=f"del_msg_{msg['id']}"):
-                    supabase.table("nachrichten").delete().eq("id", msg["id"]).execute()
+            # Nachricht volle Breite
+            st.markdown(
+                f'<div class="pin-bubble" style="border-left-color:{farbe};'
+                f'display:flex;justify-content:space-between;align-items:flex-start;">'
+                f'<div style="flex:1;">'
+                f'<span class="pin-name" style="color:{farbe};">{name}</span>'
+                f'<span class="pin-zeit">{zeit}</span>'
+                f'<div class="pin-text">{text}</div>'
+                f'</div></div>',
+                unsafe_allow_html=True
+            )
+            # Lösch-Button schmal, direkt darunter rechtsbündig
+            bcol1, bcol2 = st.columns([10, 1])
+            with bcol2:
+                if st.button("🗑", key=f"del_msg_{mid}"):
+                    supabase.table("nachrichten").delete().eq("id", mid).execute()
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top:-18px'></div>", unsafe_allow_html=True)
     else:
         st.caption("Noch keine Nachrichten.")
 
