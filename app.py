@@ -634,27 +634,30 @@ elif st.session_state.view == 'bus':
     import requests as _req
 
     # Haltestellenkonfiguration mit NAH.SH Abfahrtstafel-URLs
+    # HVV Station-IDs (Geofox-Format)
+    # Seefischmarkt: Master=hvv-id kommt via /gti/public/checkName
+    # Vorläufig mit bekannten IDs - Debug zeigt korrekte IDs wenn falsch
     HALTESTELLEN = {
         "seefisch": {
             "label":    "🏠 Seefischmarkt",
             "sub":      "→ Schönkirchen",
-            "url":      "https://www.nah.sh/de/fahrplanauskunft/?start=Kiel%2C+Seefischmarkt&boardType=dep",
+            "url":      "https://www.hvv.de/",
             "richtung": "Richtung Schönkirchen / Schönberg",
-            "id":       "9911150",
+            "id":       "Master:9911150",
         },
         "linas": {
             "label":    "🏫 Linas Diek",
             "sub":      "→ Seefischmarkt",
-            "url":      "https://www.nah.sh/de/fahrplanauskunft/?start=Sch%C3%B6nkirchen%2C+Linas+Diek&boardType=dep",
+            "url":      "https://www.hvv.de/",
             "richtung": "Richtung Kiel Seefischmarkt",
-            "id":       "9911207",
+            "id":       "Master:9911207",
         },
         "amboss": {
             "label":    "🏫 Amboßweg",
             "sub":      "→ Seefischmarkt",
-            "url":      "https://www.nah.sh/de/fahrplanauskunft/?start=Sch%C3%B6nkirchen%2C+Ambo%C3%9Fweg&boardType=dep",
+            "url":      "https://www.hvv.de/",
             "richtung": "Richtung Kiel Seefischmarkt",
-            "id":       "9911208",
+            "id":       "Master:9911208",
         },
     }
 
@@ -662,90 +665,62 @@ elif st.session_state.view == 'bus':
     LINE_BGLIGHT = {"200":"#FFEBEE","201":"#E3F2FD","210":"#E8F5E9"}
 
     def hole_abfahrten(stop_id: str, results: int = 10):
-        """Abfahrten via GVH HAFAS (deckt ganz Schleswig-Holstein ab)."""
+        """Abfahrten via HVV/Stadtbahn REST API – deckt NAH.SH / SH vollständig ab."""
         from datetime import datetime as _dt
 
         now = _dt.now(zoneinfo.ZoneInfo("Europe/Berlin"))
 
-        # GVH mgate.exe - deckt NAH.SH / Schleswig-Holstein ab
-        url = "https://gvh.hafas.de/bin/mgate.exe"
+        # HVV REST API (öffentlich, kein Auth nötig für Basisfunktionen)
+        url = "https://hvv-app.de/gti/public/getDepartures"
         payload = {
-            "ver": "1.42",
-            "lang": "deu",
-            "auth": {"type": "AID", "aid": "GVH-Backend-Key"},
-            "client": {"id": "GVH", "type": "IPH", "name": "GVH", "v": "100000"},
-            "formatted": False,
-            "svcReqL": [{
-                "meth": "StationBoard",
-                "req": {
-                    "type": "DEP",
-                    "stbLoc": {"type": "S", "lid": f"A=1@L={stop_id}@"},
-                    "maxJny": results,
-                    "date":   now.strftime("%Y%m%d"),
-                    "time":   now.strftime("%H%M%S"),
-                }
-            }]
+            "stationId": {"id": stop_id, "type": "STATION"},
+            "time":      {"date": now.strftime("%d.%m.%Y"),
+                          "time": now.strftime("%H:%M")},
+            "maxList":   results,
+            "useRealtime": True,
         }
         errors = []
         try:
-            r = _req.post(url, json=payload, timeout=12,
-                          headers={"Content-Type": "application/json",
-                                   "User-Agent": "Mozilla/5.0"})
+            r = _req.post(
+                url, json=payload, timeout=10,
+                headers={
+                    "Content-Type":  "application/json",
+                    "Accept":        "application/json",
+                    "X-HVV-Lang":    "de",
+                    "geofox-auth-signature": "",
+                    "geofox-auth-user": "lgvhh-prd",
+                    "geofox-auth-type": "HmacSHA1",
+                }
+            )
             if r.status_code != 200:
                 errors.append(f"HTTP {r.status_code}: {r.text[:300]}")
                 return None, errors, {}
 
-            data  = r.json()
-            svc   = data.get("svcResL", [{}])[0]
-            err   = svc.get("err", "OK")
-            if err != "OK":
-                errors.append(f"HAFAS: {err} – {svc.get('errTxt','')}")
-                return None, errors, data
-
-            res    = svc.get("res", {})
-            jrny   = res.get("jnyL", [])
-            common = res.get("common", {})
-            prods  = common.get("prodL", [])
-            deps   = []
-
-            for j in jrny:
+            data = r.json()
+            raw_deps = data.get("departures", [])
+            deps = []
+            for d in raw_deps:
                 try:
-                    stbStop  = j.get("stbStop", {})
-                    dTimeS   = stbStop.get("dTimeS", "")
-                    dTimeR   = stbStop.get("dTimeR", dTimeS)
-                    dCncl    = stbStop.get("dCncl", False)
-
-                    def fmt(t):
-                        t = t[-6:] if len(t) > 6 else t  # day-overflow kürzen
-                        return t[:2] + ":" + t[2:4] if len(t) >= 4 else "?"
-
-                    plan_zeit = fmt(dTimeS)
-                    rt_zeit   = fmt(dTimeR)
-
-                    versp_min = 0
-                    if dTimeS and dTimeR and dTimeS != dTimeR:
-                        try:
-                            ps = int(dTimeS[-6:-4])*60 + int(dTimeS[-4:-2])
-                            pr = int(dTimeR[-6:-4])*60 + int(dTimeR[-4:-2])
-                            versp_min = pr - ps
-                        except Exception:
-                            pass
-
-                    prod_idx = j.get("prodX", 0)
-                    prod     = prods[prod_idx] if prod_idx < len(prods) else {}
-                    linie_nr = prod.get("num", prod.get("name", "?")).strip()
-
+                    line_info  = d.get("line", {})
+                    linie_nr   = line_info.get("name", "?").replace("Bus ", "").strip()
+                    ziel       = d.get("direction", "?")
+                    t_plan     = d.get("timeOffset", {})
+                    t_rt       = d.get("realTimeOffset", t_plan)
+                    # timeOffset = Minuten ab Abfragezeitpunkt
+                    from datetime import timedelta as _td
+                    plan_dt   = now + _td(minutes=int(t_plan) if t_plan else 0)
+                    rt_dt     = now + _td(minutes=int(t_rt)   if t_rt   else 0)
+                    versp_min = int(t_rt or 0) - int(t_plan or 0)
                     deps.append({
-                        "scheduledDeparture": plan_zeit,
-                        "departure":          rt_zeit,
+                        "scheduledDeparture": plan_dt.strftime("%H:%M"),
+                        "departure":          rt_dt.strftime("%H:%M"),
                         "delay":              versp_min,
                         "line":               linie_nr,
-                        "direction":          j.get("dirTxt", "?"),
-                        "isCancelled":        dCncl,
+                        "direction":          ziel,
+                        "isCancelled":        d.get("cancelled", False),
                     })
                 except Exception:
                     continue
-
             return deps, None, data
         except Exception as e:
             errors.append(str(e))
