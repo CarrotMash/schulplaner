@@ -148,8 +148,8 @@ div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
 }
 .ferien-item.aktiv { background:#fff8f8; border-left-color: #FF4B4B; }
 .ferien-item.vorbei { opacity:0.45; border-left-color:#ddd; }
-.ferien-item .fi-name { font-weight:700; font-size:0.95rem; }
-.ferien-item .fi-date { font-size:0.78rem; color:#888; }
+.ferien-item .fi-name { font-weight:700; font-size:0.95rem; color:#222 !important; }
+.ferien-item .fi-date { font-size:0.78rem; color:#666 !important; }
 .ferien-item .fi-badge {
     margin-left:auto; font-size:0.72rem; font-weight:700;
     padding:3px 8px; border-radius:20px; white-space:nowrap;
@@ -224,19 +224,24 @@ if st.session_state.view == 'start':
     # Datum + Wochentag
     heute = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin"))
     wt_namen = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
-    st.markdown(
-        f'<div class="date-banner"><b>{wt_namen[heute.weekday()]}, '
-        f'{heute.strftime("%d.%m.%Y")}</b></div>',
-        unsafe_allow_html=True
-    )
 
-    page_header("📅 Schulplaner")
-
-    # Startbild – klein und zentriert
-    if os.path.exists("startbild.jpg"):
-        col_l, col_m, col_r = st.columns([2, 1, 2])
-        with col_m:
+    # Bild links, Titel + Datum rechts
+    img_col, txt_col = st.columns([1, 2])
+    with img_col:
+        if os.path.exists("startbild.jpg"):
             st.image("startbild.jpg", use_container_width=True)
+    with txt_col:
+        st.markdown(
+            f'<div style="display:flex;flex-direction:column;justify-content:center;height:100%;'
+            f'padding-left:8px;">'
+            f'<div style="font-size:1.7rem;font-weight:900;color:#FF4B4B;line-height:1.1;">📅 Schulplaner</div>'
+            f'<div style="margin-top:8px;font-size:1.05rem;font-weight:700;color:#333;">'
+            f'{wt_namen[heute.weekday()]}</div>'
+            f'<div style="font-size:1.3rem;font-weight:900;color:#222;">'
+            f'{heute.strftime("%d.%m.%Y")}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
     # Klausur-Frühwarnung
     try:
