@@ -103,9 +103,12 @@ st.markdown("""
     min-width: 0 !important; flex: 1 1 0 !important;
 }
 [data-testid="stHorizontalBlock"] button {
-    font-size: 0.72rem !important; padding: 0.2rem 0.2rem !important;
-    white-space: normal !important; line-height: 1.15 !important;
-    min-height: 38px !important;
+    font-size: 0.72rem !important;
+    padding: 0.15rem 0.2rem !important;
+    white-space: normal !important;
+    line-height: 1.15 !important;
+    min-height: 0 !important;
+    height: 44px !important;
 }
 
 /* Kalender */
