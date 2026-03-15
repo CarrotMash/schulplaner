@@ -339,17 +339,20 @@ if st.session_state.view == 'start':
         # HTML-Link mit exakt gleichem Inline-Style wie die Streamlit-Buttons
         st.markdown(
             '<style>'
-            'div[data-testid="column"]:last-child div[data-testid="stMarkdownContainer"] p {margin:0;padding:0;}'
+            '.wordle-btn {margin:0;padding:0;}'
+            '.wordle-btn a, .wordle-btn a:link, .wordle-btn a:visited, .wordle-btn a:hover {'
+            'display:flex !important;align-items:center !important;justify-content:center !important;'
+            'width:100% !important;height:64px !important;'
+            'background-color:#FF4B4B !important;'
+            'color:#FFFFFF !important;'
+            'font-size:0.72rem !important;font-weight:700 !important;line-height:1.15 !important;'
+            'border-radius:8px !important;'
+            'text-decoration:none !important;cursor:pointer !important;'
+            'box-sizing:border-box !important;}'
             '</style>'
-            '<a href="https://6mal5.com" target="_blank" style="'
-            'display:flex;align-items:center;justify-content:center;'
-            'width:100%;height:64px;'
-            'background-color:#FF4B4B;color:white !important;'
-            'font-size:0.72rem;font-weight:700;line-height:1.15;'
-            'border-radius:8px;color:white !important;'
-            'text-decoration:none !important;cursor:pointer;'
-            'box-sizing:border-box;'
-            '">🟩 WORDLE</a>',
+            '<div class="wordle-btn">'
+            '<a href="https://6mal5.com" target="_blank">🟩 WORDLE</a>'
+            '</div>',
             unsafe_allow_html=True
         )
 
