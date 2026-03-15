@@ -1057,14 +1057,21 @@ elif st.session_state.view == 'quiz':
         try:
             from datetime import timedelta as _td2
             montag = date.today() - timedelta(days=date.today().weekday())
-            week_res = supabase.table("quiz_ergebnisse").select("name,punkte").gte(
+            week_res = supabase.table("quiz_ergebnisse").select("name,punkte,datum").gte(
                 "datum", str(montag)).execute()
             if week_res.data:
                 st.divider()
                 st.markdown("#### 🏆 Woche")
-                week_sum = {}
+                # Pro Name: Summe der BESTEN Ergebnisse (max 1 pro Tag)
+                # Zuerst pro (name, datum) das Maximum nehmen, dann summieren
+                best_per_day = {}
                 for r in week_res.data:
-                    week_sum[r["name"]] = week_sum.get(r["name"], 0) + r["punkte"]
+                    key = (r["name"], r.get("datum", ""))
+                    if key not in best_per_day or r["punkte"] > best_per_day[key]:
+                        best_per_day[key] = r["punkte"]
+                week_sum = {}
+                for (n, _), p in best_per_day.items():
+                    week_sum[n] = week_sum.get(n, 0) + p
                 rang = sorted(week_sum.items(), key=lambda x: x[1], reverse=True)
                 medals = ["🥇","🥈","🥉","4.","5."]
                 for idx2, (n, p) in enumerate(rang):
@@ -1180,16 +1187,22 @@ elif st.session_state.view == 'quiz':
         farbe_n = PINNWAND_FARBEN.get(name, "#FF4B4B")
         total   = FRAGEN_PRO_SPRACHE * 3
 
-        # Ergebnis speichern
-        try:
-            supabase.table("quiz_ergebnisse").upsert({
-                "datum":           str(date.today()),
-                "name":            name,
-                "punkte":          gesamt,
-                "sprachen_detail": punkte,
-            }, on_conflict="datum,name").execute()
-        except Exception:
-            pass
+        # Ergebnis speichern (nur wenn tatsächlich gespielt wurde)
+        if gesamt > 0 or idx >= total:
+            try:
+                # Erst prüfen ob bereits ein besseres Ergebnis existiert
+                existing = supabase.table("quiz_ergebnisse").select("punkte").eq(
+                    "datum", str(date.today())).eq("name", name).execute()
+                best = existing.data[0]["punkte"] if existing.data else 0
+                if gesamt >= best:
+                    supabase.table("quiz_ergebnisse").upsert({
+                        "datum":           str(date.today()),
+                        "name":            name,
+                        "punkte":          gesamt,
+                        "sprachen_detail": punkte,
+                    }, on_conflict="datum,name").execute()
+            except Exception:
+                pass
 
         # Ergebnis-Card
         prozent = gesamt / total * 100
