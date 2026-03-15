@@ -343,7 +343,7 @@ if st.session_state.view == 'start':
             '</style>'
             '<a href="https://6mal5.com" target="_blank" style="'
             'display:flex;align-items:center;justify-content:center;'
-            'width:100%;height:60px;'
+            'width:100%;height:64px;'
             'background-color:#FF4B4B;color:white !important;'
             'font-size:0.72rem;font-weight:700;line-height:1.15;'
             'border-radius:8px;'
