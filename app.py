@@ -302,46 +302,32 @@ if st.session_state.view == 'start':
 
     st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
 
-    # Navigations-Buttons – alle 6 als identische HTML-Tiles
-    # Unsichtbare Streamlit-Buttons liegen darunter als Trigger
-    st.markdown('<style>'
-        '.navbtn-hide {position:relative;margin-bottom:8px;}'
-        '.navbtn-hide button {position:absolute;top:0;left:0;width:100%;'
-        'height:44px;opacity:0;cursor:pointer;z-index:10;}'
-        '</style>', unsafe_allow_html=True)
-
+    # Navigations-Buttons – alle 6 als native Streamlit-Buttons
+    # Einheitliches Aussehen via globalem CSS (roter Hintergrund, weiße Schrift)
     BTN_CFG = [
-        ("📅 KLAUSUREN",   "klausuren",   None),
-        ("🏫 STUNDENPLÄNE","stundenplan", None),
-        ("🚌 BUS-CHECK",   "bus",         None),
-        ("🌴 FERIEN",      "ferien",      None),
-        ("🧠 VOKABEL-QUIZ","quiz",        None),
-        ("🟩 WORDLE",      None,          "https://6mal5.com"),
+        ("📅 KLAUSUREN",    "klausuren"),
+        ("🏫 STUNDENPLÄNE", "stundenplan"),
+        ("🚌 BUS-CHECK",    "bus"),
+        ("🌴 FERIEN",       "ferien"),
+        ("🧠 VOKABEL-QUIZ", "quiz"),
     ]
-
     rows = [BTN_CFG[i:i+2] for i in range(0, len(BTN_CFG), 2)]
     for row in rows:
         cols = st.columns(len(row))
-        for col, (label, view, url) in zip(cols, row):
+        for col, (label, view) in zip(cols, row):
             with col:
-                if url:
-                    st.markdown(
-                        f'<a href="{url}" target="_blank" style="text-decoration:none;">'
-                        f'<div style="background:#FF4B4B;color:white;border-radius:8px;height:44px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;text-align:center;line-height:1.15;cursor:pointer;">{label}</div></a>',
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.markdown(
-                        f'<div class="navbtn-hide">'
-                        f'<div style="background:#FF4B4B;color:white;border-radius:8px;height:44px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;text-align:center;line-height:1.15;cursor:pointer;">{label}</div>',
-                        unsafe_allow_html=True
-                    )
-                    if st.button(label, key=f'btn_{view}', use_container_width=True):
-                        st.session_state.view = view
-                        if view == 'quiz':
-                            st.session_state.quiz_phase = 'name'
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
+                if st.button(label, key=f'btn_{view}', use_container_width=True):
+                    st.session_state.view = view
+                    if view == 'quiz':
+                        st.session_state.quiz_phase = 'name'
+                    st.rerun()
+    # WORDLE als letzter Button (externer Link)
+    st.markdown(
+        '<a href="https://6mal5.com" target="_blank" style="text-decoration:none;">'
+        '<div style="background:#FF4B4B;color:white;border-radius:8px;height:44px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;text-align:center;line-height:1.15;cursor:pointer;margin-bottom:8px;">🟩 WORDLE</div></a>',
+        unsafe_allow_html=True
+    )
+
 
 
     # --- PINNWAND ---
