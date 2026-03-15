@@ -102,7 +102,8 @@ st.markdown("""
 [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
     min-width: 0 !important; flex: 1 1 0 !important;
 }
-[data-testid="stHorizontalBlock"] button {
+[data-testid="stHorizontalBlock"] button,
+[data-testid="stHorizontalBlock"] a[data-testid="stLinkButton"] {
     font-size: 0.72rem !important;
     padding: 0.15rem 0.2rem !important;
     white-space: normal !important;
@@ -113,8 +114,16 @@ st.markdown("""
     color: white !important;
     border: none !important;
     border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-decoration: none !important;
+    font-weight: 700 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
-[data-testid="stHorizontalBlock"] button:hover {
+[data-testid="stHorizontalBlock"] button:hover,
+[data-testid="stHorizontalBlock"] a[data-testid="stLinkButton"]:hover {
     background-color: #c0392b !important;
     color: white !important;
 }
