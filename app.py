@@ -338,14 +338,17 @@ if st.session_state.view == 'start':
     with c6:
         # HTML-Link mit exakt gleichem Inline-Style wie die Streamlit-Buttons
         st.markdown(
+            '<style>'
+            'div[data-testid="column"]:last-child div[data-testid="stMarkdownContainer"] p {margin:0;padding:0;}'
+            '</style>'
             '<a href="https://6mal5.com" target="_blank" style="'
             'display:flex;align-items:center;justify-content:center;'
-            'width:100%;min-height:44px;'
+            'width:100%;height:52px;'
             'background-color:#FF4B4B;color:white !important;'
             'font-size:0.72rem;font-weight:700;line-height:1.15;'
-            'border:none;border-radius:8px;'
+            'border-radius:8px;'
             'text-decoration:none;cursor:pointer;'
-            'box-sizing:border-box;padding:6px 4px;margin-top:4px;'
+            'box-sizing:border-box;'
             '">🟩 WORDLE</a>',
             unsafe_allow_html=True
         )
