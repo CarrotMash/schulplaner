@@ -346,8 +346,8 @@ if st.session_state.view == 'start':
             'width:100%;height:64px;'
             'background-color:#FF4B4B;color:white !important;'
             'font-size:0.72rem;font-weight:700;line-height:1.15;'
-            'border-radius:8px;'
-            'text-decoration:none;cursor:pointer;'
+            'border-radius:8px;color:white !important;'
+            'text-decoration:none !important;cursor:pointer;'
             'box-sizing:border-box;'
             '">🟩 WORDLE</a>',
             unsafe_allow_html=True
