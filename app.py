@@ -316,7 +316,14 @@ if st.session_state.view == 'start':
             st.session_state.quiz_phase = 'name'
             st.rerun()
     with r3b:
-        st.markdown("<div style='height:56px'></div>", unsafe_allow_html=True)
+        st.markdown(
+            '<a href="https://6mal5.com" target="_blank" style="text-decoration:none;">'
+            '<div style="background:#FF4B4B;color:white;border-radius:8px;'
+            'height:44px;display:flex;align-items:center;justify-content:center;'
+            'font-size:0.72rem;font-weight:700;text-align:center;line-height:1.15;">'
+            '🟩 WORDLE</div></a>',
+            unsafe_allow_html=True
+        )
 
     # --- PINNWAND ---
     st.divider()
