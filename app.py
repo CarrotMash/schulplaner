@@ -49,6 +49,12 @@ if 'edit_id'           not in st.session_state: st.session_state.edit_id = None
 if 'cancel_click'      not in st.session_state: st.session_state.cancel_click = False
 if 'active_msg'        not in st.session_state: st.session_state.active_msg   = None
 if 'bus_halt'          not in st.session_state: st.session_state.bus_halt = None
+if 'quiz_name'         not in st.session_state: st.session_state.quiz_name = None
+if 'quiz_phase'        not in st.session_state: st.session_state.quiz_phase = 'name'
+if 'quiz_fragen'       not in st.session_state: st.session_state.quiz_fragen = []
+if 'quiz_idx'          not in st.session_state: st.session_state.quiz_idx = 0
+if 'quiz_punkte'       not in st.session_state: st.session_state.quiz_punkte = {}
+if 'quiz_antwort'      not in st.session_state: st.session_state.quiz_antwort = None
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
 
@@ -97,9 +103,12 @@ st.markdown("""
     min-width: 0 !important; flex: 1 1 0 !important;
 }
 [data-testid="stHorizontalBlock"] button {
-    font-size: 0.78rem !important; padding: 0.4rem 0.2rem !important;
-    white-space: normal !important; line-height: 1.2 !important;
-    min-height: 56px !important;
+    font-size: 0.72rem !important;
+    padding: 0.15rem 0.2rem !important;
+    white-space: normal !important;
+    line-height: 1.15 !important;
+    min-height: 0 !important;
+    height: 44px !important;
 }
 
 /* Kalender */
@@ -285,7 +294,7 @@ if st.session_state.view == 'start':
 
     st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
 
-    # Navigations-Buttons 2×2
+    # Navigations-Buttons 2×3
     r1a, r1b = st.columns(2)
     with r1a:
         if st.button("📅 KLAUSUREN",   use_container_width=True, type="primary", key="btn_kl"):
@@ -300,6 +309,14 @@ if st.session_state.view == 'start':
     with r2b:
         if st.button("🌴 FERIEN",       use_container_width=True, type="primary", key="btn_fe"):
             st.session_state.view = 'ferien'; st.rerun()
+    r3a, r3b = st.columns(2)
+    with r3a:
+        if st.button("🧠 VOKABEL-QUIZ", use_container_width=True, type="primary", key="btn_quiz"):
+            st.session_state.view = 'quiz'
+            st.session_state.quiz_phase = 'name'
+            st.rerun()
+    with r3b:
+        st.markdown("<div style='height:56px'></div>", unsafe_allow_html=True)
 
     # --- PINNWAND ---
     st.divider()
@@ -883,6 +900,360 @@ elif st.session_state.view == 'bus':
         )
 
     back_button()
+
+
+# =============================================================================
+# 6. VOKABEL-QUIZ
+# =============================================================================
+elif st.session_state.view == 'quiz':
+    page_header("🧠 Vokabel-Quiz")
+
+    import random as _rnd
+    import hashlib as _hl
+
+    # -----------------------------------------------------------------------
+    # VOKABELLISTEN (Schulwortschatz A2-B1)
+    # -----------------------------------------------------------------------
+    VOKABELN = {
+        "en": [
+            # B1-B2 Niveau: weniger offensichtliche Vokabeln
+            ("Errungenschaft","achievement"),("Bekanntmachung","announcement"),
+            ("Verhalten","behaviour"),("Grenze","boundary"),("Herausforderung","challenge"),
+            ("Umstand","circumstance"),("Zusammenarbeit","collaboration"),
+            ("Konsequenz","consequence"),("Beitrag","contribution"),("Überzeugung","conviction"),
+            ("Entscheidend","crucial"),("Enttäuschung","disappointment"),
+            ("Eindruck","impression"),("Einfluss","influence"),("Initiative","initiative"),
+            ("Einblick","insight"),("Absicht","intention"),("Untersuchung","investigation"),
+            ("Urteil","judgment"),("Wissen","knowledge"),("Führung","leadership"),
+            ("Motivation","motivation"),("Gelegenheit","opportunity"),("Wahrnehmung","perception"),
+            ("Perspektive","perspective"),("Vorliebe","preference"),("Priorität","priority"),
+            ("Verfahren","procedure"),("Beziehung","relationship"),("Verantwortung","responsibility"),
+            ("Lösung","solution"),("Strategie","strategy"),("Struktur","structure"),
+            ("Vorschlag","suggestion"),("Unterstützung","support"),("Tendenz","tendency"),
+            ("Verständnis","understanding"),("Wert","value"),("Verschiedenheit","variety"),
+            ("Verletzlich","vulnerable"),("Überwindung","achievement"),("Bewusstsein","awareness"),
+            ("Fähigkeit","capability"),("Komplexität","complexity"),("Widerspruch","contradiction"),
+            ("Glaubwürdigkeit","credibility"),("Bestimmt","determined"),("Effizient","efficient"),
+            ("Wesentlich","essential"),("Flexibel","flexible"),("Erheblich","significant"),
+            ("Nachhaltig","sustainable"),("Transparent","transparent"),("Unbestreitbar","undeniable"),
+            ("Unerwünscht","unwanted"),("Wertvoll","valuable"),("Weit verbreitet","widespread"),
+            ("Abschwächen","mitigate"),("Voraussehen","anticipate"),("Einschätzen","assess"),
+            ("Koordinieren","coordinate"),("Delegieren","delegate"),("Betonen","emphasise"),
+            ("Erleichtern","facilitate"),("Identifizieren","identify"),("Integrieren","integrate"),
+            ("Rechtfertigen","justify"),("Aufrechterhalten","maintain"),("Verhandeln","negotiate"),
+            ("Optimieren","optimise"),("Überwinden","overcome"),("Priorisieren","prioritise"),
+            ("Erkennen","recognise"),("Stärken","strengthen"),("Transformieren","transform"),
+            ("Überprüfen","verify"),("Visualisieren","visualise"),("Erzielen","achieve"),
+            ("Anpassen","adapt"),("Bewerten","evaluate"),("Implementieren","implement"),
+        ],
+        "fr": [
+            ("Hund","chien"),("Katze","chat"),("Haus","maison"),("Schule","école"),
+            ("Freund","ami"),("Familie","famille"),("Essen","nourriture"),("Wasser","eau"),
+            ("Buch","livre"),("Zeit","temps"),("Jahr","année"),("Tag","jour"),
+            ("Mensch","personne"),("Hand","main"),("Land","pays"),("Stadt","ville"),
+            ("Arbeit","travail"),("Leben","vie"),("Kind","enfant"),("Wort","mot"),
+            ("Straße","rue"),("Auto","voiture"),("Geld","argent"),("Tür","porte"),
+            ("Tisch","table"),("Stuhl","chaise"),("Fenster","fenêtre"),("Bett","lit"),
+            ("Küche","cuisine"),("Garten","jardin"),("Sonne","soleil"),("Mond","lune"),
+            ("Regen","pluie"),("Wind","vent"),("Baum","arbre"),("Blume","fleur"),
+            ("Vogel","oiseau"),("Fisch","poisson"),("Pferd","cheval"),("Kuh","vache"),
+            ("Brot","pain"),("Milch","lait"),("Apfel","pomme"),("Fleisch","viande"),
+            ("Musik","musique"),("Sport","sport"),("Film","film"),("Spiel","jeu"),
+            ("Farbe","couleur"),("Rot","rouge"),("Blau","bleu"),("Grün","vert"),
+            ("Groß","grand"),("Klein","petit"),("Neu","nouveau"),("Alt","vieux"),
+            ("Gut","bien"),("Schlecht","mauvais"),("Schnell","rapide"),("Langsam","lent"),
+            ("Öffnen","ouvrir"),("Schließen","fermer"),("Kaufen","acheter"),("Verkaufen","vendre"),
+            ("Lernen","apprendre"),("Lehren","enseigner"),("Lesen","lire"),("Schreiben","écrire"),
+            ("Laufen","courir"),("Gehen","marcher"),("Kommen","venir"),("Fahren","aller"),
+            ("Sehen","voir"),("Hören","entendre"),("Sprechen","parler"),("Fragen","demander"),
+            ("Antworten","répondre"),("Helfen","aider"),("Brauchen","avoir besoin"),("Wollen","vouloir"),
+        ],
+        "es": [
+            ("Hund","perro"),("Katze","gato"),("Haus","casa"),("Schule","escuela"),
+            ("Freund","amigo"),("Familie","familia"),("Essen","comida"),("Wasser","agua"),
+            ("Buch","libro"),("Zeit","tiempo"),("Jahr","año"),("Tag","día"),
+            ("Mensch","persona"),("Hand","mano"),("Land","país"),("Stadt","ciudad"),
+            ("Arbeit","trabajo"),("Leben","vida"),("Kind","niño"),("Wort","palabra"),
+            ("Straße","calle"),("Auto","coche"),("Geld","dinero"),("Tür","puerta"),
+            ("Tisch","mesa"),("Stuhl","silla"),("Fenster","ventana"),("Bett","cama"),
+            ("Küche","cocina"),("Garten","jardín"),("Sonne","sol"),("Mond","luna"),
+            ("Regen","lluvia"),("Wind","viento"),("Baum","árbol"),("Blume","flor"),
+            ("Vogel","pájaro"),("Fisch","pez"),("Pferd","caballo"),("Kuh","vaca"),
+            ("Brot","pan"),("Milch","leche"),("Apfel","manzana"),("Fleisch","carne"),
+            ("Musik","música"),("Sport","deporte"),("Film","película"),("Spiel","juego"),
+            ("Farbe","color"),("Rot","rojo"),("Blau","azul"),("Grün","verde"),
+            ("Groß","grande"),("Klein","pequeño"),("Neu","nuevo"),("Alt","viejo"),
+            ("Gut","bueno"),("Schlecht","malo"),("Schnell","rápido"),("Langsam","lento"),
+            ("Öffnen","abrir"),("Schließen","cerrar"),("Kaufen","comprar"),("Verkaufen","vender"),
+            ("Lernen","aprender"),("Lehren","enseñar"),("Lesen","leer"),("Schreiben","escribir"),
+            ("Laufen","correr"),("Gehen","caminar"),("Kommen","venir"),("Fahren","ir"),
+            ("Sehen","ver"),("Hören","escuchar"),("Sprechen","hablar"),("Fragen","preguntar"),
+            ("Antworten","responder"),("Helfen","ayudar"),("Brauchen","necesitar"),("Wollen","querer"),
+        ],
+    }
+
+    SPRACHE_NAMEN = {"en": "🇬🇧 Englisch", "fr": "🇫🇷 Französisch", "es": "🇪🇸 Spanisch"}
+    FRAGEN_PRO_SPRACHE = 5
+
+    def tages_seed():
+        """Gleicher Seed für alle Geräte am selben Tag → gleiche Vokabeln."""
+        return int(_hl.md5(str(date.today()).encode()).hexdigest(), 16)
+
+    def generiere_fragen():
+        """Generiert 15 Fragen (5 je Sprache) — täglich gleich für alle."""
+        _rnd.seed(tages_seed())
+        fragen = []
+        for spr, vokabeln in VOKABELN.items():
+            auswahl = _rnd.sample(vokabeln, FRAGEN_PRO_SPRACHE)
+            for de, fremd in auswahl:
+                # 4 falsche Antworten aus derselben Sprache
+                falsche_pool = [f for d, f in vokabeln if f != fremd]
+                falsche = _rnd.sample(falsche_pool, 4)
+                optionen = falsche + [fremd]
+                _rnd.shuffle(optionen)
+                fragen.append({
+                    "sprache":  spr,
+                    "frage_de": de,
+                    "richtig":  fremd,
+                    "optionen": optionen,
+                })
+        # Fragen nach Sprache gruppiert
+        return fragen
+
+    # -----------------------------------------------------------------------
+    # PHASE 1: NAMENSAUSWAHL
+    # -----------------------------------------------------------------------
+    if st.session_state.quiz_phase == 'name':
+        st.markdown("#### Wer spielt heute?")
+        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
+
+        # Heutigen Highscore laden
+        try:
+            heute_res = supabase.table("quiz_ergebnisse").select("*").eq(
+                "datum", str(date.today())).order("punkte", desc=True).execute()
+            heute_scores = {r["name"]: r["punkte"] for r in heute_res.data}
+        except Exception:
+            heute_scores = {}
+
+        # Bereits gespielt heute?
+        cols = st.columns(2)
+        for i, name in enumerate(PINNWAND_NAMEN):
+            farbe  = PINNWAND_FARBEN.get(name, "#888")
+            punkte = heute_scores.get(name)
+            label  = f"✅ {name} ({punkte} Pkt.)" if punkte is not None else name
+            with cols[i % 2]:
+                if st.button(label, key=f"quiz_name_{name}",
+                             use_container_width=True,
+                             type="secondary" if punkte is not None else "primary"):
+                    st.session_state.quiz_name   = name
+                    st.session_state.quiz_fragen = generiere_fragen()
+                    st.session_state.quiz_idx    = 0
+                    st.session_state.quiz_punkte = {}
+                    st.session_state.quiz_phase  = 'frage'
+                    st.session_state.quiz_antwort = None
+                    st.rerun()
+
+        # Wochenrangliste
+        try:
+            from datetime import timedelta as _td2
+            montag = date.today() - timedelta(days=date.today().weekday())
+            week_res = supabase.table("quiz_ergebnisse").select("name,punkte").gte(
+                "datum", str(montag)).execute()
+            if week_res.data:
+                st.divider()
+                st.markdown("#### 🏆 Woche")
+                week_sum = {}
+                for r in week_res.data:
+                    week_sum[r["name"]] = week_sum.get(r["name"], 0) + r["punkte"]
+                rang = sorted(week_sum.items(), key=lambda x: x[1], reverse=True)
+                medals = ["🥇","🥈","🥉","4.","5."]
+                for idx2, (n, p) in enumerate(rang):
+                    farbe2 = PINNWAND_FARBEN.get(n, "#888")
+                    st.markdown(
+                        f'<div style="display:flex;justify-content:space-between;'
+                        f'padding:8px 12px;border-radius:8px;margin-bottom:5px;'
+                        f'background:white;border-left:4px solid {farbe2};'
+                        f'box-shadow:0 1px 3px rgba(0,0,0,0.08);">'
+                        f'<span style="color:#111;font-size:0.95rem;">{medals[idx2]} '
+                        f'<b style="color:{farbe2};">{n}</b></span>'
+                        f'<span style="font-weight:800;color:#111;">{p} <span style="color:{farbe2};">Pkt.</span></span>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
+        except Exception:
+            pass
+
+    # -----------------------------------------------------------------------
+    # PHASE 2: FRAGE STELLEN
+    # -----------------------------------------------------------------------
+    elif st.session_state.quiz_phase == 'frage':
+        fragen  = st.session_state.quiz_fragen
+        idx     = st.session_state.quiz_idx
+        name    = st.session_state.quiz_name
+        farbe_n = PINNWAND_FARBEN.get(name, "#FF4B4B")
+
+        if idx >= len(fragen):
+            st.session_state.quiz_phase = 'ergebnis'
+            st.rerun()
+
+        frage = fragen[idx]
+        spr   = frage["sprache"]
+        total = len(fragen)
+
+        # Fortschrittsbalken
+        fortschritt = idx / total
+        st.markdown(
+            f'<div style="background:#e0e0e0;border-radius:10px;height:10px;margin-bottom:12px;">'
+            f'<div style="background:{farbe_n};width:{max(fortschritt*100,3):.0f}%;'
+            f'height:10px;border-radius:10px;min-width:8px;"></div>'
+            f'<div style="font-size:0.72rem;color:#666;text-align:right;margin-top:2px;">'
+            f'Frage {idx+1} / {total}</div></div>',
+            unsafe_allow_html=True
+        )
+
+        # Sprachen-Abschnitt Header
+        if idx % FRAGEN_PRO_SPRACHE == 0:
+            st.markdown(
+                f'<div style="background:{farbe_n};color:white;border-radius:10px;'
+                f'padding:8px 14px;margin-bottom:12px;font-weight:700;font-size:1rem;">'
+                f'{SPRACHE_NAMEN[spr]}</div>',
+                unsafe_allow_html=True
+            )
+
+        # Frage
+        st.markdown(
+            f'<div style="background:#f8f8f8;border-radius:12px;padding:16px;'
+            f'text-align:center;margin-bottom:16px;border:1px solid #e8e8e8;">'
+            f'<div style="font-size:0.78rem;color:#666 !important;margin-bottom:6px;">'
+            f'Frage {idx+1} von {total} · {SPRACHE_NAMEN[spr]}</div>'
+            f'<div style="font-size:1.4rem;font-weight:900;color:#111 !important;">{frage["frage_de"]}</div>'
+            f'<div style="font-size:0.85rem;color:#555 !important;margin-top:4px;">Wie heißt das auf {SPRACHE_NAMEN[spr].split()[-1]}?</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+        # Antwort-Buttons
+        if st.session_state.quiz_antwort is None:
+            for opt in frage["optionen"]:
+                if st.button(opt, key=f"opt_{idx}_{opt}", use_container_width=True):
+                    st.session_state.quiz_antwort = opt
+                    if opt == frage["richtig"]:
+                        spr_key = frage["sprache"]
+                        st.session_state.quiz_punkte[spr_key] =                             st.session_state.quiz_punkte.get(spr_key, 0) + 1
+                    st.rerun()
+        else:
+            # Auflösung
+            gew = st.session_state.quiz_antwort == frage["richtig"]
+            for opt in frage["optionen"]:
+                if opt == frage["richtig"]:
+                    bg = "#2E7D32"; txt = "white"; prefix = "✅ "
+                elif opt == st.session_state.quiz_antwort and not gew:
+                    bg = "#C62828"; txt = "white"; prefix = "❌ "
+                else:
+                    bg = "#f0f0f0"; txt = "#444"; prefix = ""
+                st.markdown(
+                    f'<div style="background:{bg};color:{txt} !important;border-radius:8px;'
+                    f'padding:10px 16px;margin-bottom:6px;font-weight:600;">'
+                    f'{prefix}{opt}</div>',
+                    unsafe_allow_html=True
+                )
+
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            if gew:
+                st.success("🎉 Richtig!")
+            else:
+                st.error(f"Die richtige Antwort war: **{frage['richtig']}**")
+
+            if st.button("Weiter →", use_container_width=True, type="primary",
+                         key=f"weiter_{idx}"):
+                st.session_state.quiz_idx    += 1
+                st.session_state.quiz_antwort = None
+                st.rerun()
+
+    # -----------------------------------------------------------------------
+    # PHASE 3: ERGEBNIS
+    # -----------------------------------------------------------------------
+    elif st.session_state.quiz_phase == 'ergebnis':
+        name    = st.session_state.quiz_name
+        punkte  = st.session_state.quiz_punkte
+        gesamt  = sum(punkte.values())
+        farbe_n = PINNWAND_FARBEN.get(name, "#FF4B4B")
+        total   = FRAGEN_PRO_SPRACHE * 3
+
+        # Ergebnis speichern
+        try:
+            supabase.table("quiz_ergebnisse").upsert({
+                "datum":           str(date.today()),
+                "name":            name,
+                "punkte":          gesamt,
+                "sprachen_detail": punkte,
+            }, on_conflict="datum,name").execute()
+        except Exception:
+            pass
+
+        # Ergebnis-Card
+        prozent = gesamt / total * 100
+        emoji   = "🏆" if prozent == 100 else "🎉" if prozent >= 70 else "💪" if prozent >= 40 else "📚"
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,{farbe_n},{farbe_n}cc);'
+            f'color:white;border-radius:16px;padding:24px;text-align:center;'
+            f'box-shadow:0 4px 14px rgba(0,0,0,0.15);margin-bottom:16px;">'
+            f'<div style="font-size:3rem;">{emoji}</div>'
+            f'<div style="font-weight:900;font-size:1.3rem;margin-top:8px;">{name}</div>'
+            f'<div style="font-size:2.5rem;font-weight:900;margin:8px 0;">{gesamt}/{total}</div>'
+            f'<div style="opacity:0.85;font-size:0.9rem;">Punkte heute</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+        # Detailauswertung pro Sprache
+        for spr, spr_name in SPRACHE_NAMEN.items():
+            p = punkte.get(spr, 0)
+            st.markdown(
+                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                f'padding:8px 12px;background:#f8f8f8;border-radius:8px;margin-bottom:6px;">'
+                f'<span style="font-size:0.95rem;color:#222 !important;">{spr_name}</span>'
+                f'<span style="font-weight:700;color:{farbe_n} !important;">{p}/{FRAGEN_PRO_SPRACHE} Pkt.</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        # Tagesrangliste
+        try:
+            heute_res = supabase.table("quiz_ergebnisse").select("*").eq(
+                "datum", str(date.today())).order("punkte", desc=True).execute()
+            if heute_res.data:
+                st.divider()
+                st.markdown("#### 📊 Heute")
+                medals = ["🥇","🥈","🥉","4.","5."]
+                for idx2, r in enumerate(heute_res.data):
+                    fn     = r["name"]
+                    fp     = r["punkte"]
+                    fb     = PINNWAND_FARBEN.get(fn, "#888")
+                    is_me  = fn == name
+                    bg2     = "#fff" if is_me else "#f8f8f8"
+                    border2 = f"2px solid {fb}" if is_me else "1px solid #eee"
+                    st.markdown(
+                        f'<div style="display:flex;justify-content:space-between;'
+                        f'padding:7px 12px;border-radius:8px;margin-bottom:4px;'
+                        f'background:{bg2};border:{border2};">'
+                        f'<span style="color:#222 !important;">{medals[idx2] if idx2 < 5 else str(idx2+1)+"."} '
+                        f'<b style="color:{fb} !important;">{fn}</b>'
+                        f'{"  ← du" if is_me else ""}</span>'
+                        f'<span style="font-weight:700;color:{fb} !important;">{fp}/{total}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
+        except Exception:
+            pass
+
+        if st.button("← Hauptmenü", use_container_width=True, key="quiz_home", type="primary"):
+            st.session_state.view       = 'start'
+            st.session_state.quiz_phase = 'name'
+            st.rerun()
+
+    if st.session_state.quiz_phase == 'name':
+        back_button()
 
 # =============================================================================
 # 5. FERIEN
