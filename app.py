@@ -327,13 +327,12 @@ if st.session_state.view == 'start':
             st.session_state.view = 'quiz'
             st.session_state.quiz_phase = 'name'; st.rerun()
     with c6:
-        st.markdown(
-            '<a href="https://6mal5.com" target="_blank" style="text-decoration:none;">'
-            '<div style="background:#FF4B4B;color:white;border-radius:8px;height:44px;'
-            'display:flex;align-items:center;justify-content:center;font-size:0.72rem;'
-            'font-weight:700;line-height:1.15;cursor:pointer;">🟩 WORDLE</div></a>',
-            unsafe_allow_html=True
-        )
+        if st.button("🟩 WORDLE", key="btn_wordle", use_container_width=True):
+            st.session_state["open_wordle"] = True
+        if st.session_state.get("open_wordle"):
+            st.session_state["open_wordle"] = False
+            st.markdown('<script>window.open("https://6mal5.com","_blank");</script>',
+                        unsafe_allow_html=True)
 
 
 
