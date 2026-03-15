@@ -304,29 +304,36 @@ if st.session_state.view == 'start':
 
     # Navigations-Buttons – alle 6 als native Streamlit-Buttons
     # Einheitliches Aussehen via globalem CSS (roter Hintergrund, weiße Schrift)
-    BTN_CFG = [
-        ("📅 KLAUSUREN",    "klausuren"),
-        ("🏫 STUNDENPLÄNE", "stundenplan"),
-        ("🚌 BUS-CHECK",    "bus"),
-        ("🌴 FERIEN",       "ferien"),
-        ("🧠 VOKABEL-QUIZ", "quiz"),
-    ]
-    rows = [BTN_CFG[i:i+2] for i in range(0, len(BTN_CFG), 2)]
-    for row in rows:
-        cols = st.columns(len(row))
-        for col, (label, view) in zip(cols, row):
-            with col:
-                if st.button(label, key=f'btn_{view}', use_container_width=True):
-                    st.session_state.view = view
-                    if view == 'quiz':
-                        st.session_state.quiz_phase = 'name'
-                    st.rerun()
-    # WORDLE als letzter Button (externer Link)
-    st.markdown(
-        '<a href="https://6mal5.com" target="_blank" style="text-decoration:none;">'
-        '<div style="background:#FF4B4B;color:white;border-radius:8px;height:44px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;text-align:center;line-height:1.15;cursor:pointer;margin-bottom:8px;">🟩 WORDLE</div></a>',
-        unsafe_allow_html=True
-    )
+    # Zeile 1
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("📅 KLAUSUREN", key="btn_klausuren", use_container_width=True):
+            st.session_state.view = 'klausuren'; st.rerun()
+    with c2:
+        if st.button("🏫 STUNDENPLÄNE", key="btn_stundenplan", use_container_width=True):
+            st.session_state.view = 'stundenplan'; st.rerun()
+    # Zeile 2
+    c3, c4 = st.columns(2)
+    with c3:
+        if st.button("🚌 BUS-CHECK", key="btn_bus", use_container_width=True):
+            st.session_state.view = 'bus'; st.rerun()
+    with c4:
+        if st.button("🌴 FERIEN", key="btn_ferien", use_container_width=True):
+            st.session_state.view = 'ferien'; st.rerun()
+    # Zeile 3: Vokabel-Quiz + Wordle nebeneinander
+    c5, c6 = st.columns(2)
+    with c5:
+        if st.button("🧠 VOKABEL-QUIZ", key="btn_quiz", use_container_width=True):
+            st.session_state.view = 'quiz'
+            st.session_state.quiz_phase = 'name'; st.rerun()
+    with c6:
+        st.markdown(
+            '<a href="https://6mal5.com" target="_blank" style="text-decoration:none;">'
+            '<div style="background:#FF4B4B;color:white;border-radius:8px;height:44px;'
+            'display:flex;align-items:center;justify-content:center;font-size:0.72rem;'
+            'font-weight:700;line-height:1.15;cursor:pointer;">🟩 WORDLE</div></a>',
+            unsafe_allow_html=True
+        )
 
 
 
