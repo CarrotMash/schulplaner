@@ -109,6 +109,14 @@ st.markdown("""
     line-height: 1.15 !important;
     min-height: 0 !important;
     height: 44px !important;
+    background-color: #FF4B4B !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+[data-testid="stHorizontalBlock"] button:hover {
+    background-color: #c0392b !important;
+    color: white !important;
 }
 
 /* Kalender */
