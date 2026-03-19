@@ -1167,28 +1167,21 @@ elif st.session_state.view == 'quiz':
                 unsafe_allow_html=True
             )
 
-        # Frage
+        # Frage – dunkler Hintergrund garantiert gute Lesbarkeit
         st.markdown(
-            f'<div style="background:#f8f8f8;border-radius:12px;padding:16px;'
-            f'text-align:center;margin-bottom:16px;border:1px solid #e8e8e8;">'
-            f'<div style="font-size:0.78rem;color:#666 !important;margin-bottom:6px;">'
+            f'<div style="background:#1a1a2e;border-radius:12px;padding:16px;'
+            f'text-align:center;margin-bottom:16px;">'
+            f'<div style="font-size:0.78rem;color:#aaa;margin-bottom:6px;">'
             f'Frage {idx+1} von {total} · {SPRACHE_NAMEN[spr]}</div>'
-            f'<div style="font-size:1.4rem;font-weight:900;color:#111 !important;">{frage["frage_de"]}</div>'
-            f'<div style="font-size:0.85rem;color:#555 !important;margin-top:4px;">Wie heißt das auf {SPRACHE_NAMEN[spr].split()[-1]}?</div>'
+            f'<div style="font-size:1.4rem;font-weight:900;color:#ffffff;">{frage["frage_de"]}</div>'
+            f'<div style="font-size:0.85rem;color:#ccc;margin-top:4px;">Wie heißt das auf {SPRACHE_NAMEN[spr].split()[-1]}?</div>'
             f'</div>',
             unsafe_allow_html=True
         )
 
-        # Antwort-Buttons
+        # Antwort-Buttons – nur native Streamlit-Buttons
         if st.session_state.quiz_antwort is None:
             for opt in frage["optionen"]:
-                # HTML-Button mit dunkler Schrift auf hellem Grund
-                st.markdown(
-                    f'<div style="background:#f0f0f0;color:#111;border-radius:8px;'
-                    f'padding:10px 16px;margin-bottom:6px;font-weight:600;'
-                    f'border:1px solid #ddd;cursor:pointer;">{opt}</div>',
-                    unsafe_allow_html=True
-                )
                 if st.button(opt, key=f"opt_{idx}_{opt}", use_container_width=True):
                     st.session_state.quiz_antwort = opt
                     if opt == frage["richtig"]:
