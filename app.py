@@ -97,18 +97,6 @@ st.markdown("""
 }
 .date-banner b { color: #444; font-size: 1.05rem; }
 
-/* Quiz-Antwort-Buttons: dunkle Schrift auf hellem Hintergrund */
-div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button[kind="secondary"],
-div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button {
-    color: #111 !important;
-    background-color: #f0f0f0 !important;
-    border: 1px solid #ddd !important;
-}
-div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button:hover {
-    background-color: #e0e0e0 !important;
-    color: #111 !important;
-}
-
 /* Navigationsbuttons */
 [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
 [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
@@ -1194,6 +1182,13 @@ elif st.session_state.view == 'quiz':
         # Antwort-Buttons
         if st.session_state.quiz_antwort is None:
             for opt in frage["optionen"]:
+                # HTML-Button mit dunkler Schrift auf hellem Grund
+                st.markdown(
+                    f'<div style="background:#f0f0f0;color:#111;border-radius:8px;'
+                    f'padding:10px 16px;margin-bottom:6px;font-weight:600;'
+                    f'border:1px solid #ddd;cursor:pointer;">{opt}</div>',
+                    unsafe_allow_html=True
+                )
                 if st.button(opt, key=f"opt_{idx}_{opt}", use_container_width=True):
                     st.session_state.quiz_antwort = opt
                     if opt == frage["richtig"]:
@@ -1201,7 +1196,7 @@ elif st.session_state.view == 'quiz':
                         st.session_state.quiz_punkte[spr_key] =                             st.session_state.quiz_punkte.get(spr_key, 0) + 1
                     st.rerun()
         else:
-            # Auflösung
+            # Auflösung: nur HTML, kein Button mehr nötig
             gew = st.session_state.quiz_antwort == frage["richtig"]
             for opt in frage["optionen"]:
                 if opt == frage["richtig"]:
@@ -1211,7 +1206,7 @@ elif st.session_state.view == 'quiz':
                 else:
                     bg = "#f0f0f0"; txt = "#444"; prefix = ""
                 st.markdown(
-                    f'<div style="background:{bg};color:{txt} !important;border-radius:8px;'
+                    f'<div style="background:{bg};color:{txt};border-radius:8px;'
                     f'padding:10px 16px;margin-bottom:6px;font-weight:600;">'
                     f'{prefix}{opt}</div>',
                     unsafe_allow_html=True
