@@ -582,35 +582,28 @@ elif st.session_state.view == 'stundenplan':
     }
     </style>""", unsafe_allow_html=True)
 
-    # Kind-Auswahl: HTML-Tile + unsichtbarer Streamlit-Button
-    st.markdown(
-        '<style>'
-        '.kind-btn-wrap { position:relative; margin-bottom:4px; }'
-        '.kind-btn-wrap button { position:absolute !important; top:0; left:0;'
-        ' width:100% !important; height:48px !important;'
-        ' opacity:0 !important; cursor:pointer !important; z-index:10; }'
-        '</style>',
-        unsafe_allow_html=True
-    )
+    # Kind-Auswahl: CSS per aria-label für aktiven Button
+    _css = ""
+    for _n, _f in CHILD_COLORS.items():
+        _aktiv = st.session_state.stundenplan_child == _n
+        if _aktiv:
+            _css += (f'button[aria-label="{_n}"] {{'
+                     f'background-color:{_f} !important;'
+                     f'color:white !important;'
+                     f'border:2px solid {_f} !important;}}')
+        else:
+            _css += (f'button[aria-label="{_n}"] {{'
+                     f'background-color:#e0e0e0 !important;'
+                     f'color:#333 !important;'
+                     f'border:2px solid {_f} !important;}}')
+    st.markdown(f'<style>{_css}</style>', unsafe_allow_html=True)
+
     kc = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
-        aktiv  = st.session_state.stundenplan_child == name
-        farbe  = CHILD_COLORS[name]
-        bg     = farbe if aktiv else "#e0e0e0"
-        txt    = "white" if aktiv else "#333"
         with kc[i]:
-            st.markdown(
-                f'<div class="kind-btn-wrap">'
-                f'<div style="background:{bg};color:{txt};'
-                f'border:2px solid {farbe};border-radius:8px;height:44px;'
-                f'display:flex;align-items:center;justify-content:center;'
-                f'font-size:0.85rem;font-weight:700;">{name}</div>',
-                unsafe_allow_html=True
-            )
             if st.button(name, key=f"cs_{name}", use_container_width=True):
                 st.session_state.stundenplan_child = name
                 st.session_state.editing_grade     = False; st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
     cur_c = st.session_state.stundenplan_child
 
@@ -642,35 +635,25 @@ elif st.session_state.view == 'stundenplan':
 
     # Wochentag-Buttons mit Kindsfarbe für aktiven Tag
     day_short = {"Montag":"Mo","Dienstag":"Di","Mittwoch":"Mi","Donnerstag":"Do","Freitag":"Fr"}
-    st.markdown(
-        '<style>'
-        '.day-btn-wrap { position:relative; margin-bottom:4px; }'
-        '.day-btn-wrap button { position:absolute !important; top:0; left:0;'
-        ' width:100% !important; height:36px !important;'
-        ' opacity:0 !important; cursor:pointer !important; z-index:10; }'
-        '</style>',
-        unsafe_allow_html=True
-    )
+    _day_css = ""
+    for _day in DAYS:
+        _lbl   = day_short[_day]
+        _aktiv = st.session_state.stundenplan_day == _day
+        _bg    = kind_farbe if _aktiv else "#e0e0e0"
+        _txt   = "white"    if _aktiv else "#333"
+        _day_css += (f'button[aria-label="{_lbl}"] {{'
+                     f'background-color:{_bg} !important;'
+                     f'color:{_txt} !important;'
+                     f'border:2px solid {kind_farbe} !important;}}')
+    st.markdown(f'<style>{_day_css}</style>', unsafe_allow_html=True)
     dc = st.columns(5)
     for i, day in enumerate(DAYS):
-        aktiv = st.session_state.stundenplan_day == day
-        bg  = kind_farbe if aktiv else "#e0e0e0"
-        txt = "white"    if aktiv else "#333"
         with dc[i]:
-            st.markdown(
-                f'<div class="day-btn-wrap">'
-                f'<div style="background:{bg};color:{txt};border:2px solid {kind_farbe};'
-                f'border-radius:8px;height:32px;display:flex;align-items:center;'
-                f'justify-content:center;font-size:0.82rem;font-weight:700;">'
-                f'{day_short[day]}</div>',
-                unsafe_allow_html=True
-            )
             if st.button(day_short[day], key=f"day_{day}", use_container_width=True):
                 st.session_state.stundenplan_day = day
                 if 'edit_cell' in st.session_state:
                     del st.session_state.edit_cell
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
     cur_day = st.session_state.stundenplan_day
 
@@ -688,40 +671,29 @@ elif st.session_state.view == 'stundenplan':
     st.markdown(f'<table class="sp-table">{rows}</table>', unsafe_allow_html=True)
 
     # Stunden-Buttons mit Kindsfarbe für aktive Auswahl
-    st.markdown(
-        '<style>'
-        '.ec-btn-wrap { position:relative; margin-bottom:4px; }'
-        '.ec-btn-wrap button { position:absolute !important; top:0; left:0;'
-        ' width:100% !important; height:36px !important;'
-        ' opacity:0 !important; cursor:pointer !important; z-index:10; }'
-        '</style>',
-        unsafe_allow_html=True
-    )
+    aktiv_std  = st.session_state.get('edit_cell', {}).get('std')
+    _ec_css = ""
+    for _std in range(1, 8):
+        _aktiv = aktiv_std == _std
+        _bg    = kind_farbe if _aktiv else "#e0e0e0"
+        _txt   = "white"    if _aktiv else "#333"
+        _ec_css += (f'button[aria-label="{_std}"] {{'
+                    f'background-color:{_bg} !important;'
+                    f'color:{_txt} !important;'
+                    f'border:2px solid {kind_farbe} !important;}}')
+    st.markdown(f'<style>{_ec_css}</style>', unsafe_allow_html=True)
     st.markdown("<div style='margin-top:8px;'>", unsafe_allow_html=True)
     ec_cols = st.columns(7)
-    aktiv_std = st.session_state.get('edit_cell', {}).get('std')
     for idx, std in enumerate(range(1, 8)):
         lesson = plan_dict.get((cur_day, std))
         fach   = lesson['fach'] if lesson else "---"
-        aktiv  = aktiv_std == std
-        bg     = kind_farbe if aktiv else "#e0e0e0"
-        txt    = "white"    if aktiv else "#333"
         with ec_cols[idx]:
-            st.markdown(
-                f'<div class="ec-btn-wrap">'
-                f'<div style="background:{bg};color:{txt};border:2px solid {kind_farbe};'
-                f'border-radius:8px;height:32px;display:flex;align-items:center;'
-                f'justify-content:center;font-size:0.82rem;font-weight:700;">'
-                f'{std}</div>',
-                unsafe_allow_html=True
-            )
             if st.button(str(std), key=f"ec_{cur_c}_{cur_day}_{std}", use_container_width=True):
                 st.session_state.edit_cell = {
                     "day": cur_day, "std": std, "fach": fach,
                     "id": lesson['id'] if lesson else None
                 }
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     st.caption("↑ Stundennummer antippen zum Bearbeiten")
 
