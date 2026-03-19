@@ -97,6 +97,18 @@ st.markdown("""
 }
 .date-banner b { color: #444; font-size: 1.05rem; }
 
+/* Quiz-Antwort-Buttons: dunkle Schrift auf hellem Hintergrund */
+div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button[kind="secondary"],
+div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button {
+    color: #111 !important;
+    background-color: #f0f0f0 !important;
+    border: 1px solid #ddd !important;
+}
+div[data-testid="stVerticalBlock"] div[data-testid="stButton"] button:hover {
+    background-color: #e0e0e0 !important;
+    color: #111 !important;
+}
+
 /* Navigationsbuttons */
 [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
 [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
