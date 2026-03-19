@@ -582,21 +582,23 @@ elif st.session_state.view == 'stundenplan':
     }
     </style>""", unsafe_allow_html=True)
 
-    # Kind-Auswahl: CSS per aria-label für aktiven Button
-    _css = ""
-    for _n, _f in CHILD_COLORS.items():
-        _aktiv = st.session_state.stundenplan_child == _n
-        if _aktiv:
-            _css += (f'button[aria-label="{_n}"] {{'
-                     f'background-color:{_f} !important;'
-                     f'color:white !important;'
-                     f'border:2px solid {_f} !important;}}')
-        else:
-            _css += (f'button[aria-label="{_n}"] {{'
-                     f'background-color:#e0e0e0 !important;'
-                     f'color:#333 !important;'
-                     f'border:2px solid {_f} !important;}}')
-    st.markdown(f'<style>{_css}</style>', unsafe_allow_html=True)
+    # Kind-Buttons: aktiv=rot/weiß, inaktiv=weiß/rot
+    st.markdown('''<style>
+        button[aria-label="Mila"], button[aria-label="Jojo"], button[aria-label="Mikko"] {
+            background-color: white !important;
+            color: #FF4B4B !important;
+            border: 2px solid #FF4B4B !important;
+        }
+    </style>''', unsafe_allow_html=True)
+    _aktiv_name = st.session_state.stundenplan_child
+    if _aktiv_name:
+        st.markdown(f'''<style>
+            button[aria-label="{_aktiv_name}"] {{
+                background-color: #FF4B4B !important;
+                color: white !important;
+                border: 2px solid #FF4B4B !important;
+            }}
+        </style>''', unsafe_allow_html=True)
 
     kc = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
@@ -604,6 +606,14 @@ elif st.session_state.view == 'stundenplan':
             if st.button(name, key=f"cs_{name}", use_container_width=True):
                 st.session_state.stundenplan_child = name
                 st.session_state.editing_grade     = False; st.rerun()
+
+    # Aktives Kind dauerhaft anzeigen
+    if st.session_state.stundenplan_child:
+        st.markdown(
+            f'<div style="text-align:center;font-size:0.8rem;color:#888;margin-top:2px;">' 
+            f'Stundenplan: <b style="color:#FF4B4B;">{st.session_state.stundenplan_child}</b></div>',
+            unsafe_allow_html=True
+        )
 
     cur_c = st.session_state.stundenplan_child
 
@@ -633,18 +643,16 @@ elif st.session_state.view == 'stundenplan':
     plan_dict  = {(item['tag'], int(item['stunde'])): item for item in res.data}
     kind_farbe = CHILD_COLORS.get(cur_c, "#333")
 
-    # Wochentag-Buttons mit Kindsfarbe für aktiven Tag
+    # Wochentag-Buttons: aktiv=rot/weiß, inaktiv=weiß/rot
     day_short = {"Montag":"Mo","Dienstag":"Di","Mittwoch":"Mi","Donnerstag":"Do","Freitag":"Fr"}
-    _day_css = ""
-    for _day in DAYS:
-        _lbl   = day_short[_day]
-        _aktiv = st.session_state.stundenplan_day == _day
-        _bg    = kind_farbe if _aktiv else "#e0e0e0"
-        _txt   = "white"    if _aktiv else "#333"
-        _day_css += (f'button[aria-label="{_lbl}"] {{'
-                     f'background-color:{_bg} !important;'
-                     f'color:{_txt} !important;'
-                     f'border:2px solid {kind_farbe} !important;}}')
+    _aktiv_day_lbl = day_short.get(st.session_state.stundenplan_day, "")
+    _day_css = " ".join([
+        f'button[aria-label="{day_short[d]}"] {{'
+        f'background-color:{"#FF4B4B" if st.session_state.stundenplan_day==d else "white"} !important;'
+        f'color:{"white" if st.session_state.stundenplan_day==d else "#FF4B4B"} !important;'
+        f'border:2px solid #FF4B4B !important;}}'
+        for d in DAYS
+    ])
     st.markdown(f'<style>{_day_css}</style>', unsafe_allow_html=True)
     dc = st.columns(5)
     for i, day in enumerate(DAYS):
@@ -670,17 +678,15 @@ elif st.session_state.view == 'stundenplan':
                   f'</tr>')
     st.markdown(f'<table class="sp-table">{rows}</table>', unsafe_allow_html=True)
 
-    # Stunden-Buttons mit Kindsfarbe für aktive Auswahl
-    aktiv_std  = st.session_state.get('edit_cell', {}).get('std')
-    _ec_css = ""
-    for _std in range(1, 8):
-        _aktiv = aktiv_std == _std
-        _bg    = kind_farbe if _aktiv else "#e0e0e0"
-        _txt   = "white"    if _aktiv else "#333"
-        _ec_css += (f'button[aria-label="{_std}"] {{'
-                    f'background-color:{_bg} !important;'
-                    f'color:{_txt} !important;'
-                    f'border:2px solid {kind_farbe} !important;}}')
+    # Stunden-Buttons: aktiv=rot/weiß, inaktiv=weiß/rot
+    aktiv_std = st.session_state.get('edit_cell', {}).get('std')
+    _ec_css = " ".join([
+        f'button[aria-label="{s}"] {{'
+        f'background-color:{"#FF4B4B" if aktiv_std==s else "white"} !important;'
+        f'color:{"white" if aktiv_std==s else "#FF4B4B"} !important;'
+        f'border:2px solid #FF4B4B !important;}}'
+        for s in range(1, 8)
+    ])
     st.markdown(f'<style>{_ec_css}</style>', unsafe_allow_html=True)
     st.markdown("<div style='margin-top:8px;'>", unsafe_allow_html=True)
     ec_cols = st.columns(7)
