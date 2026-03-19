@@ -911,9 +911,10 @@ elif st.session_state.view == 'bus':
             f'<div style="text-align:right;flex-shrink:0;margin-left:8px;">{cd_html}</div>'
             f'</div>'
             f'{("<div style=\"margin-top:4px;\">" + erste_badge + naechster_tag_badge + "</div>") if (erste_badge or naechster_tag_badge) else ""}'
-            f'<div style="margin-top:6px;font-size:0.88rem;">'
-            f'<span style="color:#555 !important;">🚏 Ausstieg: </span>'
-            f'<b style="color:#222 !important;">{richtung}</b>'
+            f'<div style="margin-top:6px;font-size:0.88rem;'
+            f'background:#fff;border-radius:6px;padding:4px 8px;">'
+            f'<span style="color:#444;">🚏 Ausstieg: </span>'
+            f'<b style="color:#111;">{richtung}</b>'
             f'</div>'
             f'</div>',
             unsafe_allow_html=True
