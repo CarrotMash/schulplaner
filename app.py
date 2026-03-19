@@ -582,15 +582,31 @@ elif st.session_state.view == 'stundenplan':
     }
     </style>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="kind-row">', unsafe_allow_html=True)
+    # CSS: Kind-Buttons mit individuellen Farben
+    _kind_css = ""
+    for _i, (_name, _farbe) in enumerate(CHILD_COLORS.items()):
+        _aktiv = st.session_state.stundenplan_child == _name
+        _bg  = _farbe if _aktiv else "#e0e0e0"
+        _txt = "white" if _aktiv else "#333"
+        _brd = _farbe
+        _sel = f"[data-testid='stHorizontalBlock'] [data-testid='stColumn']:nth-child({_i+1}) button"
+        _kind_css += (
+            f"{_sel} {{"
+            f"background-color:{_bg} !important;"
+            f"color:{_txt} !important;"
+            f"border:2px solid {_brd} !important;"
+            f"height:44px !important;"
+            f"}}"
+        )
+    st.markdown(f"<style>{_kind_css}</style>", unsafe_allow_html=True)
+
     kc = st.columns(3)
     for i, name in enumerate(CHILD_COLORS.keys()):
         aktiv = st.session_state.stundenplan_child == name
-        if kc[i].button(name, key=f"cs_{name}", use_container_width=True,
-                        type="primary" if aktiv else "secondary"):
-            st.session_state.stundenplan_child = name
-            st.session_state.editing_grade     = False; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        with kc[i]:
+            if st.button(name, key=f"cs_{name}", use_container_width=True):
+                st.session_state.stundenplan_child = name
+                st.session_state.editing_grade     = False; st.rerun()
 
     cur_c = st.session_state.stundenplan_child
 
