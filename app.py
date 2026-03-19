@@ -1259,14 +1259,14 @@ elif st.session_state.view == 'quiz':
             unsafe_allow_html=True
         )
 
-        # Detailauswertung pro Sprache
+        # Detailauswertung pro Sprache: dunkler Hintergrund für Kontrast
         for spr, spr_name in SPRACHE_NAMEN.items():
             p = punkte.get(spr, 0)
             st.markdown(
                 f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                f'padding:8px 12px;background:#f8f8f8;border-radius:8px;margin-bottom:6px;">'
-                f'<span style="font-size:0.95rem;color:#222 !important;">{spr_name}</span>'
-                f'<span style="font-weight:700;color:{farbe_n} !important;">{p}/{FRAGEN_PRO_SPRACHE} Pkt.</span>'
+                f'padding:8px 12px;background:#1a1a2e;border-radius:8px;margin-bottom:6px;">'
+                f'<span style="font-size:0.95rem;color:#ffffff;">{spr_name}</span>'
+                f'<span style="font-weight:700;color:#ffffff;">{p}/{FRAGEN_PRO_SPRACHE} Pkt.</span>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -1284,16 +1284,15 @@ elif st.session_state.view == 'quiz':
                     fp     = r["punkte"]
                     fb     = PINNWAND_FARBEN.get(fn, "#888")
                     is_me  = fn == name
-                    bg2     = "#fff" if is_me else "#f8f8f8"
-                    border2 = f"2px solid {fb}" if is_me else "1px solid #eee"
+                    border2 = f"2px solid {fb}" if is_me else "1px solid #333"
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;'
                         f'padding:7px 12px;border-radius:8px;margin-bottom:4px;'
-                        f'background:{bg2};border:{border2};">'
-                        f'<span style="color:#222 !important;">{medals[idx2] if idx2 < 5 else str(idx2+1)+"."} '
-                        f'<b style="color:{fb} !important;">{fn}</b>'
+                        f'background:#1a1a2e;border:{border2};">'
+                        f'<span style="color:#ffffff;">{medals[idx2] if idx2 < 5 else str(idx2+1)+"."} '
+                        f'<b style="color:{fb};">{fn}</b>'
                         f'{"  ← du" if is_me else ""}</span>'
-                        f'<span style="font-weight:700;color:{fb} !important;">{fp}/{total}</span>'
+                        f'<span style="font-weight:700;color:#ffffff;">{fp}/{total}</span>'
                         f'</div>',
                         unsafe_allow_html=True
                     )
