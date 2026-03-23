@@ -308,15 +308,21 @@ def logout():
     st.query_params.clear()
     st.rerun()
 
-def nutzer_registrieren(name: str, passwort: str, rolle: str) -> bool:
+def nutzer_registrieren(name: str, passwort: str, rolle: str,
+                        sicherheitsfrage: str = "", sicherheitsantwort: str = "") -> bool:
     """Neuen Nutzer anlegen (nur wenn Name noch nicht vergeben)."""
     try:
         pw_hash = hash_passwort(passwort)
-        supabase.table("nutzer").insert({
+        eintrag = {
             "name":          name,
             "passwort_hash": pw_hash,
             "rolle":         rolle,
-        }).execute()
+        }
+        if sicherheitsfrage:
+            eintrag["sicherheitsfrage"]       = sicherheitsfrage
+            eintrag["sicherheitsantwort_hash"] = hash_passwort(
+                sicherheitsantwort.lower().strip())
+        supabase.table("nutzer").insert(eintrag).execute()
         return True
     except Exception:
         return False
@@ -326,37 +332,15 @@ session_laden()
 
 # Login-Screen anzeigen wenn nicht eingeloggt
 if not st.session_state.user:
-    st.markdown("""
-    <style>
-    .login-box {
-        background: white;
-        border-radius: 16px;
-        padding: 32px 24px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        max-width: 380px;
-        margin: 40px auto;
-        text-align: center;
-    }
-    .login-title {
-        font-size: 1.8rem;
-        font-weight: 900;
-        color: #FF4B4B;
-        margin-bottom: 4px;
-    }
-    .login-sub {
-        color: #888;
-        font-size: 0.9rem;
-        margin-bottom: 24px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div style="text-align:center;margin:24px 0 8px 0;">'
+        '<span style="font-size:1.8rem;font-weight:900;color:#FF4B4B;">📅 Schulplaner</span><br>'
+        '<span style="color:#888;font-size:0.9rem;">Bitte einloggen</span>'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
-    st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">📅 Schulplaner</div>', unsafe_allow_html=True)
-    st.markdown('<div class="login-sub">Bitte einloggen</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    tab_login, tab_reg = st.tabs(["🔑 Login", "✏️ Registrieren"])
+    tab_login, tab_reg, tab_reset = st.tabs(["🔑 Login", "✏️ Registrieren", "🔓 Passwort vergessen"])
 
     with tab_login:
         with st.form("login_form"):
@@ -376,17 +360,73 @@ if not st.session_state.user:
                                      key="reg_name_sel")
             reg_pw    = st.text_input("Passwort wählen", type="password", key="reg_pw")
             reg_pw2   = st.text_input("Passwort wiederholen", type="password", key="reg_pw2")
-            reg_rolle = st.selectbox("Rolle", ["eltern", "kind"], key="reg_rolle")
+            reg_rolle = st.selectbox("Rolle", ["Eltern", "Kind"], key="reg_rolle")
+            st.markdown("---")
+            st.caption("🔐 Sicherheitsfrage für Passwort-Reset:")
+            reg_frage = st.text_input("Deine Sicherheitsfrage",
+                placeholder="z.B. Wie heißt unser erstes Haustier?", key="reg_frage")
+            reg_antwort = st.text_input("Antwort", type="password", key="reg_antwort")
             reg_btn   = st.form_submit_button("Account erstellen", use_container_width=True)
             if reg_btn:
                 if reg_pw != reg_pw2:
                     st.error("❌ Passwörter stimmen nicht überein.")
                 elif len(reg_pw) < 4:
                     st.error("❌ Passwort muss mindestens 4 Zeichen haben.")
-                elif nutzer_registrieren(reg_name, reg_pw, reg_rolle):
+                elif not reg_frage.strip() or not reg_antwort.strip():
+                    st.error("❌ Bitte Sicherheitsfrage und Antwort ausfüllen.")
+                elif nutzer_registrieren(reg_name, reg_pw, reg_rolle,
+                                         reg_frage.strip(), reg_antwort.strip()):
                     st.success(f"✅ Account für {reg_name} erstellt! Bitte einloggen.")
                 else:
                     st.error("❌ Name bereits vergeben oder Fehler aufgetreten.")
+    with tab_reset:
+        st.caption("Beantworte deine Sicherheitsfrage um ein neues Passwort zu setzen.")
+        with st.form("reset_form"):
+            rst_name    = st.selectbox("Name", ["Papa", "Mama", "Mila", "Jojo", "Mikko"],
+                                       key="rst_name")
+            rst_antwort = st.text_input("Antwort auf deine Sicherheitsfrage",
+                                        type="password", key="rst_antwort")
+            rst_pw_neu  = st.text_input("Neues Passwort", type="password", key="rst_pw")
+            rst_pw_neu2 = st.text_input("Neues Passwort wiederholen",
+                                        type="password", key="rst_pw2")
+            rst_btn     = st.form_submit_button("Passwort zurücksetzen",
+                                                use_container_width=True)
+            if rst_btn:
+                if rst_pw_neu != rst_pw_neu2:
+                    st.error("❌ Passwörter stimmen nicht überein.")
+                elif len(rst_pw_neu) < 4:
+                    st.error("❌ Passwort muss mindestens 4 Zeichen haben.")
+                else:
+                    try:
+                        antwort_hash = hash_passwort(rst_antwort.lower().strip())
+                        res = supabase.table("nutzer").select(
+                            "name,sicherheitsfrage,sicherheitsantwort_hash").eq(
+                            "name", rst_name).execute()
+                        if (res.data and
+                                res.data[0].get("sicherheitsantwort_hash") == antwort_hash):
+                            # Passwort updaten + Sessions löschen
+                            supabase.table("nutzer").update({
+                                "passwort_hash": hash_passwort(rst_pw_neu)
+                            }).eq("name", rst_name).execute()
+                            supabase.table("sessions").delete().eq(
+                                "name", rst_name).execute()
+                            st.success(
+                                f"✅ Passwort für {rst_name} wurde zurückgesetzt. "
+                                f"Bitte jetzt einloggen.")
+                        else:
+                            st.error("❌ Antwort falsch oder kein Account gefunden.")
+                    except Exception as e:
+                        st.error(f"❌ Fehler: {e}")
+
+        # Sicherheitsfrage anzeigen wenn Name gewählt
+        try:
+            frage_res = supabase.table("nutzer").select(
+                "sicherheitsfrage").eq("name", rst_name).execute()
+            if frage_res.data and frage_res.data[0].get("sicherheitsfrage"):
+                st.info(f"💬 Deine Frage: *{frage_res.data[0]['sicherheitsfrage']}*")
+        except Exception:
+            pass
+
     st.stop()
 
 # Eingeloggt: Nutzer-Info
@@ -396,12 +436,6 @@ _user = st.session_state.user
 # 1. DASHBOARD
 # =============================================================================
 if st.session_state.view == 'start':
-
-    # Logout-Button oben rechts
-    col_logo, col_logout = st.columns([5, 1])
-    with col_logout:
-        if st.button("⎋", help=f"Abmelden ({_user})", key="logout_btn"):
-            logout()
 
     # Datum + Wochentag
     heute = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin"))
@@ -585,7 +619,12 @@ if st.session_state.view == 'start':
                     {"name": _user, "text": ptext.strip()}).execute()
                 st.rerun()
 
-    st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
+    # Logout-Button ganz unten
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.divider()
+    if st.button(f"⎋ Abmelden ({_user})", use_container_width=True, key="logout_btn"):
+        logout()
+    st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -1311,17 +1350,18 @@ elif st.session_state.view == 'quiz':
 
         mein_score = heute_scores.get(_user)
         if mein_score is not None:
-            st.info(f"Du hast heute bereits **{mein_score}/{FRAGEN_PRO_SPRACHE*3} Punkte** gespielt.")
-
-        if st.button(f"🧠 Quiz starten als {_user}", use_container_width=True, type="primary",
-                     key="quiz_start_btn"):
-            st.session_state.quiz_name   = _user
-            st.session_state.quiz_fragen = generiere_fragen()
-            st.session_state.quiz_idx    = 0
-            st.session_state.quiz_punkte = {}
-            st.session_state.quiz_phase  = 'frage'
-            st.session_state.quiz_antwort = None
-            st.rerun()
+            st.success(f"✅ Du hast heute bereits gespielt: **{mein_score}/{FRAGEN_PRO_SPRACHE*3} Punkte**")
+            st.info("Das Quiz kann pro Tag nur einmal gespielt werden. Komm morgen wieder!")
+        else:
+            if st.button(f"🧠 Quiz starten als {_user}", use_container_width=True, type="primary",
+                         key="quiz_start_btn"):
+                st.session_state.quiz_name   = _user
+                st.session_state.quiz_fragen = generiere_fragen()
+                st.session_state.quiz_idx    = 0
+                st.session_state.quiz_punkte = {}
+                st.session_state.quiz_phase  = 'frage'
+                st.session_state.quiz_antwort = None
+                st.rerun()
 
         # Wochenrangliste
         try:
