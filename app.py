@@ -6,6 +6,8 @@ import zoneinfo
 from supabase import create_client
 import os
 import uuid
+import hashlib
+import secrets
 
 # --- DATENBANK VERBINDUNG ---
 url = st.secrets["SUPABASE_URL"]
@@ -55,6 +57,8 @@ if 'quiz_fragen'       not in st.session_state: st.session_state.quiz_fragen = [
 if 'quiz_idx'          not in st.session_state: st.session_state.quiz_idx = 0
 if 'quiz_punkte'       not in st.session_state: st.session_state.quiz_punkte = {}
 if 'quiz_antwort'      not in st.session_state: st.session_state.quiz_antwort = None
+if 'user'              not in st.session_state: st.session_state.user = None
+if 'login_fehler'      not in st.session_state: st.session_state.login_fehler = None
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
 
@@ -248,9 +252,156 @@ def naechste_ferien():
     return None
 
 # =============================================================================
+# LOGIN-SYSTEM
+# =============================================================================
+
+def hash_passwort(pw: str) -> str:
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+def token_generieren() -> str:
+    return secrets.token_hex(32)
+
+def session_laden():
+    """Token aus query_params lesen und User laden."""
+    token = st.query_params.get("token", None)
+    if token and not st.session_state.user:
+        try:
+            res = supabase.table("sessions").select("name,gueltig_bis").eq(
+                "token", token).execute()
+            if res.data:
+                from datetime import timezone
+                gueltig = datetime.fromisoformat(res.data[0]["gueltig_bis"])
+                if gueltig.tzinfo is None:
+                    gueltig = gueltig.replace(tzinfo=timezone.utc)
+                if gueltig > datetime.now(timezone.utc):
+                    st.session_state.user = res.data[0]["name"]
+        except Exception:
+            pass
+
+def login(name: str, passwort: str) -> bool:
+    """Login prüfen, bei Erfolg Session anlegen."""
+    try:
+        pw_hash = hash_passwort(passwort)
+        res = supabase.table("nutzer").select("name").eq(
+            "name", name).eq("passwort_hash", pw_hash).execute()
+        if res.data:
+            token = token_generieren()
+            supabase.table("sessions").insert({
+                "token": token,
+                "name":  name,
+            }).execute()
+            st.session_state.user = name
+            st.query_params["token"] = token
+            return True
+    except Exception:
+        pass
+    return False
+
+def logout():
+    token = st.query_params.get("token", None)
+    if token:
+        try:
+            supabase.table("sessions").delete().eq("token", token).execute()
+        except Exception:
+            pass
+    st.session_state.user = None
+    st.query_params.clear()
+    st.rerun()
+
+def nutzer_registrieren(name: str, passwort: str, rolle: str) -> bool:
+    """Neuen Nutzer anlegen (nur wenn Name noch nicht vergeben)."""
+    try:
+        pw_hash = hash_passwort(passwort)
+        supabase.table("nutzer").insert({
+            "name":          name,
+            "passwort_hash": pw_hash,
+            "rolle":         rolle,
+        }).execute()
+        return True
+    except Exception:
+        return False
+
+# Session beim Start laden (Token aus URL)
+session_laden()
+
+# Login-Screen anzeigen wenn nicht eingeloggt
+if not st.session_state.user:
+    st.markdown("""
+    <style>
+    .login-box {
+        background: white;
+        border-radius: 16px;
+        padding: 32px 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        max-width: 380px;
+        margin: 40px auto;
+        text-align: center;
+    }
+    .login-title {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: #FF4B4B;
+        margin-bottom: 4px;
+    }
+    .login-sub {
+        color: #888;
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="login-box">', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">📅 Schulplaner</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-sub">Bitte einloggen</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    tab_login, tab_reg = st.tabs(["🔑 Login", "✏️ Registrieren"])
+
+    with tab_login:
+        with st.form("login_form"):
+            name_inp = st.selectbox("Name", ["Papa", "Mama", "Mila", "Jojo", "Mikko"])
+            pw_inp   = st.text_input("Passwort", type="password")
+            submit   = st.form_submit_button("Einloggen", use_container_width=True)
+            if submit:
+                if login(name_inp, pw_inp):
+                    st.rerun()
+                else:
+                    st.error("❌ Name oder Passwort falsch.")
+
+    with tab_reg:
+        st.caption("Nur beim ersten Mal nötig — danach einfach einloggen.")
+        with st.form("reg_form"):
+            reg_name  = st.selectbox("Name", ["Papa", "Mama", "Mila", "Jojo", "Mikko"],
+                                     key="reg_name_sel")
+            reg_pw    = st.text_input("Passwort wählen", type="password", key="reg_pw")
+            reg_pw2   = st.text_input("Passwort wiederholen", type="password", key="reg_pw2")
+            reg_rolle = st.selectbox("Rolle", ["eltern", "kind"], key="reg_rolle")
+            reg_btn   = st.form_submit_button("Account erstellen", use_container_width=True)
+            if reg_btn:
+                if reg_pw != reg_pw2:
+                    st.error("❌ Passwörter stimmen nicht überein.")
+                elif len(reg_pw) < 4:
+                    st.error("❌ Passwort muss mindestens 4 Zeichen haben.")
+                elif nutzer_registrieren(reg_name, reg_pw, reg_rolle):
+                    st.success(f"✅ Account für {reg_name} erstellt! Bitte einloggen.")
+                else:
+                    st.error("❌ Name bereits vergeben oder Fehler aufgetreten.")
+    st.stop()
+
+# Eingeloggt: Nutzer-Info
+_user = st.session_state.user
+
+# =============================================================================
 # 1. DASHBOARD
 # =============================================================================
 if st.session_state.view == 'start':
+
+    # Logout-Button oben rechts
+    col_logo, col_logout = st.columns([5, 1])
+    with col_logout:
+        if st.button("⎋", help=f"Abmelden ({_user})", key="logout_btn"):
+            logout()
 
     # Datum + Wochentag
     heute = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin"))
@@ -362,66 +513,76 @@ if st.session_state.view == 'start':
     st.divider()
     st.markdown("#### 📌 Pinnwand")
 
-    try:
-        msgs = supabase.table("nachrichten").select("*").order("created_at", desc=True).limit(10).execute().data
-    except Exception:
-        msgs = []
+    @st.fragment(run_every=30)
+    def pinnwand_anzeige():
+        try:
+            msgs = supabase.table("nachrichten").select("*").order(
+                "created_at", desc=True).limit(10).execute().data
+        except Exception:
+            msgs = []
 
-    if msgs:
-        for msg in msgs:
-            farbe   = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
-            name    = msg.get("name","?")
-            text    = msg.get("text","")
-            mid     = msg['id']
-            aktiv   = st.session_state.active_msg == mid
-            try:
-                ts   = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
-                datum_str = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m.")
-                uhr_str   = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
-                zeit      = f"{datum_str} um {uhr_str}"
-            except Exception:
-                zeit = ""
+        # Neue Nachricht erkennen
+        neueste_id = msgs[0]['id'] if msgs else None
+        if 'pinnwand_last_id' not in st.session_state:
+            st.session_state.pinnwand_last_id = neueste_id
+        elif neueste_id and neueste_id != st.session_state.pinnwand_last_id:
+            st.toast("📌 Neue Nachricht auf der Pinnwand!", icon="🔔")
+            st.session_state.pinnwand_last_id = neueste_id
 
-            rand   = f"2px solid {farbe}" if aktiv else f"1px solid #eee"
-            bg     = "#fff" if aktiv else "#f8f8f8"
+        if msgs:
+            for msg in msgs:
+                farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
+                mname = msg.get("name","?")
+                text  = msg.get("text","")
+                mid   = msg['id']
+                aktiv = st.session_state.active_msg == mid
+                try:
+                    ts        = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
+                    datum_str = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m.")
+                    uhr_str   = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
+                    zeit      = f"{datum_str} um {uhr_str}"
+                except Exception:
+                    zeit = ""
 
-            # Nachricht anklicken → aktiviert Löschoption
-            btn_label = f"👤 {name} – {zeit}: {text}"
-            if st.button(
-                btn_label,
-                key=f"msg_btn_{mid}",
-                use_container_width=True,
-            ):
-                st.session_state.active_msg = None if aktiv else mid
-                st.rerun()
+                rand = f"2px solid {farbe}" if aktiv else f"1px solid #eee"
+                bg   = "#fff" if aktiv else "#f8f8f8"
 
-            # Lösch- und Abbrechen-Button nur bei aktiver Nachricht
-            if aktiv:
-                ca, cb = st.columns(2)
-                with ca:
-                    if st.button("🗑 Löschen", key=f"del_{mid}",
-                                 use_container_width=True, type="primary"):
-                        supabase.table("nachrichten").delete().eq("id", mid).execute()
-                        st.session_state.active_msg = None
-                        st.rerun()
-                with cb:
-                    if st.button("✕ Abbrechen", key=f"cancel_{mid}",
-                                 use_container_width=True):
-                        st.session_state.active_msg = None
-                        st.rerun()
-    else:
-        st.caption("Noch keine Nachrichten.")
+                btn_label = f"👤 {mname} – {zeit}: {text}"
+                if st.button(btn_label, key=f"msg_btn_{mid}", use_container_width=True):
+                    st.session_state.active_msg = None if aktiv else mid
+                    st.rerun()
 
-    # Nachricht schreiben – direkt sichtbar
+                if aktiv:
+                    ca, cb = st.columns(2)
+                    with ca:
+                        if st.button("🗑 Löschen", key=f"del_{mid}",
+                                     use_container_width=True, type="primary"):
+                            supabase.table("nachrichten").delete().eq("id", mid).execute()
+                            st.session_state.active_msg = None
+                            st.rerun()
+                    with cb:
+                        if st.button("✕ Abbrechen", key=f"cancel_{mid}",
+                                     use_container_width=True):
+                            st.session_state.active_msg = None
+                            st.rerun()
+        else:
+            st.caption("Noch keine Nachrichten.")
+
+    pinnwand_anzeige()
+
+    # Nachricht schreiben – Name aus Login
+    farbe_user = PINNWAND_FARBEN.get(_user, "#888")
     with st.form("pinnwand_form", clear_on_submit=True):
-        pc1, pc2 = st.columns([2, 5])
-        with pc1:
-            pname = st.selectbox("Von", PINNWAND_NAMEN, label_visibility="collapsed")
-        with pc2:
-            ptext = st.text_input("Nachricht …", max_chars=200, label_visibility="collapsed")
+        st.markdown(
+            f'<div style="font-size:0.8rem;color:{farbe_user};font-weight:700;margin-bottom:4px;">'
+            f'✍️ Schreiben als: {_user}</div>',
+            unsafe_allow_html=True
+        )
+        ptext = st.text_input("Nachricht …", max_chars=200, label_visibility="collapsed")
         if st.form_submit_button("📨 Senden", use_container_width=True):
             if ptext.strip():
-                supabase.table("nachrichten").insert({"name": pname, "text": ptext.strip()}).execute()
+                supabase.table("nachrichten").insert(
+                    {"name": _user, "text": ptext.strip()}).execute()
                 st.rerun()
 
     st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
@@ -481,7 +642,12 @@ elif st.session_state.view == 'klausuren':
         datum_fmt = datetime.strptime(st.session_state.selected_date,'%Y-%m-%d').strftime('%d.%m.%Y')
         st.markdown(f"**➕ Neu am {datum_fmt}**")
         with st.form("q_f", clear_on_submit=True):
-            qc = st.selectbox("Kind",  list(CHILD_COLORS.keys()))
+            # Kind: nur Kinder können für sich eintragen, Eltern wählen
+            if _user in CHILD_COLORS:
+                qc = _user
+                st.markdown(f"**Kind:** {qc}")
+            else:
+                qc = st.selectbox("Kind", list(CHILD_COLORS.keys()))
             qs = st.selectbox("Fach",  SUBJECTS)
             qn = st.text_input("Notiz")
             if st.form_submit_button("💾 Speichern", use_container_width=True):
@@ -504,8 +670,12 @@ elif st.session_state.view == 'klausuren':
             edit_row = k_df[k_df['id'].astype(str) == str(st.session_state.edit_id)].iloc[0]
             with st.form("ed_f"):
                 st.markdown("**✏️ Bearbeiten**")
-                new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()),
-                                     index=list(CHILD_COLORS.keys()).index(edit_row['child']))
+                if _user in CHILD_COLORS:
+                    new_c = _user
+                    st.markdown(f"**Kind:** {new_c}")
+                else:
+                    new_c = st.selectbox("Kind", list(CHILD_COLORS.keys()),
+                                         index=list(CHILD_COLORS.keys()).index(edit_row['child']))
                 curr_s = edit_row['titel'].split('\n')[-1]
                 new_s  = st.selectbox("Fach", SUBJECTS,
                                       index=SUBJECTS.index(curr_s) if curr_s in SUBJECTS else 0)
@@ -1131,10 +1301,7 @@ elif st.session_state.view == 'quiz':
     # PHASE 1: NAMENSAUSWAHL
     # -----------------------------------------------------------------------
     if st.session_state.quiz_phase == 'name':
-        st.markdown("#### Wer spielt heute?")
-        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
-
-        # Heutigen Highscore laden
+        # Eingeloggter User spielt direkt — kein Name nötig
         try:
             heute_res = supabase.table("quiz_ergebnisse").select("*").eq(
                 "datum", str(date.today())).order("punkte", desc=True).execute()
@@ -1142,23 +1309,19 @@ elif st.session_state.view == 'quiz':
         except Exception:
             heute_scores = {}
 
-        # Bereits gespielt heute?
-        cols = st.columns(2)
-        for i, name in enumerate(PINNWAND_NAMEN):
-            farbe  = PINNWAND_FARBEN.get(name, "#888")
-            punkte = heute_scores.get(name)
-            label  = f"✅ {name} ({punkte} Pkt.)" if punkte is not None else name
-            with cols[i % 2]:
-                if st.button(label, key=f"quiz_name_{name}",
-                             use_container_width=True,
-                             type="secondary" if punkte is not None else "primary"):
-                    st.session_state.quiz_name   = name
-                    st.session_state.quiz_fragen = generiere_fragen()
-                    st.session_state.quiz_idx    = 0
-                    st.session_state.quiz_punkte = {}
-                    st.session_state.quiz_phase  = 'frage'
-                    st.session_state.quiz_antwort = None
-                    st.rerun()
+        mein_score = heute_scores.get(_user)
+        if mein_score is not None:
+            st.info(f"Du hast heute bereits **{mein_score}/{FRAGEN_PRO_SPRACHE*3} Punkte** gespielt.")
+
+        if st.button(f"🧠 Quiz starten als {_user}", use_container_width=True, type="primary",
+                     key="quiz_start_btn"):
+            st.session_state.quiz_name   = _user
+            st.session_state.quiz_fragen = generiere_fragen()
+            st.session_state.quiz_idx    = 0
+            st.session_state.quiz_punkte = {}
+            st.session_state.quiz_phase  = 'frage'
+            st.session_state.quiz_antwort = None
+            st.rerun()
 
         # Wochenrangliste
         try:
