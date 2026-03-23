@@ -547,60 +547,89 @@ if st.session_state.view == 'start':
     st.divider()
     st.markdown("#### 📌 Pinnwand")
 
+    if 'pinnwand_archiv' not in st.session_state:
+        st.session_state.pinnwand_archiv = False
+
     @st.fragment(run_every=60)
     def pinnwand_anzeige():
         try:
-            msgs = supabase.table("nachrichten").select("*").order(
-                "created_at", desc=True).limit(10).execute().data
+            # Immer alle laden (für Archiv), aber nur 5 anzeigen
+            alle_msgs = supabase.table("nachrichten").select("*").order(
+                "created_at", desc=True).execute().data
         except Exception:
-            msgs = []
+            alle_msgs = []
 
         # Neue Nachricht erkennen
-        neueste_id = msgs[0]['id'] if msgs else None
+        neueste_id = alle_msgs[0]['id'] if alle_msgs else None
         if 'pinnwand_last_id' not in st.session_state:
             st.session_state.pinnwand_last_id = neueste_id
         elif neueste_id and neueste_id != st.session_state.pinnwand_last_id:
             st.toast("📌 Neue Nachricht auf der Pinnwand!", icon="🔔")
             st.session_state.pinnwand_last_id = neueste_id
 
-        if msgs:
-            for msg in msgs:
-                farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
-                mname = msg.get("name","?")
-                text  = msg.get("text","")
-                mid   = msg['id']
-                aktiv = st.session_state.active_msg == mid
-                try:
-                    ts        = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
-                    datum_str = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m.")
-                    uhr_str   = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
-                    zeit      = f"{datum_str} um {uhr_str}"
-                except Exception:
-                    zeit = ""
+        # Aufteilen in aktuell (5) und Archiv (Rest)
+        aktuell = alle_msgs[:5]
+        archiv  = alle_msgs[5:]
 
-                rand = f"2px solid {farbe}" if aktiv else f"1px solid #eee"
-                bg   = "#fff" if aktiv else "#f8f8f8"
+        def nachricht_anzeigen(msg):
+            farbe = PINNWAND_FARBEN.get(msg.get("name",""), "#888")
+            mname = msg.get("name","?")
+            text  = msg.get("text","")
+            mid   = msg['id']
+            aktiv = st.session_state.active_msg == mid
+            try:
+                ts        = datetime.fromisoformat(msg["created_at"].replace("Z","+00:00"))
+                datum_str = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%d.%m.")
+                uhr_str   = ts.astimezone(zoneinfo.ZoneInfo("Europe/Berlin")).strftime("%H:%M")
+                zeit      = f"{datum_str} um {uhr_str}"
+            except Exception:
+                zeit = ""
 
-                btn_label = f"👤 {mname} – {zeit}: {text}"
-                if st.button(btn_label, key=f"msg_btn_{mid}", use_container_width=True):
-                    st.session_state.active_msg = None if aktiv else mid
-                    st.rerun()
+            btn_label = f"👤 {mname} – {zeit}: {text}"
+            if st.button(btn_label, key=f"msg_btn_{mid}", use_container_width=True):
+                st.session_state.active_msg = None if aktiv else mid
+                st.rerun()
+            if aktiv:
+                ca, cb = st.columns(2)
+                with ca:
+                    if st.button("🗑 Löschen", key=f"del_{mid}",
+                                 use_container_width=True, type="primary"):
+                        supabase.table("nachrichten").delete().eq("id", mid).execute()
+                        st.session_state.active_msg = None
+                        st.rerun()
+                with cb:
+                    if st.button("✕ Abbrechen", key=f"cancel_{mid}",
+                                 use_container_width=True):
+                        st.session_state.active_msg = None
+                        st.rerun()
 
-                if aktiv:
-                    ca, cb = st.columns(2)
-                    with ca:
-                        if st.button("🗑 Löschen", key=f"del_{mid}",
-                                     use_container_width=True, type="primary"):
-                            supabase.table("nachrichten").delete().eq("id", mid).execute()
-                            st.session_state.active_msg = None
-                            st.rerun()
-                    with cb:
-                        if st.button("✕ Abbrechen", key=f"cancel_{mid}",
-                                     use_container_width=True):
-                            st.session_state.active_msg = None
-                            st.rerun()
+        if aktuell:
+            for msg in aktuell:
+                nachricht_anzeigen(msg)
         else:
             st.caption("Noch keine Nachrichten.")
+
+        # Dezenter Archiv-Link wenn ältere Nachrichten vorhanden
+        if archiv:
+            st.markdown(
+                '<div style="text-align:center;margin-top:6px;">',
+                unsafe_allow_html=True
+            )
+            archiv_label = "🗂 Archiv ausblenden" if st.session_state.pinnwand_archiv                            else f"🗂 Ältere Nachrichten ({len(archiv)})"
+            if st.button(archiv_label, key="archiv_btn",
+                         use_container_width=False):
+                st.session_state.pinnwand_archiv = not st.session_state.pinnwand_archiv
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            if st.session_state.pinnwand_archiv:
+                st.markdown(
+                    '<div style="opacity:0.6;margin-top:4px;">',
+                    unsafe_allow_html=True
+                )
+                for msg in archiv:
+                    nachricht_anzeigen(msg)
+                st.markdown('</div>', unsafe_allow_html=True)
 
     pinnwand_anzeige()
 
