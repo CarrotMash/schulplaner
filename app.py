@@ -547,7 +547,7 @@ if st.session_state.view == 'start':
     st.divider()
     st.markdown("#### 📌 Pinnwand")
 
-    @st.fragment(run_every=30)
+    @st.fragment(run_every=60)
     def pinnwand_anzeige():
         try:
             msgs = supabase.table("nachrichten").select("*").order(
@@ -1598,12 +1598,24 @@ elif st.session_state.view == 'ferien':
                 unsafe_allow_html=True
             )
         else:
-            tage_bis = (nf["start"] - heute).days
+            # Alle Tage zählen — ab 15 Uhr heutigen Tag nicht mehr mitzählen
+            # Wenn Ferien am Montag starten → Wochenende davor nicht mitzählen
+            jetzt_stunde = datetime.now(zoneinfo.ZoneInfo("Europe/Berlin")).hour
+            def tage_bis_ferien(heute_d, ferien_start, stunde):
+                von    = heute_d + timedelta(days=1) if stunde >= 15 else heute_d
+                letzter = ferien_start - timedelta(days=1)
+                if ferien_start.weekday() == 0:  # Montag → Freitag davor
+                    letzter = ferien_start - timedelta(days=3)
+                return max((letzter - von).days + 1, 0)
+
+            tage_bis = tage_bis_ferien(heute, nf["start"], jetzt_stunde)
+            einheit  = "Tag" if tage_bis == 1 else "Tage"
+            label    = "⏳ Noch" if tage_bis > 0 else "🎉 Morgen geht's los!"
             st.markdown(
                 f'<div class="countdown-box">'
-                f'<div class="cd-label">⏳ Noch</div>'
-                f'<div class="cd-days">{tage_bis}</div>'
-                f'<div class="cd-name">Tag{"e" if tage_bis!=1 else ""}</div>'
+                f'<div class="cd-label">{label}</div>'
+                f'<div class="cd-days">{tage_bis if tage_bis > 0 else ""}</div>'
+                f'<div class="cd-name">{einheit if tage_bis > 0 else ""}</div>'
                 f'<div class="cd-name" style="font-size:0.95rem;margin-top:6px;">bis zu den {nf["name"]} {nf["start"].year}</div>'
                 f'<div class="cd-date">Start am {nf["start"].strftime("%d.%m.%Y")}</div>'
                 f'</div>',
