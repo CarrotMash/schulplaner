@@ -1609,7 +1609,7 @@ elif st.session_state.view == 'ferien':
                 return max((letzter - von).days + 1, 0)
 
             tage_bis = tage_bis_ferien(heute, nf["start"], jetzt_stunde)
-            einheit  = "Tag" if tage_bis == 1 else "Tage"
+            einheit  = "Schultag" if tage_bis == 1 else "Schultage"
             label    = "⏳ Noch" if tage_bis > 0 else "🎉 Morgen geht's los!"
             st.markdown(
                 f'<div class="countdown-box">'
