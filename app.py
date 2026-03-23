@@ -1075,6 +1075,31 @@ elif st.session_state.view == 'quiz':
     }
 
     SPRACHE_NAMEN = {"en": "🇬🇧 Englisch", "fr": "🇫🇷 Französisch", "es": "🇪🇸 Spanisch"}
+
+    def berechne_raenge(eintraege_sortiert):
+        """Gibt Liste von (rang_label, name, punkte) zurück mit Gleichstandslogik."""
+        medals = ["🥇","🥈","🥉"]
+        result = []
+        rang   = 1
+        for i, (n, p) in enumerate(eintraege_sortiert):
+            if i > 0 and p == eintraege_sortiert[i-1][1]:
+                # Gleichstand: gleiche Medaille wie Vorgänger
+                lbl = result[-1][0]
+            else:
+                rang = i + 1 + sum(
+                    1 for j in range(i)
+                    if eintraege_sortiert[j][1] > p
+                    and eintraege_sortiert[j][1] != (eintraege_sortiert[j-1][1] if j>0 else None)
+                )
+                rang = i + 1  # olympic ranking: skip ranks after ties
+                # Berechne echten olympischen Rang
+                rang = 1
+                for j in range(i):
+                    if eintraege_sortiert[j][1] > p:
+                        rang += 1
+                lbl = medals[rang-1] if rang <= 3 else f"{rang}."
+            result.append((lbl, n, p))
+        return result
     FRAGEN_PRO_SPRACHE = 5
 
     def tages_seed():
@@ -1155,15 +1180,14 @@ elif st.session_state.view == 'quiz':
                 for (n, _), p in best_per_day.items():
                     week_sum[n] = week_sum.get(n, 0) + p
                 rang = sorted(week_sum.items(), key=lambda x: x[1], reverse=True)
-                medals = ["🥇","🥈","🥉","4.","5."]
-                for idx2, (n, p) in enumerate(rang):
+                for lbl, n, p in berechne_raenge(rang):
                     farbe2 = PINNWAND_FARBEN.get(n, "#888")
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;'
                         f'padding:8px 12px;border-radius:8px;margin-bottom:5px;'
                         f'background:white;border-left:4px solid {farbe2};'
                         f'box-shadow:0 1px 3px rgba(0,0,0,0.08);">'
-                        f'<span style="color:#111;font-size:0.95rem;">{medals[idx2]} '
+                        f'<span style="color:#111;font-size:0.95rem;">{lbl} '
                         f'<b style="color:{farbe2};">{n}</b></span>'
                         f'<span style="font-weight:800;color:#111;">{p} <span style="color:{farbe2};">Pkt.</span></span>'
                         f'</div>',
@@ -1320,10 +1344,8 @@ elif st.session_state.view == 'quiz':
             if heute_res.data:
                 st.divider()
                 st.markdown("#### 📊 Heute")
-                medals = ["🥇","🥈","🥉","4.","5."]
-                for idx2, r in enumerate(heute_res.data):
-                    fn     = r["name"]
-                    fp     = r["punkte"]
+                heute_liste = [(r["name"], r["punkte"]) for r in heute_res.data]
+                for lbl, fn, fp in berechne_raenge(heute_liste):
                     fb     = PINNWAND_FARBEN.get(fn, "#888")
                     is_me  = fn == name
                     border2 = f"2px solid {fb}" if is_me else "1px solid #333"
@@ -1331,7 +1353,7 @@ elif st.session_state.view == 'quiz':
                         f'<div style="display:flex;justify-content:space-between;'
                         f'padding:7px 12px;border-radius:8px;margin-bottom:4px;'
                         f'background:#1a1a2e;border:{border2};">'
-                        f'<span style="color:#ffffff;">{medals[idx2] if idx2 < 5 else str(idx2+1)+"."} '
+                        f'<span style="color:#ffffff;">{lbl} '
                         f'<b style="color:{fb};">{fn}</b>'
                         f'{"  ← du" if is_me else ""}</span>'
                         f'<span style="font-weight:700;color:#ffffff;">{fp}/{total}</span>'
