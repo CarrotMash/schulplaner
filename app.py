@@ -1477,10 +1477,10 @@ elif st.session_state.view == 'quiz':
             unsafe_allow_html=True
         )
 
-        # Antwort-Buttons – nur native Streamlit-Buttons
+        # Antwort-Buttons – Key aus Fragenindex + Optionsindex (immer eindeutig)
         if st.session_state.quiz_antwort is None:
-            for opt in frage["optionen"]:
-                if st.button(opt, key=f"opt_{idx}_{opt}", use_container_width=True):
+            for opt_i, opt in enumerate(frage["optionen"]):
+                if st.button(opt, key=f"opt_{idx}_{opt_i}", use_container_width=True):
                     st.session_state.quiz_antwort = opt
                     if opt == frage["richtig"]:
                         spr_key = frage["sprache"]
