@@ -9,6 +9,8 @@ import uuid
 import hashlib
 import secrets
 
+import schulbuddy
+
 # --- DATENBANK VERBINDUNG ---
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
@@ -58,6 +60,9 @@ if 'quiz_idx'          not in st.session_state: st.session_state.quiz_idx = 0
 if 'quiz_punkte'       not in st.session_state: st.session_state.quiz_punkte = {}
 if 'quiz_antwort'      not in st.session_state: st.session_state.quiz_antwort = None
 if 'user'              not in st.session_state: st.session_state.user = None
+if 'sb_fach'           not in st.session_state: st.session_state.sb_fach    = None
+if 'sb_level'          not in st.session_state: st.session_state.sb_level   = None
+if 'sb_history'        not in st.session_state: st.session_state.sb_history = []
 if 'login_fehler'      not in st.session_state: st.session_state.login_fehler = None
 
 st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
@@ -544,6 +549,10 @@ if st.session_state.view == 'start':
         )
 
 
+
+    # Zeile 4: SchulBuddy
+    if st.button("📚 SCHULBUDDY", key="btn_schulbuddy", use_container_width=True):
+        st.session_state.view = 'schulbuddy'; st.rerun()
 
     # --- PINNWAND ---
     st.divider()
@@ -1554,6 +1563,12 @@ elif st.session_state.view == 'quiz':
 
     if st.session_state.quiz_phase == 'name':
         back_button()
+
+# =============================================================================
+# 6. SCHULBUDDY
+# =============================================================================
+elif st.session_state.view == 'schulbuddy':
+    schulbuddy.show()
 
 # =============================================================================
 # 5. FERIEN
