@@ -47,13 +47,13 @@ FAECHER = {
             "Antworte auf Deutsch."
         )
     },
-    "Latein":       {"icon": "🏛️", "color": "#ff9a5c",
-        "topics": ["Vokabeln", "Deklinationen", "Konjugation",
-                   "Übersetzung verstehen", "Stilmittel", "Latinum-Vorbereitung"],
+    "Spanisch":     {"icon": "🇪🇸", "color": "#ff9a5c",
+        "topics": ["Vokabeln", "Grammatik", "Konjugation", "Texte schreiben",
+                   "Hörverstehen", "Literatur", "DELE-Vorbereitung"],
         "prompt": (
-            "Du bist ein geduldiger Latein-Assistent fuer Gymnasiasten (Level: {level}). "
-            "Erklaere Grammatik und Deklinationen klar. Hilf beim Verstehen von Texten, "
-            "ohne fertige Uebersetzungen zu liefern. Zeige den Uebersetzungsprozess Schritt fuer Schritt. "
+            "Du bist ein motivierender Spanisch-Assistent fuer Gymnasiasten (Level: {level}). "
+            "Erklaere Grammatikregeln mit Beispielen, hilf beim Vokabellernen mit Eselsbruecken. "
+            "Schreibe keine fertigen Texte. Nutze gelegentlich spanische Phrasen mit deutscher Erklaerung. "
             "Antworte auf Deutsch."
         )
     },
@@ -277,7 +277,7 @@ def show():
             "Deutsch":     "Hi! Was steht auf dem Programm - Aufsatz, Analyse oder Grammatik? 📖",
             "Englisch":    "Hey! What's up? Woran arbeiten wir heute? 🇬🇧",
             "Französisch": "Salut! Was macht dir gerade am meisten zu schaffen? 🇫🇷",
-            "Latein":      "Salve! Welcher Text oder welche Grammatik wartet auf uns? 🏛️",
+            "Spanisch":    "Hola! Vokabeln, Grammatik oder Texte - womit starten wir? 🇪🇸",
             "Physik":      "Hey! Von Mechanik bis Quantenphysik - was soll ich erklären? ⚡",
             "Chemie":      "Hi! Welches chemische Rätsel lösen wir heute? ⚗️",
             "Biologie":    "Hey! Zellen, Gene, Evolution - womit kann ich helfen? 🌿",
