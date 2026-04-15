@@ -53,12 +53,6 @@ if 'edit_id'           not in st.session_state: st.session_state.edit_id = None
 if 'cancel_click'      not in st.session_state: st.session_state.cancel_click = False
 if 'active_msg'        not in st.session_state: st.session_state.active_msg   = None
 if 'bus_halt'          not in st.session_state: st.session_state.bus_halt = None
-if 'quiz_name'         not in st.session_state: st.session_state.quiz_name = None
-if 'quiz_phase'        not in st.session_state: st.session_state.quiz_phase = 'name'
-if 'quiz_fragen'       not in st.session_state: st.session_state.quiz_fragen = []
-if 'quiz_idx'          not in st.session_state: st.session_state.quiz_idx = 0
-if 'quiz_punkte'       not in st.session_state: st.session_state.quiz_punkte = {}
-if 'quiz_antwort'      not in st.session_state: st.session_state.quiz_antwort = None
 if 'user'              not in st.session_state: st.session_state.user = None
 if 'sb_fach'           not in st.session_state: st.session_state.sb_fach    = None
 if 'sb_level'          not in st.session_state: st.session_state.sb_level   = None
@@ -291,9 +285,12 @@ def login(name: str, passwort: str) -> bool:
             "name", name).eq("passwort_hash", pw_hash).execute()
         if res.data:
             token = token_generieren()
+            from datetime import timezone
+            gueltig = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
             supabase.table("sessions").insert({
-                "token": token,
-                "name":  name,
+                "token":      token,
+                "name":       name,
+                "gueltig_bis": gueltig,
             }).execute()
             st.session_state.user = name
             st.query_params["token"] = token
@@ -521,12 +518,11 @@ if st.session_state.view == 'start':
     with c4:
         if st.button("🌴 FERIEN", key="btn_ferien", use_container_width=True):
             st.session_state.view = 'ferien'; st.rerun()
-    # Zeile 3: Vokabel-Quiz + Wordle nebeneinander
+    # Zeile 3: SchulBuddy + Wordle nebeneinander
     c5, c6 = st.columns(2)
     with c5:
-        if st.button("🧠 VOKABEL-QUIZ", key="btn_quiz", use_container_width=True):
-            st.session_state.view = 'quiz'
-            st.session_state.quiz_phase = 'name'; st.rerun()
+        if st.button("📚 SCHULBUDDY", key="btn_quiz", use_container_width=True):
+            st.session_state.view = 'schulbuddy'; st.rerun()
     with c6:
         # HTML-Link mit exakt gleichem Inline-Style wie die Streamlit-Buttons
         st.markdown(
@@ -549,10 +545,6 @@ if st.session_state.view == 'start':
         )
 
 
-
-    # Zeile 4: SchulBuddy
-    if st.button("📚 SCHULBUDDY", key="btn_schulbuddy", use_container_width=True):
-        st.session_state.view = 'schulbuddy'; st.rerun()
 
     # --- PINNWAND ---
     st.divider()
@@ -1232,337 +1224,6 @@ elif st.session_state.view == 'bus':
 
     back_button()
 
-
-# =============================================================================
-# 6. VOKABEL-QUIZ
-# =============================================================================
-elif st.session_state.view == 'quiz':
-    page_header("🧠 Vokabel-Quiz")
-
-    import random as _rnd
-    import hashlib as _hl
-
-    # -----------------------------------------------------------------------
-    # VOKABELLISTEN (Schulwortschatz A2-B1)
-    # -----------------------------------------------------------------------
-    # Vokabeln aus Supabase laden (zufällig, großer Pool)
-    @st.cache_data(ttl=300)  # 5 Min cachen
-    def lade_vokabeln():
-        """Lädt alle Vokabeln aus Supabase, gruppiert nach Sprache."""
-        try:
-            res = supabase.table("quiz_vokabeln").select(
-                "sprache,wort_de,wort_fremd").execute()
-            voks = {"en": [], "fr": [], "es": []}
-            for r in res.data:
-                sp = r["sprache"]
-                if sp in voks:
-                    voks[sp].append((r["wort_de"], r["wort_fremd"]))
-            return voks
-        except Exception:
-            # Fallback auf kleine Basisliste
-            return {
-                "en": [("Grenze","boundary"),("Herausforderung","challenge"),
-                       ("Lösung","solution"),("Fortschritt","progress"),
-                       ("Verantwortung","responsibility"),("Ergebnis","result"),
-                       ("Strategie","strategy"),("Beitrag","contribution"),
-                       ("Einfluss","influence"),("Entwicklung","development")],
-                "fr": [("Hund","chien"),("Haus","maison"),("sprechen","parler"),
-                       ("essen","manger"),("Wetter","météo"),("Urlaub","vacances"),
-                       ("kaufen","acheter"),("Frühstück","petit-déjeuner"),
-                       ("Bahnhof","gare"),("Freund","ami")],
-                "es": [("Hund","perro"),("Haus","casa"),("sprechen","hablar"),
-                       ("essen","comer"),("Wetter","tiempo"),("Urlaub","vacaciones"),
-                       ("kaufen","comprar"),("Frühstück","desayuno"),
-                       ("Bahnhof","estación"),("Freund","amigo")],
-            }
-
-    VOKABELN = lade_vokabeln()
-    SPRACHE_NAMEN = {"en": "🇬🇧 Englisch", "fr": "🇫🇷 Französisch", "es": "🇪🇸 Spanisch"}
-
-    def berechne_raenge(eintraege_sortiert):
-        """Gibt Liste von (rang_label, name, punkte) zurück mit Gleichstandslogik."""
-        medals = ["🥇","🥈","🥉"]
-        result = []
-        rang   = 1
-        for i, (n, p) in enumerate(eintraege_sortiert):
-            if i > 0 and p == eintraege_sortiert[i-1][1]:
-                # Gleichstand: gleiche Medaille wie Vorgänger
-                lbl = result[-1][0]
-            else:
-                rang = i + 1 + sum(
-                    1 for j in range(i)
-                    if eintraege_sortiert[j][1] > p
-                    and eintraege_sortiert[j][1] != (eintraege_sortiert[j-1][1] if j>0 else None)
-                )
-                rang = i + 1  # olympic ranking: skip ranks after ties
-                # Berechne echten olympischen Rang
-                rang = 1
-                for j in range(i):
-                    if eintraege_sortiert[j][1] > p:
-                        rang += 1
-                lbl = medals[rang-1] if rang <= 3 else f"{rang}."
-            result.append((lbl, n, p))
-        return result
-    FRAGEN_PRO_SPRACHE = 5
-
-    def generiere_fragen():
-        """Generiert 15 Fragen (5 je Sprache) — zufällig aus großem Pool."""
-        fragen = []
-        for spr, vokabeln in VOKABELN.items():
-            if len(vokabeln) < FRAGEN_PRO_SPRACHE + 4:
-                continue
-            auswahl = _rnd.sample(vokabeln, FRAGEN_PRO_SPRACHE)
-            for de, fremd in auswahl:
-                # 4 falsche Antworten aus derselben Sprache
-                falsche_pool = [f for d, f in vokabeln if f != fremd]
-                falsche = _rnd.sample(falsche_pool, min(4, len(falsche_pool)))
-                optionen = falsche + [fremd]
-                _rnd.shuffle(optionen)
-                fragen.append({
-                    "sprache":  spr,
-                    "frage_de": de,
-                    "richtig":  fremd,
-                    "optionen": optionen,
-                })
-        return fragen
-
-    # -----------------------------------------------------------------------
-    # PHASE 1: NAMENSAUSWAHL
-    # -----------------------------------------------------------------------
-    if st.session_state.quiz_phase == 'name':
-        # Eingeloggter User spielt direkt — kein Name nötig
-        try:
-            heute_res = supabase.table("quiz_ergebnisse").select("*").eq(
-                "datum", str(date.today())).order("punkte", desc=True).execute()
-            heute_scores = {r["name"]: r["punkte"] for r in heute_res.data}
-        except Exception:
-            heute_scores = {}
-
-        mein_score = heute_scores.get(_user)
-        if mein_score is not None:
-            st.success(f"✅ Du hast heute bereits gespielt: **{mein_score}/{FRAGEN_PRO_SPRACHE*3} Punkte**")
-            st.info("Das Quiz kann pro Tag nur einmal gespielt werden. Komm morgen wieder!")
-        else:
-            if st.button(f"🧠 Quiz starten als {_user}", use_container_width=True, type="primary",
-                         key="quiz_start_btn"):
-                st.session_state.quiz_name   = _user
-                st.session_state.quiz_fragen = generiere_fragen()
-                st.session_state.quiz_idx    = 0
-                st.session_state.quiz_punkte = {}
-                st.session_state.quiz_phase  = 'frage'
-                st.session_state.quiz_antwort = None
-                st.rerun()
-
-        # Wochenrangliste
-        try:
-            from datetime import timedelta as _td2
-            montag = date.today() - timedelta(days=date.today().weekday())
-            week_res = supabase.table("quiz_ergebnisse").select("name,punkte,datum").gte(
-                "datum", str(montag)).execute()
-            if week_res.data:
-                st.divider()
-                st.markdown("#### 🏆 Woche")
-                # Pro Name: Summe der BESTEN Ergebnisse (max 1 pro Tag)
-                # Zuerst pro (name, datum) das Maximum nehmen, dann summieren
-                best_per_day = {}
-                for r in week_res.data:
-                    key = (r["name"], r.get("datum", ""))
-                    if key not in best_per_day or r["punkte"] > best_per_day[key]:
-                        best_per_day[key] = r["punkte"]
-                week_sum = {}
-                for (n, _), p in best_per_day.items():
-                    week_sum[n] = week_sum.get(n, 0) + p
-                rang = sorted(week_sum.items(), key=lambda x: x[1], reverse=True)
-                for lbl, n, p in berechne_raenge(rang):
-                    farbe2 = PINNWAND_FARBEN.get(n, "#888")
-                    st.markdown(
-                        f'<div style="display:flex;justify-content:space-between;'
-                        f'padding:8px 12px;border-radius:8px;margin-bottom:5px;'
-                        f'background:white;border-left:4px solid {farbe2};'
-                        f'box-shadow:0 1px 3px rgba(0,0,0,0.08);">'
-                        f'<span style="color:#111;font-size:0.95rem;">{lbl} '
-                        f'<b style="color:{farbe2};">{n}</b></span>'
-                        f'<span style="font-weight:800;color:#111;">{p} <span style="color:{farbe2};">Pkt.</span></span>'
-                        f'</div>',
-                        unsafe_allow_html=True
-                    )
-        except Exception:
-            pass
-
-    # -----------------------------------------------------------------------
-    # PHASE 2: FRAGE STELLEN
-    # -----------------------------------------------------------------------
-    elif st.session_state.quiz_phase == 'frage':
-        fragen  = st.session_state.quiz_fragen
-        idx     = st.session_state.quiz_idx
-        name    = st.session_state.quiz_name
-        farbe_n = PINNWAND_FARBEN.get(name, "#FF4B4B")
-
-        if idx >= len(fragen):
-            st.session_state.quiz_phase = 'ergebnis'
-            st.rerun()
-
-        frage = fragen[idx]
-        spr   = frage["sprache"]
-        total = len(fragen)
-
-        # Fortschrittsbalken
-        fortschritt = idx / total
-        st.markdown(
-            f'<div style="background:#e0e0e0;border-radius:10px;height:10px;margin-bottom:12px;">'
-            f'<div style="background:{farbe_n};width:{max(fortschritt*100,3):.0f}%;'
-            f'height:10px;border-radius:10px;min-width:8px;"></div>'
-            f'<div style="font-size:0.72rem;color:#666;text-align:right;margin-top:2px;">'
-            f'Frage {idx+1} / {total}</div></div>',
-            unsafe_allow_html=True
-        )
-
-        # Sprachen-Abschnitt Header
-        if idx % FRAGEN_PRO_SPRACHE == 0:
-            st.markdown(
-                f'<div style="background:{farbe_n};color:white;border-radius:10px;'
-                f'padding:8px 14px;margin-bottom:12px;font-weight:700;font-size:1rem;">'
-                f'{SPRACHE_NAMEN[spr]}</div>',
-                unsafe_allow_html=True
-            )
-
-        # Frage – dunkler Hintergrund garantiert gute Lesbarkeit
-        st.markdown(
-            f'<div style="background:#1a1a2e;border-radius:12px;padding:16px;'
-            f'text-align:center;margin-bottom:16px;">'
-            f'<div style="font-size:0.78rem;color:#aaa;margin-bottom:6px;">'
-            f'Frage {idx+1} von {total} · {SPRACHE_NAMEN[spr]}</div>'
-            f'<div style="font-size:1.4rem;font-weight:900;color:#ffffff;">{frage["frage_de"]}</div>'
-            f'<div style="font-size:0.85rem;color:#ccc;margin-top:4px;">Wie heißt das auf {SPRACHE_NAMEN[spr].split()[-1]}?</div>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-
-        # Antwort-Buttons – Key aus Fragenindex + Optionsindex (immer eindeutig)
-        if st.session_state.quiz_antwort is None:
-            for opt_i, opt in enumerate(frage["optionen"]):
-                if st.button(opt, key=f"opt_{idx}_{opt_i}", use_container_width=True):
-                    st.session_state.quiz_antwort = opt
-                    if opt == frage["richtig"]:
-                        spr_key = frage["sprache"]
-                        st.session_state.quiz_punkte[spr_key] =                             st.session_state.quiz_punkte.get(spr_key, 0) + 1
-                    st.rerun()
-        else:
-            # Auflösung: nur HTML, kein Button mehr nötig
-            gew = st.session_state.quiz_antwort == frage["richtig"]
-            for opt in frage["optionen"]:
-                if opt == frage["richtig"]:
-                    bg = "#2E7D32"; txt = "white"; prefix = "✅ "
-                elif opt == st.session_state.quiz_antwort and not gew:
-                    bg = "#C62828"; txt = "white"; prefix = "❌ "
-                else:
-                    bg = "#f0f0f0"; txt = "#444"; prefix = ""
-                st.markdown(
-                    f'<div style="background:{bg};color:{txt};border-radius:8px;'
-                    f'padding:10px 16px;margin-bottom:6px;font-weight:600;">'
-                    f'{prefix}{opt}</div>',
-                    unsafe_allow_html=True
-                )
-
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            if gew:
-                st.success("🎉 Richtig!")
-            else:
-                st.error(f"Die richtige Antwort war: **{frage['richtig']}**")
-
-            if st.button("Weiter →", use_container_width=True, type="primary",
-                         key=f"weiter_{idx}"):
-                st.session_state.quiz_idx    += 1
-                st.session_state.quiz_antwort = None
-                st.rerun()
-
-    # -----------------------------------------------------------------------
-    # PHASE 3: ERGEBNIS
-    # -----------------------------------------------------------------------
-    elif st.session_state.quiz_phase == 'ergebnis':
-        name    = st.session_state.quiz_name
-        punkte  = st.session_state.quiz_punkte
-        gesamt  = sum(punkte.values())
-        farbe_n = PINNWAND_FARBEN.get(name, "#FF4B4B")
-        total   = FRAGEN_PRO_SPRACHE * 3
-
-        # Ergebnis speichern (nur wenn tatsächlich gespielt wurde)
-        if gesamt > 0 or idx >= total:
-            try:
-                # Erst prüfen ob bereits ein besseres Ergebnis existiert
-                existing = supabase.table("quiz_ergebnisse").select("punkte").eq(
-                    "datum", str(date.today())).eq("name", name).execute()
-                best = existing.data[0]["punkte"] if existing.data else 0
-                if gesamt >= best:
-                    supabase.table("quiz_ergebnisse").upsert({
-                        "datum":           str(date.today()),
-                        "name":            name,
-                        "punkte":          gesamt,
-                        "sprachen_detail": punkte,
-                    }, on_conflict="datum,name").execute()
-            except Exception:
-                pass
-
-        # Ergebnis-Card
-        prozent = gesamt / total * 100
-        emoji   = "🏆" if prozent == 100 else "🎉" if prozent >= 70 else "💪" if prozent >= 40 else "📚"
-        st.markdown(
-            f'<div style="background:linear-gradient(135deg,{farbe_n},{farbe_n}cc);'
-            f'color:white;border-radius:16px;padding:24px;text-align:center;'
-            f'box-shadow:0 4px 14px rgba(0,0,0,0.15);margin-bottom:16px;">'
-            f'<div style="font-size:3rem;">{emoji}</div>'
-            f'<div style="font-weight:900;font-size:1.3rem;margin-top:8px;">{name}</div>'
-            f'<div style="font-size:2.5rem;font-weight:900;margin:8px 0;">{gesamt}/{total}</div>'
-            f'<div style="opacity:0.85;font-size:0.9rem;">Punkte heute</div>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-
-        # Detailauswertung pro Sprache: dunkler Hintergrund für Kontrast
-        for spr, spr_name in SPRACHE_NAMEN.items():
-            p = punkte.get(spr, 0)
-            st.markdown(
-                f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                f'padding:8px 12px;background:#1a1a2e;border-radius:8px;margin-bottom:6px;">'
-                f'<span style="font-size:0.95rem;color:#ffffff;">{spr_name}</span>'
-                f'<span style="font-weight:700;color:#ffffff;">{p}/{FRAGEN_PRO_SPRACHE} Pkt.</span>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
-        # Tagesrangliste
-        try:
-            heute_res = supabase.table("quiz_ergebnisse").select("*").eq(
-                "datum", str(date.today())).order("punkte", desc=True).execute()
-            if heute_res.data:
-                st.divider()
-                st.markdown("#### 📊 Heute")
-                heute_liste = [(r["name"], r["punkte"]) for r in heute_res.data]
-                for lbl, fn, fp in berechne_raenge(heute_liste):
-                    fb     = PINNWAND_FARBEN.get(fn, "#888")
-                    is_me  = fn == name
-                    border2 = f"2px solid {fb}" if is_me else "1px solid #333"
-                    st.markdown(
-                        f'<div style="display:flex;justify-content:space-between;'
-                        f'padding:7px 12px;border-radius:8px;margin-bottom:4px;'
-                        f'background:#1a1a2e;border:{border2};">'
-                        f'<span style="color:#ffffff;">{lbl} '
-                        f'<b style="color:{fb};">{fn}</b>'
-                        f'{"  ← du" if is_me else ""}</span>'
-                        f'<span style="font-weight:700;color:#ffffff;">{fp}/{total}</span>'
-                        f'</div>',
-                        unsafe_allow_html=True
-                    )
-        except Exception:
-            pass
-
-        if st.button("← Hauptmenü", use_container_width=True, key="quiz_home", type="primary"):
-            st.session_state.view       = 'start'
-            st.session_state.quiz_phase = 'name'
-            st.rerun()
-
-    if st.session_state.quiz_phase == 'name':
-        back_button()
 
 # =============================================================================
 # 6. SCHULBUDDY
