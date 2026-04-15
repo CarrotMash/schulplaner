@@ -27,7 +27,7 @@ FAECHER = {
             "Gib konkrete Hinweise und Beispiele. Antworte auf Deutsch."
         )
     },
-    "Englisch":     {"icon": "🇬🇧", "color": "#38d9f5",
+    "Englisch":     {"icon": "📘", "color": "#38d9f5",
         "topics": ["Grammatik", "Vokabeln", "Essay schreiben", "Reading Comprehension",
                    "Literaturanalyse", "Mediation", "Bewerbungsschreiben", "Speaking"],
         "prompt": (
@@ -37,7 +37,7 @@ FAECHER = {
             "Passe dich ans Niveau an."
         )
     },
-    "Französisch":  {"icon": "🇫🇷", "color": "#ffe566",
+    "Französisch":  {"icon": "🥖", "color": "#ffe566",
         "topics": ["Vokabeln", "Grammatik", "Konjugation", "Texte schreiben",
                    "Hörverstehen", "Literatur", "DELF-Vorbereitung"],
         "prompt": (
@@ -47,7 +47,7 @@ FAECHER = {
             "Antworte auf Deutsch."
         )
     },
-    "Spanisch":     {"icon": "🇪🇸", "color": "#ff9a5c",
+    "Spanisch":     {"icon": "🌞", "color": "#ff9a5c",
         "topics": ["Vokabeln", "Grammatik", "Konjugation", "Texte schreiben",
                    "Hörverstehen", "Literatur", "DELE-Vorbereitung"],
         "prompt": (
