@@ -76,6 +76,23 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# --- TOKEN aus localStorage laden (persistente Session) ---
+import streamlit.components.v1 as _components
+_components.html("""
+<script>
+(function(){
+  var tok = localStorage.getItem('schulplaner_token');
+  if(tok){
+    var u = new URL(window.location.href);
+    if(!u.searchParams.get('token')){
+      u.searchParams.set('token', tok);
+      window.location.replace(u.toString());
+    }
+  }
+})();
+</script>
+""", height=0)
+
 # --- GLOBALES CSS ---
 st.markdown("""
 <style>
@@ -294,6 +311,10 @@ def login(name: str, passwort: str) -> bool:
             }).execute()
             st.session_state.user = name
             st.query_params["token"] = token
+            # Token auch in localStorage speichern (überlebt Streamlit-Reloads)
+            _components.html(f"""
+            <script>localStorage.setItem('schulplaner_token','{token}');</script>
+            """, height=0)
             return True
     except Exception:
         pass
@@ -308,6 +329,7 @@ def logout():
             pass
     st.session_state.user = None
     st.query_params.clear()
+    _components.html("<script>localStorage.removeItem('schulplaner_token');</script>", height=0)
     st.rerun()
 
 def nutzer_registrieren(name: str, passwort: str, rolle: str,

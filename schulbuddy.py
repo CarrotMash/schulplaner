@@ -184,6 +184,8 @@ def show():
 
     # ── Schritt 1: Fach wählen ────────────────────────────────────────────────
     if st.session_state.sb_fach is None:
+        if st.button("← Hauptmenü", key="sb_home_fach", use_container_width=True):
+            st.session_state.view = 'start'; st.rerun()
         st.markdown('<div class="hh-title">📚 SchulBuddy</div>', unsafe_allow_html=True)
         st.markdown('<div class="hh-sub">Welches Fach beschäftigt dich gerade?</div>', unsafe_allow_html=True)
 
@@ -215,6 +217,10 @@ def show():
                     st.session_state.sb_level = val
                     st.rerun()
 
+        if st.button("← Hauptmenü", key="sb_home_level", use_container_width=False):
+            st.session_state.sb_fach  = None
+            st.session_state.sb_level = None
+            st.session_state.view = 'start'; st.rerun()
         if st.button("← Fach wechseln", key="sb_back_to_fach"):
             st.session_state.sb_fach = None
             st.rerun()
@@ -226,14 +232,20 @@ def show():
     info  = FAECHER[fach]
 
     # Header
-    col1, col2, col3 = st.columns([1, 3, 1])
+    col1, col2, col3, col4 = st.columns([1, 1, 3, 1])
     with col1:
+        if st.button("🏠", key="sb_home_chat", help="Hauptmenü"):
+            st.session_state.sb_fach    = None
+            st.session_state.sb_level   = None
+            st.session_state.sb_history = []
+            st.session_state.view = 'start'; st.rerun()
+    with col2:
         if st.button("← Fach", key="sb_back_chat"):
             st.session_state.sb_fach    = None
             st.session_state.sb_level   = None
             st.session_state.sb_history = []
             st.rerun()
-    with col2:
+    with col3:
         st.markdown(
             f'<div style="text-align:center;">'
             f'<span style="font-size:1.1rem;font-weight:900;color:{info["color"]}">'
@@ -241,7 +253,7 @@ def show():
             f'<span class="level-badge"> · {level}</span></div>',
             unsafe_allow_html=True
         )
-    with col3:
+    with col4:
         if st.button("🗑️ Reset", key="sb_reset_chat"):
             st.session_state.sb_history = []
             st.rerun()
