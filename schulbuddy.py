@@ -186,7 +186,7 @@ def show():
     if st.session_state.sb_fach is None:
         if st.button("← Hauptmenü", key="sb_home_fach", use_container_width=True):
             st.session_state.view = 'start'; st.rerun()
-        st.markdown('<div class="hh-title">📚 SchulBuddy</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hh-title">🤖 KI-Tutor</div>', unsafe_allow_html=True)
         st.markdown('<div class="hh-sub">Welches Fach beschäftigt dich gerade?</div>', unsafe_allow_html=True)
 
         cols = st.columns(3)

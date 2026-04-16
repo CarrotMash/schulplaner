@@ -59,11 +59,11 @@ if 'sb_level'          not in st.session_state: st.session_state.sb_level   = No
 if 'sb_history'        not in st.session_state: st.session_state.sb_history = []
 if 'login_fehler'      not in st.session_state: st.session_state.login_fehler = None
 
-st.set_page_config(page_title="Schulplaner", page_icon="📅", layout="centered")
+st.set_page_config(page_title="SchulBuddy", page_icon="🎒", layout="centered")
 
 # --- PWA ---
 st.markdown(
-    '<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlNjaHVscGxhbmVyIiwgInNob3J0X25hbWUiOiAiU2NodWxwbGFuZXIiLCAiZGVzY3JpcHRpb24iOiAiRmFtaWxpZW4tU2NodWxwbGFuZXIiLCAic3RhcnRfdXJsIjogIi8iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgIm9yaWVudGF0aW9uIjogInBvcnRyYWl0IiwgImJhY2tncm91bmRfY29sb3IiOiAiI0ZGRkZGRiIsICJ0aGVtZV9jb2xvciI6ICIjRkY0QjRCIiwgImljb25zIjogW3sic3JjIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9taWNyb3NvZnQvZmx1ZW50dWktZW1vamkvbWFpbi9hc3NldHMvU3BpcmFsJTIwY2FsZW5kYXIvM0Qvc3BpcmFsX2NhbGVuZGFyXzNkLnBuZyIsICJzaXplcyI6ICIyNTZ4MjU2IiwgInR5cGUiOiAiaW1hZ2UvcG5nIiwgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIn1dfQ==">'
+    '<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlNjaHVsQnVkZHkiLCAic2hvcnRfbmFtZSI6ICJTY2h1bEJ1ZGR5IiwgImRlc2NyaXB0aW9uIjogIkZhbWlsaWVuLVNjaHVsQnVkZHkiLCAic3RhcnRfdXJsIjogIi8iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgIm9yaWVudGF0aW9uIjogInBvcnRyYWl0IiwgImJhY2tncm91bmRfY29sb3IiOiAiI0ZGRkZGRiIsICJ0aGVtZV9jb2xvciI6ICIjRkY0QjRCIiwgImljb25zIjogW3sic3JjIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9taWNyb3NvZnQvZmx1ZW50dWktZW1vamkvbWFpbi9hc3NldHMvU3BpcmFsJTIwY2FsZW5kYXIvM0Qvc3BpcmFsX2NhbGVuZGFyXzNkLnBuZyIsICJzaXplcyI6ICIyNTZ4MjU2IiwgInR5cGUiOiAiaW1hZ2UvcG5nIiwgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIn1dfQ==">'
     '<meta name="mobile-web-app-capable" content="yes">'
     '<meta name="theme-color" content="#FF4B4B">'
     '<script>'
@@ -358,7 +358,7 @@ session_laden()
 if not st.session_state.user:
     st.markdown(
         '<div style="text-align:center;margin:24px 0 8px 0;">'
-        '<span style="font-size:1.8rem;font-weight:900;color:#FF4B4B;">📅 Schulplaner</span><br>'
+        '<span style="font-size:1.8rem;font-weight:900;color:#FF4B4B;">🎒 SchulBuddy</span><br>'
         '<span style="color:#888;font-size:0.9rem;">Bitte einloggen</span>'
         '</div>',
         unsafe_allow_html=True
