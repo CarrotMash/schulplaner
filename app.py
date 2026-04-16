@@ -481,7 +481,7 @@ if st.session_state.view == 'start':
             f'<div style="background:linear-gradient(150deg,#FF4B4B,#c0392b);border-radius:16px;'
             f'padding:14px 16px 12px 16px;box-shadow:0 4px 14px rgba(255,75,75,0.35);'
             f'height:100%;min-height:140px;display:flex;flex-direction:column;justify-content:space-between;">'
-            f'<div style="font-size:1.9rem;font-weight:900;color:white;letter-spacing:2px;text-transform:uppercase;line-height:1.1;">SCHUL<br><span style="opacity:0.6;">PLANER</span></div>'
+            f'<div style="font-size:1.9rem;font-weight:900;color:white;letter-spacing:2px;text-transform:uppercase;line-height:1.1;">SCHUL<br><span style="opacity:0.6;">BUDDY</span></div>'
             f'<div style="height:1px;background:rgba(255,255,255,0.25);margin:8px 0;"></div>'
             f'<div style="display:flex;align-items:flex-end;gap:6px;">'
             f'<div style="background:rgba(255,255,255,0.18);border-radius:10px;padding:4px 10px;text-align:center;min-width:42px;">'
