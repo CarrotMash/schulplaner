@@ -543,7 +543,7 @@ if st.session_state.view == 'start':
     # Zeile 3: SchulBuddy + Wordle nebeneinander
     c5, c6 = st.columns(2)
     with c5:
-        if st.button("📚 SCHULBUDDY", key="btn_quiz", use_container_width=True):
+        if st.button("🤖 KI-TUTOR", key="btn_quiz", use_container_width=True):
             st.session_state.view = 'schulbuddy'; st.rerun()
     with c6:
         # HTML-Link mit exakt gleichem Inline-Style wie die Streamlit-Buttons
