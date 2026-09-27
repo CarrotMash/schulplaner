@@ -1181,14 +1181,14 @@ function renderFerien(){
     }
   }
 
-  const list = FERIEN_LIST.map(f=>{
+  // Abgelaufene Ferien (Ende liegt vor heute) werden hier gar nicht erst aufgeführt.
+  const list = FERIEN_LIST.filter(f=>new Date(f.end) >= heute).map(f=>{
     const start=new Date(f.start), end=new Date(f.end);
     const tage = Math.round((end-start)/86400000)+1;
-    let css="", badge="";
-    if(end<heute){ css="vorbei"; badge=`<span class="fi-badge" style="background:#2a2650;color:#8f89b3;">vorbei</span>`; }
-    else if(start<=heute && heute<=end){ badge=`<span class="fi-badge" style="background:var(--grad-main);color:#fff;">🎉 jetzt!</span>`; }
+    let badge="";
+    if(start<=heute && heute<=end){ badge=`<span class="fi-badge" style="background:var(--grad-main);color:#fff;">🎉 jetzt!</span>`; }
     else{ const delta=Math.round((start-heute)/86400000); badge=`<span class="fi-badge" style="background:rgba(251,191,36,.15);color:#fbbf24;">in ${delta} Tagen</span>`; }
-    return `<div class="ferien-item ${css}">
+    return `<div class="ferien-item">
       <div><div class="fi-name">${f.name} ${start.getFullYear()}</div>
       <div class="fi-date">${start.toLocaleDateString("de-DE",{day:'2-digit',month:'2-digit'})} – ${end.toLocaleDateString("de-DE")} · ${tage} Tage</div></div>
       ${badge}
