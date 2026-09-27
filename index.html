@@ -1070,7 +1070,14 @@ let busRequestId = 0; // verhindert, dass eine langsame ältere Antwort eine neu
 async function loadBusDepartures(halt){
   const myRequestId = ++busRequestId;
   busLoading = true; busError = null; render();
-  const r = await api("bus_departures", {stopKey: halt});
+  let r = await api("bus_departures", {stopKey: halt});
+  // Kurze Netzwerk-/Server-Aussetzer (z.B. auf dem Handy unterwegs) sollen nicht gleich eine
+  // Fehlermeldung zeigen -> einmal automatisch nach kurzer Pause erneut versuchen.
+  if(r.error && myRequestId===busRequestId){
+    await new Promise(res=>setTimeout(res, 1200));
+    if(myRequestId!==busRequestId) return;
+    r = await api("bus_departures", {stopKey: halt});
+  }
   if(myRequestId !== busRequestId) return; // inzwischen wurde eine andere Haltestelle/Abfrage gestartet -> verwerfen
   busLoading = false;
   if(r.error){ busError = r.error==="hafas_error" ? "Fahrplan-Server gerade nicht erreichbar." : "Abfahrten konnten nicht geladen werden."; busDepartures = null; }
