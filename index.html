@@ -990,21 +990,26 @@ async function paintCell(tag, stunde){
   const bestehend = stundenplanData.find(it=>it.tag===tag && it.stunde===stunde);
   if(fach==="—" && !bestehend) return; // schon leer, nichts zu tun
   if(bestehend && bestehend.fach===fach) return; // schon genau dieses Fach -> nichts zu tun
+  const warNeu = !bestehend; // wichtig: merken, BEVOR wir optimistisch einen lokalen Platzhalter anlegen
 
   // optimistisches Update
+  const existingId = bestehend?.id;
   if(bestehend) bestehend.fach = fach;
   else stundenplanData.push({id:null, child:state.stundenplanChild, tag, stunde, fach});
   stundenplanSaving[key] = true;
   render();
 
-  const r = await api("stundenplan_set", {id: bestehend?.id||undefined, child: state.stundenplanChild, tag, stunde, fach});
-  delete stundenplanSaving[key];
+  const r = await api("stundenplan_set", {id: existingId||undefined, child: state.stundenplanChild, tag, stunde, fach});
   if(r.error){
     showToast("⚠️ Konnte nicht gespeichert werden");
     await loadStundenplan(state.stundenplanChild); // bei Fehler echten Stand nachladen
-  } else if(bestehend && !bestehend.id){
-    await loadStundenplan(state.stundenplanChild); // neue Zeile: echte id nachladen (fürs nächste Update nötig)
+  } else if(warNeu){
+    // neue Zeile: lokalen Platzhalter (id:null) durch echten Datensatz mit echter id ersetzen –
+    // sonst würde ein zweites Antippen dieser Zelle mangels id erneut einfügen statt zu updaten.
+    // Sperre bleibt bis dahin aktiv, damit ein schneller Doppel-Tap nicht doppelt einfügt.
+    await loadStundenplan(state.stundenplanChild);
   }
+  delete stundenplanSaving[key];
   render();
 }
 
