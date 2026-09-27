@@ -908,6 +908,8 @@ let stundenplanKlasse = "Klasse ?";
 let stundenplanLoading = false;
 let stundenplanArmed = null; // aktuell "aufgemaltes" Fach (oder "—" fürs Radiergummi), null = nichts ausgewählt
 let stundenplanSaving = {};  // welche Zellen (tag_stunde) gerade gespeichert werden -> kleiner Spinner statt Doppel-Taps
+let stundenplanEditMode = false; // Stundenplan wird nur ein-/zweimal im Halbjahr geändert -> standardmäßig
+                                  // nur anzeigen, Mal-Modus erst nach Tap auf "Ändern" einblenden
 
 function renderStundenplan(){
   const cur = state.stundenplanChild;
@@ -935,8 +937,43 @@ function renderStundenplan(){
   const planByCell = {};
   stundenplanData.forEach(item=>{ planByCell[item.tag+"_"+item.stunde] = item; });
 
-  // Palette: ein Chip pro Fach (Klartext, kein Icon) + Radiergummi zum Leeren. Antippen
-  // "bewaffnet" das Fach, danach färbt jeder Tap auf eine Stunde diese direkt ein (wie Ausmalen).
+  // Wochenraster: Zeilen = Stunden 1–7, Spalten = Mo–Fr. So sieht man die ganze Woche
+  // auf einen Blick statt sich durch einzelne Tage klicken zu müssen. Zellen zeigen den
+  // Fachnamen als Klartext (kurze, aber eindeutige Abkürzung) statt eines Icons.
+  // Im Ansichtsmodus sind die Zellen reine Anzeige (keine Buttons), im Bearbeitungsmodus
+  // antippbar zum "Anmalen".
+  let gridRows = `<div></div>` + DAYS.map(d=>`<div class="sp-dow">${DAY_SHORT[d]}</div>`).join("");
+  for(let std=1; std<=7; std++){
+    gridRows += `<div class="sp-nr">${std}.</div>`;
+    for(const tag of DAYS){
+      const item = planByCell[tag+"_"+std];
+      const fach = item && item.fach && item.fach!=="—" ? item.fach : null;
+      const meta = fach ? SUBJECT_META[fach] : null;
+      const key = tag+"_"+std;
+      const busy = !!stundenplanSaving[key];
+      const tag_attr = stundenplanEditMode ? `data-tag="${esc(tag)}" data-stunde="${std}"` : "";
+      const el = stundenplanEditMode ? "button" : "div";
+      gridRows += `<${el} class="sp-cell ${meta?'filled':''}" style="${meta?`--c:${meta.color}`:''}" ${tag_attr} title="${esc(tag)}, ${std}. Stunde (${TIMES[std]})${fach?': '+esc(fach):''}" aria-label="${esc(tag)}, ${std}. Stunde${fach?': '+esc(fach):', leer'}">${busy?'<span class="spin" style="border-top-color:#fff;"></span>':(meta?esc(meta.short):'')}</${el}>`;
+    }
+  }
+
+  if(!stundenplanEditMode){
+    // Ansichtsmodus (Standard): Stundenplan wird nur selten geändert, deshalb hier nur
+    // anzeigen. Die Änderungsmöglichkeit gibt's über den "Ändern"-Button.
+    return `
+    <div class="page-header"><div class="icon-badge">🏫</div><h1>Stundenplan</h1></div>
+    <div class="row">${kidsRow}</div>
+    <div class="card" style="margin-top:14px;">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span class="muted" style="font-size:.85rem;">${esc(stundenplanKlasse)}</span>
+        <button class="btn secondary small" id="editStundenplanBtn">✏️ Ändern</button>
+      </div>
+      <div class="sp-grid">${gridRows}</div>
+    </div>
+    `;
+  }
+
+  // Bearbeitungsmodus: Palette + Mal-Modus (wie gehabt), nach "Fertig" zurück zur reinen Ansicht.
   const paletteChips = SUBJECTS.map(fach=>{
     const meta = SUBJECT_META[fach];
     return `<button class="fach-chip ${stundenplanArmed===fach?'armed':''}" style="--c:${meta.color}" data-fach="${esc(fach)}" title="${esc(fach)}" aria-label="${esc(fach)}">${esc(fach)}</button>`;
@@ -947,27 +984,14 @@ function renderStundenplan(){
     ? (stundenplanArmed==='—' ? "Radiergummi aktiv – tippe auf eine Stunde zum Leeren" : `<b>${esc(stundenplanArmed)}</b> ausgewählt – tippe auf die Stunden`)
     : "☝️ Erst ein Fach oben auswählen, dann Stunden antippen";
 
-  // Wochenraster: Zeilen = Stunden 1–7, Spalten = Mo–Fr. So sieht man die ganze Woche
-  // auf einen Blick statt sich durch einzelne Tage klicken zu müssen. Zellen zeigen den
-  // Fachnamen als Klartext (kurze, aber eindeutige Abkürzung) statt eines Icons.
-  let gridRows = `<div></div>` + DAYS.map(d=>`<div class="sp-dow">${DAY_SHORT[d]}</div>`).join("");
-  for(let std=1; std<=7; std++){
-    gridRows += `<div class="sp-nr">${std}.</div>`;
-    for(const tag of DAYS){
-      const item = planByCell[tag+"_"+std];
-      const fach = item && item.fach && item.fach!=="—" ? item.fach : null;
-      const meta = fach ? SUBJECT_META[fach] : null;
-      const key = tag+"_"+std;
-      const busy = !!stundenplanSaving[key];
-      gridRows += `<button class="sp-cell ${meta?'filled':''}" style="${meta?`--c:${meta.color}`:''}" data-tag="${esc(tag)}" data-stunde="${std}" title="${esc(tag)}, ${std}. Stunde (${TIMES[std]})${fach?': '+esc(fach):''}" aria-label="${esc(tag)}, ${std}. Stunde${fach?': '+esc(fach):', leer'}">${busy?'<span class="spin" style="border-top-color:#fff;"></span>':(meta?esc(meta.short):'')}</button>`;
-    }
-  }
-
   return `
   <div class="page-header"><div class="icon-badge">🏫</div><h1>Stundenplan</h1></div>
   <div class="row">${kidsRow}</div>
   <div class="card" style="margin-top:14px;">
-    <button class="btn secondary small" id="klasseBtn" style="margin-bottom:12px;">✏️ ${esc(stundenplanKlasse)}</button>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <button class="btn secondary small" id="klasseBtn">✏️ ${esc(stundenplanKlasse)}</button>
+      <button class="btn secondary small" id="doneStundenplanBtn">✅ Fertig</button>
+    </div>
     <div class="fach-palette">${paletteChips}${eraserChip}</div>
     <p class="muted fach-armed-label">${armedLabel}</p>
     <div class="sp-grid">${gridRows}</div>
@@ -1404,27 +1428,33 @@ function attachViewEvents(){
   /* ---- Stundenplan (Mal-Modus) ---- */
   if(state.view==="stundenplan"){
     document.querySelectorAll("[data-child]").forEach(b=>b.onclick = async ()=>{
-      state.stundenplanChild = b.dataset.child; stundenplanArmed=null; stundenplanSaving={};
+      state.stundenplanChild = b.dataset.child; stundenplanArmed=null; stundenplanSaving={}; stundenplanEditMode=false;
       stundenplanLoading = true; render();
       await Promise.all([loadStundenplanKlasse(state.stundenplanChild), loadStundenplan(state.stundenplanChild)]);
       stundenplanLoading = false; render();
     });
+    const editBtn = document.getElementById("editStundenplanBtn");
+    if(editBtn) editBtn.onclick = ()=>{ stundenplanEditMode=true; render(); };
+    const doneBtn = document.getElementById("doneStundenplanBtn");
+    if(doneBtn) doneBtn.onclick = ()=>{ stundenplanEditMode=false; stundenplanArmed=null; render(); };
     const klasseBtn = document.getElementById("klasseBtn");
     if(klasseBtn) klasseBtn.onclick = async ()=>{
       const neu = prompt("Klasse anpassen:", stundenplanKlasse);
       if(neu){ await api("kind_info_set", {child:state.stundenplanChild, klasse:neu}); stundenplanKlasse=neu; render(); }
     };
-    // Fach-Chip antippen = "bewaffnen" (nochmal antippen = abwählen)
-    document.querySelectorAll(".fach-chip").forEach(chip=>chip.onclick = ()=>{
-      const fach = chip.dataset.fach;
-      stundenplanArmed = stundenplanArmed===fach ? null : fach;
-      render();
-    });
-    // Zelle antippen = mit dem aktuell bewaffneten Fach "anmalen"
-    document.querySelectorAll(".sp-cell").forEach(cell=>cell.onclick = ()=>{
-      if(!stundenplanArmed){ showToast("☝️ Erst oben ein Fach auswählen"); return; }
-      paintCell(cell.dataset.tag, Number(cell.dataset.stunde));
-    });
+    if(stundenplanEditMode){
+      // Fach-Chip antippen = "bewaffnen" (nochmal antippen = abwählen)
+      document.querySelectorAll(".fach-chip").forEach(chip=>chip.onclick = ()=>{
+        const fach = chip.dataset.fach;
+        stundenplanArmed = stundenplanArmed===fach ? null : fach;
+        render();
+      });
+      // Zelle antippen = mit dem aktuell bewaffneten Fach "anmalen" (nur im Bearbeitungsmodus Buttons)
+      document.querySelectorAll(".sp-cell").forEach(cell=>cell.onclick = ()=>{
+        if(!stundenplanArmed){ showToast("☝️ Erst oben ein Fach auswählen"); return; }
+        paintCell(cell.dataset.tag, Number(cell.dataset.stunde));
+      });
+    }
   }
 
   /* ---- Bus ---- */
