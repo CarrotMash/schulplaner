@@ -1,6 +1,0 @@
-streamlit
-pandas
-streamlit-calendar
-supabase
-requests
-anthropic

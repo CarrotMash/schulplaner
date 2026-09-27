@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>SchulBuddy</title>
+<meta name="theme-color" content="#e63946">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎒</text></svg>">
+<style>
+:root{
+  --red:#e63946; --red-dark:#b3202c; --red-light:#ff6b74;
+  --bg:#f4f5f7; --card:#ffffff; --ink:#1d2230; --muted:#6b7280;
+  --border:#e8e9ee; --radius:18px; --shadow:0 8px 24px rgba(20,20,40,.08);
+  --mila:#ff85a1; --jojo:#8b0000; --mikko:#2e7d32; --papa:#1565c0; --mama:#6a1b9a;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg); color:var(--ink); min-height:100vh; -webkit-tap-highlight-color:transparent;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+#app{max-width:520px;margin:0 auto;padding:16px 16px 40px;min-height:100vh;}
+h1,h2,h3{margin:0 0 8px;}
+.hidden{display:none !important;}
+
+/* Header / Kachel für Titel */
+.page-header{
+  font-size:1.35rem;font-weight:800;text-align:center;color:#fff;
+  background:linear-gradient(135deg,var(--red),var(--red-dark));
+  padding:14px 16px;border-radius:16px;margin-bottom:16px;
+  box-shadow:0 6px 18px rgba(230,57,70,.28);
+}
+
+/* Karten */
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px;}
+
+/* Buttons */
+button{font-family:inherit;cursor:pointer;}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  border:none;border-radius:12px;padding:12px 14px;font-weight:700;font-size:.92rem;
+  background:var(--red);color:#fff;transition:transform .08s ease, background .15s ease;
+  width:100%;
+}
+.btn:active{transform:scale(.97);}
+.btn:hover{background:var(--red-dark);}
+.btn.secondary{background:#fff;color:var(--red);border:2px solid var(--red);}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn.small{padding:8px 10px;font-size:.8rem;width:auto;}
+.btn[disabled]{opacity:.55;pointer-events:none;}
+
+/* Grid Navigation */
+.nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.nav-tile{
+  background:linear-gradient(150deg,var(--red),var(--red-dark));color:#fff;border:none;
+  border-radius:16px;padding:20px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-weight:800;font-size:.85rem;box-shadow:0 6px 16px rgba(230,57,70,.25);
+  text-decoration:none;
+}
+.nav-tile .emoji{font-size:1.7rem;}
+.nav-tile:active{transform:scale(.96);}
+
+/* Inputs */
+input,select,textarea{
+  width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;
+  font-size:.95rem;background:#fbfbfd;color:var(--ink);
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+label{font-size:.78rem;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;}
+.field{margin-bottom:6px;}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:14px;background:#eef0f4;border-radius:12px;padding:4px;}
+.tab{flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-weight:700;font-size:.82rem;color:var(--muted);background:transparent;border:none;}
+.tab.active{background:#fff;color:var(--red);box-shadow:0 2px 6px rgba(0,0,0,.08);}
+
+.error-box{background:#fdecea;color:#b3202c;padding:10px 12px;border-radius:10px;font-size:.85rem;margin:8px 0;font-weight:600;}
+.success-box{background:#e8f5e9;color:#2e7d32;padding:10px 12px;border-radius:10px;font-size:.85rem;margin:8px 0;font-weight:600;}
+.info-box{background:#eef2ff;color:#3730a3;padding:10px 12px;border-radius:10px;font-size:.85rem;margin:8px 0;}
+
+.center{text-align:center;}
+.muted{color:var(--muted);}
+.row{display:flex;gap:10px;}
+.row > *{flex:1;}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{
+  padding:7px 13px;border-radius:20px;font-size:.78rem;font-weight:700;border:2px solid var(--border);
+  background:#fff;color:var(--ink);
+}
+.chip.active{background:var(--red);border-color:var(--red);color:#fff;}
+
+/* Back-Button-Leiste */
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.topbar .btn{width:auto;}
+
+/* Login-Logo */
+.login-logo{text-align:center;margin:20px 0 16px;}
+.login-logo .emoji{font-size:2.6rem;}
+.login-logo .title{font-size:1.6rem;font-weight:900;color:var(--red);letter-spacing:.5px;}
+.login-logo .sub{color:var(--muted);font-size:.88rem;}
+
+/* Pinnwand */
+.pin-bubble{border-radius:12px;padding:10px 12px;margin-bottom:8px;border-left:5px solid #ddd;background:#fafafa;position:relative;}
+.pin-name{font-weight:800;font-size:.85rem;}
+.pin-time{font-size:.7rem;color:var(--muted);margin-left:6px;}
+.pin-text{font-size:.9rem;margin-top:3px;}
+.pin-del{position:absolute;top:8px;right:8px;background:none;border:none;color:#c33;font-size:.9rem;padding:2px 6px;}
+
+/* Countdown Box */
+.countdown-box{
+  background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff;border-radius:18px;
+  padding:22px 16px 18px;text-align:center;margin-bottom:16px;box-shadow:0 8px 20px rgba(230,57,70,.3);
+}
+.countdown-box .cd-label{font-size:.78rem;opacity:.85;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+.countdown-box .cd-days{font-size:3.4rem;font-weight:900;line-height:1;}
+.countdown-box .cd-name{font-size:1rem;font-weight:700;margin-top:6px;}
+.countdown-box .cd-date{font-size:.78rem;opacity:.85;margin-top:2px;}
+
+/* Ferien-Liste */
+.ferien-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;margin-bottom:8px;background:#fafafa;border-left:5px solid var(--red);}
+.ferien-item.vorbei{opacity:.4;border-left-color:#ddd;}
+.ferien-item .fi-name{font-weight:800;font-size:.92rem;}
+.ferien-item .fi-date{font-size:.76rem;color:var(--muted);}
+.fi-badge{margin-left:auto;font-size:.7rem;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+
+/* Klausur-Frühwarnung */
+.warn-item{margin-top:8px;background:#ff8f00;border-radius:10px;padding:9px 13px;font-size:.85rem;color:#fff;font-weight:600;}
+
+/* Kalender */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-head .month{font-weight:800;font-size:1.05rem;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-dow{text-align:center;font-size:.68rem;font-weight:800;color:var(--muted);padding-bottom:4px;}
+.cal-cell{
+  aspect-ratio:1/1;border-radius:10px;background:#fafafa;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-start;padding:4px 2px;font-size:.78rem;position:relative;border:1.5px solid transparent;
+}
+.cal-cell.today{border-color:var(--red);}
+.cal-cell.other{opacity:.3;}
+.cal-cell .dot{width:6px;height:6px;border-radius:50%;margin-top:2px;}
+.cal-cell.weekend{background:#eef0f4;}
+.klausur-list-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:.88rem;}
+.klausur-list-item .badge{padding:2px 9px;border-radius:20px;color:#fff;font-size:.7rem;font-weight:800;white-space:nowrap;}
+.klausur-list-item .fach{font-weight:700;}
+.klausur-list-item .datum{margin-left:auto;color:var(--muted);font-size:.8rem;}
+
+/* Stundenplan Tabelle */
+.sp-table{width:100%;border-collapse:collapse;font-size:.9rem;}
+.sp-table td{padding:8px 6px;border-bottom:1px solid var(--border);}
+.sp-table td.nr{color:#aaa;width:22px;font-size:.75rem;}
+.sp-table td.uhr{color:#aaa;font-size:.72rem;text-align:right;white-space:nowrap;}
+.sp-table td.fach{font-weight:700;}
+.sp-table tr.editable{cursor:pointer;}
+.sp-table tr.editable:active{background:#fafafa;}
+
+/* Bus-Karten */
+.bus-card{border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 10px rgba(0,0,0,.05);}
+.bus-time{font-size:1.5rem;font-weight:900;}
+.bus-line{color:#fff;font-size:.78rem;font-weight:800;padding:2px 9px;border-radius:6px;margin-left:8px;}
+.bus-exit{margin-top:8px;font-size:.85rem;background:#fff;border-radius:8px;padding:5px 9px;}
+
+/* SchulBuddy */
+.fach-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.fach-btn{border-radius:12px;padding:14px 4px;text-align:center;font-weight:800;font-size:.78rem;border:2px solid var(--border);background:#fff;}
+.level-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.chat-box{max-height:46vh;overflow-y:auto;margin-bottom:10px;padding-right:2px;}
+.chat-msg{border-radius:14px;padding:10px 13px;margin:6px 0;font-size:.88rem;line-height:1.5;max-width:88%;white-space:pre-wrap;}
+.chat-msg.user{background:var(--red);color:#fff;margin-left:auto;border-bottom-right-radius:4px;}
+.chat-msg.bot{background:#f0f1f5;color:var(--ink);border-bottom-left-radius:4px;}
+.chat-input-row{display:flex;gap:8px;}
+.chat-input-row input{flex:1;}
+.chat-input-row button{width:auto;padding:11px 16px;}
+
+/* Spinner */
+.spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.overlay-loading{position:fixed;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;z-index:999;}
+.overlay-loading .spin{border-color:rgba(230,57,70,.25);border-top-color:var(--red);width:34px;height:34px;border-width:4px;}
+
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1d2230;color:#fff;
+  padding:10px 18px;border-radius:30px;font-size:.85rem;z-index:1000;box-shadow:0 6px 16px rgba(0,0,0,.25);
+  opacity:0;transition:opacity .25s ease;pointer-events:none;
+}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="loadingOverlay" class="overlay-loading hidden"><div class="spin"></div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* =========================================================================
+   SCHULBUDDY — HTML/JS Frontend
+   Backend: eine einzige Supabase Edge Function ("schulbuddy-api"), die Auth,
+   Datenzugriff (Klausuren/Stundenpläne/Pinnwand/Klasse) und den KI-Tutor
+   (Anthropic-Proxy) übernimmt. Kein Secret liegt im Client.
+   ========================================================================= */
+
+const SUPABASE_URL = "https://bjrtxxyziwwxppvwxrdz.supabase.co";
+const ANON_KEY = "sb_publishable_1DUXeCywstGbQKsuLwOVBA_jsLkePRN";
+const API_URL = SUPABASE_URL + "/functions/v1/schulbuddy-api";
+
+const NAMEN = ["Papa","Mama","Mila","Jojo","Mikko"];
+const CHILD_COLORS = {Mila:"var(--mila)",Jojo:"var(--jojo)",Mikko:"var(--mikko)"};
+const PINNWAND_FARBEN = {Papa:"var(--papa)",Mama:"var(--mama)",Mila:"var(--mila)",Jojo:"var(--jojo)",Mikko:"var(--mikko)"};
+const SUBJECTS = ["Englisch","Französisch","Mathematik","Deutsch","Musik","Biologie","Chemie","Kunst","Philosophie","Geschichte","Physik","Spanisch","WiPo","Geografie","Sport","Religion","Freistunde"];
+const DAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"];
+const DAY_SHORT = {Montag:"Mo",Dienstag:"Di",Mittwoch:"Mi",Donnerstag:"Do",Freitag:"Fr"};
+const TIMES = {1:"07:50–08:35",2:"08:40–09:25",3:"09:40–10:25",4:"10:30–11:15",5:"11:30–12:15",6:"12:20–13:05",7:"13:35–14:20"};
+
+const FERIEN_LIST = [
+  {name:"Osterferien", start:"2026-03-26", end:"2026-04-11"},
+  {name:"Sommerferien", start:"2026-07-13", end:"2026-08-22"},
+  {name:"Herbstferien", start:"2026-10-12", end:"2026-10-24"},
+  {name:"Weihnachtsferien", start:"2026-12-21", end:"2027-01-06"},
+  {name:"Osterferien", start:"2027-03-22", end:"2027-04-03"},
+  {name:"Sommerferien", start:"2027-07-12", end:"2027-08-21"},
+  {name:"Herbstferien", start:"2027-10-11", end:"2027-10-23"},
+  {name:"Weihnachtsferien", start:"2027-12-20", end:"2028-01-05"},
+];
+
+const FAECHER = {
+  Mathematik:{icon:"🧮",color:"#a87df8",topics:["Bruchrechnung","Gleichungen","Funktionen","Geometrie","Pythagoras","Wahrscheinlichkeit","Trigonometrie","Differentialrechnung","Integralrechnung","Vektorrechnung","Stochastik","Analytische Geometrie"],
+    prompt:"Du bist ein cooler Mathe-Assistent fuer Gymnasiasten (Level: {level}). Frech und jugendlich, aber paedagogisch: zeige NIE einfach die Loesung, sondern erklaere den Denkweg Schritt fuer Schritt. Stelle Rueckfragen, gib Tipps. Passe Erklaerungen ans Level an. Nutze LaTeX-Notation fuer Formeln wo sinnvoll. Antworte auf Deutsch."},
+  Deutsch:{icon:"📖",color:"#f25ca2",topics:["Erörterung","Sachtextanalyse","Gedichtanalyse","Dramenanalyse","Grammatik","Rechtschreibung","Kreatives Schreiben","Präsentation","Sprachgeschichte"],
+    prompt:"Du bist ein hilfreicher Deutsch-Assistent fuer Gymnasiasten (Level: {level}). Motivierend und paedagogisch. Schreibe keine fertigen Aufsaetze oder Analysen, sondern erklaere Aufbau, Argumentation und Stilmittel. Gib konkrete Hinweise und Beispiele. Antworte auf Deutsch."},
+  Englisch:{icon:"📘",color:"#38d9f5",topics:["Grammatik","Vokabeln","Essay schreiben","Reading Comprehension","Literaturanalyse","Mediation","Bewerbungsschreiben","Speaking"],
+    prompt:"Du bist ein cooler Englisch-Tutor fuer deutsche Gymnasiasten (Level: {level}). Freundlich und paedagogisch. Schreibe keine fertigen Texte oder Uebersetzungen, sondern erklaere Struktur und Grammatik. Mische Deutsch und Englisch je nach Bedarf. Passe dich ans Niveau an."},
+  Französisch:{icon:"🥖",color:"#e0b400",topics:["Vokabeln","Grammatik","Konjugation","Texte schreiben","Hörverstehen","Literatur","DELF-Vorbereitung"],
+    prompt:"Du bist ein motivierender Franzoesisch-Assistent fuer Gymnasiasten (Level: {level}). Erklaere Grammatikregeln mit Beispielen, hilf beim Vokabellernen mit Eselsbruecken. Schreibe keine fertigen Texte. Nutze gelegentlich franzoesische Phrasen mit Erklaerung. Antworte auf Deutsch."},
+  Latein:{icon:"🏛️",color:"#b08968",topics:["Vokabeln","Grammatik","Deklinationen","Konjugationen","Übersetzung","Textanalyse","Antike Kultur"],
+    prompt:"Du bist ein geduldiger Latein-Assistent fuer Gymnasiasten (Level: {level}). Erklaere Grammatik und Satzbau Schritt fuer Schritt, uebersetze nicht fertig vor, sondern zeige den Denkweg. Antworte auf Deutsch."},
+  Physik:{icon:"⚡",color:"#42c98a",topics:["Mechanik","Optik","Thermodynamik","Elektrizitätslehre","Magnetismus","Atomphysik","Quantenphysik","Schwingungen & Wellen","Relativitätstheorie"],
+    prompt:"Du bist ein begeisterter Physik-Assistent fuer Gymnasiasten (Level: {level}). Erklaere Konzepte mit Alltagsbeispielen. Zeige keine fertigen Loesungen, sondern erklaere den Loesungsansatz. Nutze Formeln korrekt. Antworte auf Deutsch."},
+  Chemie:{icon:"⚗️",color:"#ff6b6b",topics:["Atombau","Bindungslehre","Säuren & Basen","Redoxreaktionen","Organische Chemie","Stöchiometrie","Elektrochemie"],
+    prompt:"Du bist ein cooler Chemie-Assistent fuer Gymnasiasten (Level: {level}). Erklaere chemische Konzepte anschaulich mit Alltagsbeispielen. Keine fertigen Loesungen - erklaere den Denkprozess. Nutze chemische Formeln korrekt. Antworte auf Deutsch."},
+  Biologie:{icon:"🌿",color:"#7ecb8f",topics:["Zellbiologie","Genetik","Evolution","Ökologie","Stoffwechsel","Neurobiologie","Immunsystem","Botanik"],
+    prompt:"Du bist ein neugieriger Biologie-Assistent fuer Gymnasiasten (Level: {level}). Erklaere biologische Prozesse bildhaft und spannend. Keine fertigen Loesungen, sondern Erklaerungen und Tipps. Passe Komplexitaet ans Level an. Antworte auf Deutsch."},
+  Geographie:{icon:"🌍",color:"#5cb8ff",topics:["Kartenkunde","Klimazonen","Bevölkerungsgeographie","Wirtschaftsgeographie","Globalisierung","Nachhaltigkeit","Meteorologie"],
+    prompt:"Du bist ein weltgewandter Geographie-Assistent fuer Gymnasiasten (Level: {level}). Erklaere geographische Zusammenhaenge anschaulich. Hilf beim Verstehen von Karten und Klimadaten. Keine fertigen Aufsaetze. Antworte auf Deutsch."},
+  Geschichte:{icon:"📜",color:"#c9a84c",topics:["Antike","Mittelalter","Frühe Neuzeit","Industrialisierung","Erster Weltkrieg","NS-Zeit","Zweiter Weltkrieg","Kalter Krieg","Quellenanalyse"],
+    prompt:"Du bist ein spannender Geschichte-Assistent fuer Gymnasiasten (Level: {level}). Erklaere historische Zusammenhaenge lebendig. Hilf bei Quellenanalyse durch Erklaerung des Vorgehens, nicht durch fertige Texte. Antworte auf Deutsch."},
+  Informatik:{icon:"💻",color:"#4dabf7",topics:["Programmierung","Algorithmen","Datenstrukturen","Datenbanken","Netzwerke","Kryptographie","Künstliche Intelligenz","Web-Entwicklung"],
+    prompt:"Du bist ein smarter Informatik-Assistent fuer Gymnasiasten (Level: {level}). Erklaere Algorithmen und Konzepte klar. Bei Programmieraufgaben: gib Hinweise und erklaere den Loesungsansatz, schreibe nicht einfach fertigen Code. Nutze Code-Beispiele zur Erklaerung. Antworte auf Deutsch."},
+  Musik:{icon:"🎵",color:"#f8a4d8",topics:["Musiktheorie","Notenlernen","Harmonielehre","Epochen & Stile","Komposition","Analyse","Instrumente"],
+    prompt:"Du bist ein kreativer Musik-Assistent fuer Gymnasiasten (Level: {level}). Erklaere Musiktheorie verstaendlich. Hilf beim Notenlernen und Analysieren. Motivierend und kreativ. Antworte auf Deutsch."},
+};
+const LEVELS = {"Unterstufe (Kl. 5–7)":"Unterstufe Klasse 5-7","Mittelstufe (Kl. 8–9)":"Mittelstufe Klasse 8-9","Oberstufe (Kl. 10–11)":"Oberstufe Klasse 10-11","Abitur (Kl. 12–13)":"Abitur Klasse 12-13"};
+
+const BEGRUESSUNG = {
+  Mathematik:"Hey! Bereit für Mathe? Was ist die aktuelle Herausforderung? 🧮",
+  Deutsch:"Hi! Was steht auf dem Programm – Aufsatz, Analyse oder Grammatik? 📖",
+  Englisch:"Hey! What's up? Woran arbeiten wir heute? 🇬🇧",
+  Französisch:"Salut! Was macht dir gerade am meisten zu schaffen? 🇫🇷",
+  Latein:"Salve! Welcher Text oder welche Grammatik steht an? 🏛️",
+  Physik:"Hey! Von Mechanik bis Quantenphysik – was soll ich erklären? ⚡",
+  Chemie:"Hi! Welches chemische Rätsel lösen wir heute? ⚗️",
+  Biologie:"Hey! Zellen, Gene, Evolution – womit kann ich helfen? 🌿",
+  Geographie:"Hi! Von Klimazonen bis Globalisierung – was liegt an? 🌍",
+  Geschichte:"Hey! Welches Kapitel der Geschichte beschäftigt dich? 📜",
+  Informatik:"Hi! Code, Algorithmen, Konzepte – womit starten wir? 💻",
+  Musik:"Hey! Theorie, Noten oder Analyse – was brauchst du? 🎵",
+};
+
+/* -------------------- State -------------------- */
+let state = {
+  token: localStorage.getItem("schulbuddy_token") || null,
+  user: null,
+  view: "start",
+  loginTab: "login",
+  stundenplanChild: null,
+  stundenplanDay: "Montag",
+  busHalt: null,
+  sbFach: null,
+  sbLevel: null,
+  sbHistory: [],
+  klausuren: [],
+  calMonth: new Date().getMonth(),
+  calYear: new Date().getFullYear(),
+  selectedDate: null,
+  editKlausurId: null,
+};
+
+function setState(patch){ Object.assign(state, patch); render(); }
+
+/* -------------------- API-Helper -------------------- */
+async function api(action, payload={}){
+  showLoading(true);
+  try{
+    const res = await fetch(API_URL, {
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":ANON_KEY,"Authorization":"Bearer "+ANON_KEY},
+      body: JSON.stringify({action, token: state.token, ...payload})
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok && !("ok" in data)) data.error = data.error || "request_failed";
+    return data;
+  }catch(e){
+    return {error:"network_error", detail:String(e)};
+  }finally{
+    showLoading(false);
+  }
+}
+function showLoading(on){ document.getElementById("loadingOverlay").classList.toggle("hidden", !on); }
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* -------------------- Session beim Start prüfen -------------------- */
+async function boot(){
+  if(state.token){
+    const r = await api("verify");
+    if(r.ok){ state.user = r.name; state.view="start"; }
+    else { state.token=null; localStorage.removeItem("schulbuddy_token"); }
+  }
+  render();
+  if(state.user) startPinnwandPolling();
+}
+
+/* =========================================================================
+   RENDER
+   ========================================================================= */
+function render(){
+  const app = document.getElementById("app");
+  if(!state.user){ app.innerHTML = renderLogin(); attachLoginEvents(); return; }
+
+  let html = "";
+  switch(state.view){
+    case "start": html = renderStart(); break;
+    case "klausuren": html = renderKlausuren(); break;
+    case "stundenplan": html = renderStundenplan(); break;
+    case "bus": html = renderBus(); break;
+    case "ferien": html = renderFerien(); break;
+    case "schulbuddy": html = renderSchulBuddy(); break;
+    default: html = renderStart();
+  }
+  app.innerHTML = html;
+  attachViewEvents();
+}
+
+/* -------------------- LOGIN / REGISTER / RESET -------------------- */
+function renderLogin(){
+  const t = state.loginTab;
+  return `
+  <div class="login-logo">
+    <div class="emoji">🎒</div>
+    <div class="title">SchulBuddy</div>
+    <div class="sub">Bitte einloggen</div>
+  </div>
+  <div class="tabs">
+    <button class="tab ${t==='login'?'active':''}" data-tab="login">🔑 Login</button>
+    <button class="tab ${t==='reg'?'active':''}" data-tab="reg">✏️ Registrieren</button>
+    <button class="tab ${t==='reset'?'active':''}" data-tab="reset">🔓 Vergessen</button>
+  </div>
+  <div class="card">
+    ${t==='login' ? renderLoginForm() : t==='reg' ? renderRegForm() : renderResetForm()}
+  </div>`;
+}
+function nameOptions(sel){
+  return NAMEN.map(n=>`<option value="${n}" ${n===sel?'selected':''}>${n}</option>`).join("");
+}
+function renderLoginForm(){
+  return `
+  <form id="loginForm">
+    <label>Name</label>
+    <select name="name">${nameOptions()}</select>
+    <label>Passwort</label>
+    <input type="password" name="passwort" required>
+    <div id="loginMsg"></div>
+    <div style="margin-top:14px;"><button class="btn" type="submit">Einloggen</button></div>
+  </form>`;
+}
+function renderRegForm(){
+  return `
+  <p class="muted" style="font-size:.82rem;">Nur beim ersten Mal nötig — danach einfach einloggen.</p>
+  <form id="regForm">
+    <label>Name</label>
+    <select name="name">${nameOptions()}</select>
+    <label>Passwort wählen</label>
+    <input type="password" name="pw" required>
+    <label>Passwort wiederholen</label>
+    <input type="password" name="pw2" required>
+    <label>Rolle</label>
+    <select name="rolle"><option>Kind</option><option>Eltern</option></select>
+    <label>🔐 Sicherheitsfrage (für Passwort-Reset)</label>
+    <input type="text" name="frage" placeholder="z.B. Wie heißt unser erstes Haustier?" required>
+    <label>Antwort</label>
+    <input type="password" name="antwort" required>
+    <div id="regMsg"></div>
+    <div style="margin-top:14px;"><button class="btn" type="submit">Account erstellen</button></div>
+  </form>`;
+}
+function renderResetForm(){
+  return `
+  <form id="resetForm">
+    <label>Name</label>
+    <select name="name" id="resetName">${nameOptions()}</select>
+    <div id="resetFrage" class="info-box hidden"></div>
+    <label>Antwort auf deine Sicherheitsfrage</label>
+    <input type="password" name="antwort" required>
+    <label>Neues Passwort</label>
+    <input type="password" name="pw" required>
+    <label>Neues Passwort wiederholen</label>
+    <input type="password" name="pw2" required>
+    <div id="resetMsg"></div>
+    <div style="margin-top:14px;"><button class="btn" type="submit">Passwort zurücksetzen</button></div>
+  </form>`;
+}
+function attachLoginEvents(){
+  document.querySelectorAll(".tab").forEach(t=>t.onclick = ()=>setState({loginTab:t.dataset.tab}));
+
+  const lf = document.getElementById("loginForm");
+  if(lf) lf.onsubmit = async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(lf);
+    const r = await api("login", {name:fd.get("name"), passwort:fd.get("passwort")});
+    if(r.ok){
+      state.token = r.token; state.user = r.name;
+      localStorage.setItem("schulbuddy_token", r.token);
+      state.view = "start"; render(); startPinnwandPolling();
+    }else{
+      document.getElementById("loginMsg").innerHTML = `<div class="error-box">❌ Name oder Passwort falsch.</div>`;
+    }
+  };
+
+  const rf = document.getElementById("regForm");
+  if(rf) rf.onsubmit = async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(rf);
+    const msg = document.getElementById("regMsg");
+    if(fd.get("pw") !== fd.get("pw2")){ msg.innerHTML = `<div class="error-box">❌ Passwörter stimmen nicht überein.</div>`; return; }
+    if(fd.get("pw").length < 4){ msg.innerHTML = `<div class="error-box">❌ Passwort muss mindestens 4 Zeichen haben.</div>`; return; }
+    const r = await api("register", {name:fd.get("name"), passwort:fd.get("pw"), rolle:fd.get("rolle"), frage:fd.get("frage"), antwort:fd.get("antwort")});
+    if(r.ok){ msg.innerHTML = `<div class="success-box">✅ Account erstellt! Bitte einloggen.</div>`; setTimeout(()=>setState({loginTab:"login"}), 900); }
+    else{ msg.innerHTML = `<div class="error-box">❌ ${r.error==='name_taken'?'Name bereits vergeben.':'Fehler aufgetreten.'}</div>`; }
+  };
+
+  const resetNameSel = document.getElementById("resetName");
+  async function loadFrage(){
+    const r = await api("get_security_question", {name: resetNameSel.value});
+    const box = document.getElementById("resetFrage");
+    if(r.frage){ box.textContent = "💬 Deine Frage: " + r.frage; box.classList.remove("hidden"); }
+    else{ box.classList.add("hidden"); }
+  }
+  if(resetNameSel){ resetNameSel.onchange = loadFrage; loadFrage(); }
+
+  const rsf = document.getElementById("resetForm");
+  if(rsf) rsf.onsubmit = async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(rsf);
+    const msg = document.getElementById("resetMsg");
+    if(fd.get("pw") !== fd.get("pw2")){ msg.innerHTML = `<div class="error-box">❌ Passwörter stimmen nicht überein.</div>`; return; }
+    if(fd.get("pw").length < 4){ msg.innerHTML = `<div class="error-box">❌ Passwort muss mindestens 4 Zeichen haben.</div>`; return; }
+    const r = await api("reset_password", {name:fd.get("name"), antwort:fd.get("antwort"), neues_passwort:fd.get("pw")});
+    if(r.ok){ msg.innerHTML = `<div class="success-box">✅ Passwort zurückgesetzt. Bitte einloggen.</div>`; setTimeout(()=>setState({loginTab:"login"}), 900); }
+    else{ msg.innerHTML = `<div class="error-box">❌ Antwort falsch oder kein Account gefunden.</div>`; }
+  };
+}
+
+/* -------------------- DASHBOARD -------------------- */
+let dashboardWarnungen = [];
+let pinnwandData = [];
+let pinnwandArchivOffen = false;
+let pinnwandLastId = null;
+let pinnwandTimer = null;
+
+function renderStart(){
+  const heute = new Date();
+  const wt = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][(heute.getDay()+6)%7];
+  const tagNr = heute.getDate().toString().padStart(2,"0");
+  const monat = heute.toLocaleString("de-DE",{month:"short"}).toUpperCase().replace(".","");
+  const jahr = heute.getFullYear();
+
+  return `
+  <div class="card" style="background:linear-gradient(150deg,var(--red),var(--red-dark));color:#fff;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:1.5rem;font-weight:900;letter-spacing:1.5px;line-height:1.15;">SCHUL<br><span style="opacity:.65;">BUDDY</span></div>
+      <div style="text-align:center;background:rgba(255,255,255,.18);border-radius:12px;padding:8px 14px;">
+        <div style="font-size:1.5rem;font-weight:900;">${tagNr}</div>
+        <div style="font-size:.65rem;font-weight:700;opacity:.8;">${monat} ${jahr}</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:.85rem;opacity:.9;">${wt} · Hallo ${esc(state.user)}! 👋</div>
+  </div>
+  <div id="dashWarnungen"></div>
+
+  <div class="nav-grid">
+    <button class="nav-tile" data-view="klausuren"><span class="emoji">📅</span>KLAUSUREN</button>
+    <button class="nav-tile" data-view="stundenplan"><span class="emoji">🏫</span>STUNDENPLÄNE</button>
+    <button class="nav-tile" data-view="bus"><span class="emoji">🚌</span>BUS-CHECK</button>
+    <button class="nav-tile" data-view="ferien"><span class="emoji">🌴</span>FERIEN</button>
+    <button class="nav-tile" data-view="schulbuddy"><span class="emoji">🤖</span>KI-TUTOR</button>
+    <a class="nav-tile" href="https://6mal5.com" target="_blank" rel="noopener"><span class="emoji">🟩</span>WORDLE</a>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3>📌 Pinnwand</h3>
+    <div id="pinnwandList"><p class="muted">Lade …</p></div>
+    <form id="pinForm" style="margin-top:10px;">
+      <div style="font-size:.78rem;font-weight:700;color:${PINNWAND_FARBEN[state.user]||'#888'};margin-bottom:4px;">✍️ Schreiben als: ${esc(state.user)}</div>
+      <div class="row">
+        <input type="text" name="text" maxlength="200" placeholder="Nachricht …" required>
+        <button class="btn" type="submit" style="flex:0 0 auto;width:auto;">📨</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="center" style="margin-top:18px;">
+    <button class="btn ghost" id="logoutBtn">⎋ Abmelden (${esc(state.user)})</button>
+  </div>
+  `;
+}
+
+async function loadDashboard(){
+  const r = await api("dashboard");
+  const box = document.getElementById("dashWarnungen");
+  if(!box) return;
+  if(r.warnungen && r.warnungen.length){
+    box.innerHTML = r.warnungen.map(k=>{
+      const icon = k.delta===0?"⚡":k.delta===1?"⏰":"📅";
+      const wann = k.delta===0?"heute!":k.delta===1?"morgen":"übermorgen";
+      const titel = String(k.titel||"").replace("\n"," · ");
+      return `<div class="warn-item">${icon} Klausur ${wann}: <b>${esc(titel)}</b></div>`;
+    }).join("");
+  }else box.innerHTML = "";
+}
+async function loadPinnwand(){
+  const r = await api("pinnwand_list");
+  const list = document.getElementById("pinnwandList");
+  if(!list) return;
+  pinnwandData = r.data || [];
+  if(pinnwandData[0] && pinnwandData[0].id !== pinnwandLastId){
+    if(pinnwandLastId !== null) showToast("📌 Neue Nachricht auf der Pinnwand!");
+    pinnwandLastId = pinnwandData[0].id;
+  }
+  const aktuell = pinnwandData.slice(0,5);
+  const archiv = pinnwandData.slice(5);
+  function msgHtml(m){
+    const farbe = PINNWAND_FARBEN[m.name] || "#888";
+    let zeit = "";
+    try{
+      const d = new Date(m.created_at);
+      zeit = d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}) + " um " + d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+    }catch{}
+    const kannLoeschen = m.name === state.user;
+    return `<div class="pin-bubble" style="border-left-color:${farbe}">
+      <span class="pin-name" style="color:${farbe}">${esc(m.name)}</span><span class="pin-time">${zeit}</span>
+      ${kannLoeschen?`<button class="pin-del" data-del="${m.id}">🗑</button>`:""}
+      <div class="pin-text">${esc(m.text)}</div>
+    </div>`;
+  }
+  let html = aktuell.length ? aktuell.map(msgHtml).join("") : `<p class="muted">Noch keine Nachrichten.</p>`;
+  if(archiv.length){
+    html += `<div class="center"><button class="btn ghost small" id="archivToggle">${pinnwandArchivOffen?'🗂 Archiv ausblenden':'🗂 Ältere Nachrichten ('+archiv.length+')'}</button></div>`;
+    if(pinnwandArchivOffen) html += `<div style="opacity:.65;margin-top:6px;">${archiv.map(msgHtml).join("")}</div>`;
+  }
+  list.innerHTML = html;
+  list.querySelectorAll("[data-del]").forEach(b=>b.onclick = async ()=>{
+    await api("pinnwand_delete", {id:b.dataset.del});
+    loadPinnwand();
+  });
+  const at = document.getElementById("archivToggle");
+  if(at) at.onclick = ()=>{ pinnwandArchivOffen = !pinnwandArchivOffen; loadPinnwand(); };
+}
+function startPinnwandPolling(){
+  clearInterval(pinnwandTimer);
+  pinnwandTimer = setInterval(()=>{ if(state.user && state.view==="start") loadPinnwand(); }, 60000);
+}
+
+/* -------------------- KLAUSUREN -------------------- */
+function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
+function pad(n){ return String(n).padStart(2,"0"); }
+function isoDate(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
+
+function renderKlausuren(){
+  const y = state.calYear, m = state.calMonth;
+  const first = new Date(y,m,1);
+  const startOffset = (first.getDay()+6)%7; // Montag=0
+  const totalDays = daysInMonth(y,m);
+  const monthLabel = first.toLocaleString("de-DE",{month:"long",year:"numeric"});
+
+  const byDate = {};
+  state.klausuren.forEach(k=>{ (byDate[k.start_date] = byDate[k.start_date]||[]).push(k); });
+
+  let cells = "";
+  for(let i=0;i<startOffset;i++) cells += `<div class="cal-cell other"></div>`;
+  const todayIso = isoDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  for(let d=1; d<=totalDays; d++){
+    const iso = isoDate(y,m,d);
+    const dow = (startOffset + d - 1) % 7;
+    const isToday = iso === todayIso;
+    const evs = byDate[iso] || [];
+    const dots = evs.slice(0,3).map(k=>`<span class="dot" style="background:${k.color||'#999'}"></span>`).join("");
+    cells += `<div class="cal-cell ${isToday?'today':''} ${dow>=5?'weekend':''}" data-date="${iso}">
+      <div>${d}</div><div style="display:flex;gap:2px;">${dots}</div>
+    </div>`;
+  }
+
+  const upcoming = state.klausuren
+    .filter(k=>k.start_date >= todayIso)
+    .sort((a,b)=>a.start_date.localeCompare(b.start_date));
+
+  const upcomingHtml = upcoming.length ? upcoming.map(k=>{
+    const fach = k.titel && k.titel.includes("\n") ? k.titel.split("\n").pop() : k.titel;
+    const datum = new Date(k.start_date).toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
+    return `<div class="klausur-list-item" data-edit="${k.id}">
+      <span class="badge" style="background:${k.color||'#888'}">${esc(k.child||'')}</span>
+      <span class="fach">${esc(fach||'')}</span>
+      <span class="datum">${datum}</span>
+    </div>`;
+  }).join("") : `<p class="muted">Keine bevorstehenden Klausuren.</p>`;
+
+  let formHtml = "";
+  if(state.selectedDate){
+    const datumFmt = new Date(state.selectedDate).toLocaleDateString("de-DE");
+    const kindField = CHILD_COLORS[state.user]
+      ? `<input type="hidden" name="child" value="${state.user}"><p><b>Kind:</b> ${esc(state.user)}</p>`
+      : `<label>Kind</label><select name="child">${Object.keys(CHILD_COLORS).map(c=>`<option>${c}</option>`).join("")}</select>`;
+    formHtml = `
+    <div class="card">
+      <h3>➕ Neu am ${datumFmt}</h3>
+      <form id="klausurNewForm">
+        ${kindField}
+        <label>Fach</label>
+        <select name="fach">${SUBJECTS.map(s=>`<option>${s}</option>`).join("")}</select>
+        <label>Notiz</label>
+        <input type="text" name="note">
+        <div class="row" style="margin-top:12px;">
+          <button class="btn" type="submit">💾 Speichern</button>
+          <button class="btn secondary" type="button" id="cancelNewKlausur">✕ Abbrechen</button>
+        </div>
+      </form>
+    </div>`;
+  }
+
+  let editHtml = "";
+  const editK = state.editKlausurId ? state.klausuren.find(k=>String(k.id)===String(state.editKlausurId)) : null;
+  if(editK){
+    const fach = editK.titel && editK.titel.includes("\n") ? editK.titel.split("\n").pop() : editK.titel;
+    const kindField = CHILD_COLORS[state.user]
+      ? `<input type="hidden" name="child" value="${state.user}"><p><b>Kind:</b> ${esc(state.user)}</p>`
+      : `<label>Kind</label><select name="child">${Object.keys(CHILD_COLORS).map(c=>`<option ${c===editK.child?'selected':''}>${c}</option>`).join("")}</select>`;
+    editHtml = `
+    <div class="card">
+      <h3>✏️ Bearbeiten</h3>
+      <form id="klausurEditForm">
+        ${kindField}
+        <label>Fach</label>
+        <select name="fach">${SUBJECTS.map(s=>`<option ${s===fach?'selected':''}>${s}</option>`).join("")}</select>
+        <label>Datum</label>
+        <input type="date" name="start_date" value="${editK.start_date}">
+        <label>Notiz</label>
+        <input type="text" name="note" value="${esc(editK.note||'')}">
+        <div class="row" style="margin-top:12px;">
+          <button class="btn" type="submit">💾 Speichern</button>
+          <button class="btn ghost" type="button" id="deleteKlausur">🗑️ Löschen</button>
+          <button class="btn secondary" type="button" id="cancelEditKlausur">✕</button>
+        </div>
+      </form>
+    </div>`;
+  }
+
+  return `
+  <div class="page-header">📅 Klausuren</div>
+  <div class="card">
+    <div class="cal-head">
+      <button class="btn ghost small" id="calPrev">←</button>
+      <div class="month">${monthLabel}</div>
+      <button class="btn ghost small" id="calNext">→</button>
+    </div>
+    <div class="cal-grid">
+      ${["Mo","Di","Mi","Do","Fr","Sa","So"].map(d=>`<div class="cal-dow">${d}</div>`).join("")}
+      ${cells}
+    </div>
+  </div>
+  ${formHtml}
+  ${editHtml}
+  <div class="card">
+    <h3>Bevorstehende Klausuren</h3>
+    ${upcomingHtml}
+  </div>
+  <div class="topbar"><button class="btn secondary" data-view="start">← Hauptmenü</button></div>
+  `;
+}
+async function loadKlausuren(){
+  const r = await api("klausuren_list");
+  state.klausuren = r.data || [];
+  if(state.view==="klausuren") render();
+}
+
+/* -------------------- STUNDENPLAN -------------------- */
+let stundenplanData = [];
+let stundenplanKlasse = "Klasse ?";
+let editCell = null;
+
+function renderStundenplan(){
+  const cur = state.stundenplanChild;
+  const kidsRow = Object.keys(CHILD_COLORS).map(name=>`
+    <button class="btn ${cur===name?'':'secondary'}" style="${cur===name?`background:${CHILD_COLORS[name]};border-color:${CHILD_COLORS[name]}`:`color:${CHILD_COLORS[name]};border-color:${CHILD_COLORS[name]}`}" data-child="${name}">${name}</button>
+  `).join("");
+
+  if(!cur){
+    return `
+    <div class="page-header">🏫 Stundenpläne</div>
+    <div class="row">${kidsRow}</div>
+    <p class="muted center" style="margin-top:16px;">Bitte oben ein Kind auswählen.</p>
+    <div class="topbar"><button class="btn secondary" data-view="start">← Hauptmenü</button></div>`;
+  }
+
+  const dayRow = DAYS.map(d=>`<button class="btn ${state.stundenplanDay===d?'':'secondary'}" data-day="${d}">${DAY_SHORT[d]}</button>`).join("");
+
+  const planByCell = {};
+  stundenplanData.forEach(item=>{ planByCell[item.tag+"_"+item.stunde] = item; });
+
+  let rows = "";
+  for(let std=1; std<=7; std++){
+    const item = planByCell[state.stundenplanDay+"_"+std];
+    const fach = item ? item.fach : "—";
+    rows += `<tr class="editable" data-std="${std}" data-id="${item?item.id:''}" data-fach="${item?item.fach:''}">
+      <td class="nr">${std}.</td>
+      <td class="fach" style="color:${fach==='—'?'#ccc':CHILD_COLORS[cur]}">${esc(fach)}</td>
+      <td class="uhr">${TIMES[std]}</td>
+    </tr>`;
+  }
+
+  let editHtml = "";
+  if(editCell){
+    editHtml = `
+    <div class="card">
+      <h3>📌 ${editCell.day}, ${editCell.std}. Stunde (${TIMES[editCell.std]})</h3>
+      <form id="stundenplanEditForm">
+        <label>Fach</label>
+        <select name="fach">${SUBJECTS.map(s=>`<option ${s===editCell.fach?'selected':''}>${s}</option>`).join("")}</select>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn" type="submit">💾 Speichern</button>
+          <button class="btn secondary" type="button" id="cancelEditCell">✕ Abbrechen</button>
+        </div>
+      </form>
+    </div>`;
+  }
+
+  return `
+  <div class="page-header">🏫 Stundenpläne</div>
+  <div class="row">${kidsRow}</div>
+  <div class="center muted" style="margin:8px 0;font-size:.82rem;">Stundenplan: <b style="color:${CHILD_COLORS[cur]}">${cur}</b></div>
+  <div class="card">
+    <button class="btn secondary" id="klasseBtn" style="margin-bottom:10px;">✏️ ${esc(stundenplanKlasse)}</button>
+    <div class="row">${dayRow}</div>
+    <table class="sp-table">${rows}</table>
+    <p class="muted" style="font-size:.75rem;margin-top:4px;">↑ Stundennummer antippen zum Bearbeiten</p>
+  </div>
+  ${editHtml}
+  <div class="topbar"><button class="btn secondary" data-view="start">← Hauptmenü</button></div>
+  `;
+}
+async function loadStundenplanKlasse(child){
+  const r = await api("kind_info_get", {child});
+  stundenplanKlasse = r.klasse || "Klasse ?";
+}
+async function loadStundenplan(child){
+  const r = await api("stundenplan_get", {child});
+  stundenplanData = r.data || [];
+}
+
+/* -------------------- BUS-CHECK -------------------- */
+const FAHRPLAN = {
+  seefisch:{label:"Seefischmarkt", icon:"🏠", sub:"→ Schönkirchen", richtung:"Richtung Schönkirchen / Schönberg", zeiten:[
+    ["05:52","200","Linas Diek"],["06:22","201","Linas Diek"],["06:37","201","Linas Diek"],["06:52","200","Linas Diek"],
+    ["07:07","200","Linas Diek"],["07:22","201","Linas Diek"],["07:37","200","Linas Diek"],["07:52","200","Linas Diek"],
+    ["08:07","200","Linas Diek"],["08:22","201","Linas Diek"],["08:37","200","Linas Diek"],["08:52","200","Linas Diek"],
+    ["09:22","201","Linas Diek"],["09:52","200","Linas Diek"],["10:22","201","Linas Diek"],["10:52","200","Linas Diek"],
+    ["11:22","201","Linas Diek"],["11:52","200","Linas Diek"],["12:22","201","Linas Diek"],["12:52","200","Linas Diek"],
+    ["13:22","201","Linas Diek"],["13:52","200","Linas Diek"],["14:22","201","Linas Diek"],["14:52","200","Linas Diek"],
+    ["15:07","200","Linas Diek"],["15:22","201","Linas Diek"],["15:52","200","Linas Diek"],["16:07","200","Linas Diek"],
+    ["16:22","201","Linas Diek"],["16:52","200","Linas Diek"],["17:22","201","Linas Diek"],["17:52","200","Linas Diek"],
+    ["07:37","210","Amboßweg"],["09:37","210","Amboßweg"],["11:37","210","Amboßweg"],["13:37","210","Amboßweg"],
+    ["15:37","210","Amboßweg"],["17:37","210","Amboßweg"],
+  ]},
+  linas:{label:"Linas Diek", icon:"🏫", sub:"→ Seefischmarkt", richtung:"Richtung Kiel Seefischmarkt", zeiten:[
+    ["05:18","200","Seefischmarkt"],["05:31","201","Seefischmarkt"],["06:15","201","Seefischmarkt"],["06:38","200","Seefischmarkt"],
+    ["06:45","201","Seefischmarkt"],["07:30","201","Seefischmarkt"],["07:33","200","Seefischmarkt"],["08:09","201","Seefischmarkt"],
+    ["08:15","201","Seefischmarkt"],["09:30","201","Seefischmarkt"],["09:43","200","Seefischmarkt"],["10:30","201","Seefischmarkt"],
+    ["10:43","200","Seefischmarkt"],["11:30","201","Seefischmarkt"],["11:43","200","Seefischmarkt"],["12:30","201","Seefischmarkt"],
+    ["12:43","200","Seefischmarkt"],["13:30","201","Seefischmarkt"],["13:43","200","Seefischmarkt"],["14:30","201","Seefischmarkt"],
+    ["14:38","200","Seefischmarkt"],["15:30","201","Seefischmarkt"],["15:43","200","Seefischmarkt"],["16:10","201","Seefischmarkt"],
+    ["16:30","201","Seefischmarkt"],["16:43","200","Seefischmarkt"],["17:10","201","Seefischmarkt"],["17:30","201","Seefischmarkt"],
+    ["17:38","200","Seefischmarkt"],["18:30","201","Seefischmarkt"],
+  ]},
+  amboss:{label:"Amboßweg", icon:"🏫", sub:"→ Seefischmarkt", richtung:"Richtung Kiel Seefischmarkt", zeiten:[
+    ["06:07","210","Seefischmarkt"],["07:07","210","Seefischmarkt"],["08:17","210","Seefischmarkt"],
+    ["12:22","210","Seefischmarkt"],["14:22","210","Seefischmarkt"],
+  ]},
+};
+const LINE_COLORS = {"200":"#c62828","201":"#1565c0","210":"#2e7d32"};
+const LINE_BG = {"200":"#ffebee","201":"#e3f2fd","210":"#e8f5e9"};
+
+function naechste3(zeiten, jetztHHMM){
+  const treffer = zeiten.filter(([z])=>z>=jetztHHMM);
+  if(treffer.length>=3) return {liste:treffer.slice(0,3), uebertrag:false};
+  const rest = 3-treffer.length;
+  return {liste:[...treffer, ...zeiten.slice(0,rest)], uebertrag:true};
+}
+function busCardHtml([zeit,linie,richtung], jetzt, istErste, naechsterTag){
+  const farbe = LINE_COLORS[linie]||"#555";
+  const bg = LINE_BG[linie]||"#f9f9f9";
+  const [h,m] = zeit.split(":").map(Number);
+  let abf = new Date(jetzt); abf.setHours(h,m,0,0);
+  if(naechsterTag || abf < jetzt) abf.setDate(abf.getDate()+1);
+  const diffMin = Math.round((abf-jetzt)/60000);
+  let cd = "";
+  if(diffMin<=0) cd = `<span style="color:${farbe};font-weight:800;">jetzt!</span>`;
+  else if(diffMin<60) cd = `<span style="color:${farbe};font-weight:700;">in ${diffMin} Min.</span>`;
+  else { const h2=Math.floor(diffMin/60), m2=diffMin%60; cd = `<span style="color:${farbe};font-weight:700;">in ${h2}h ${String(m2).padStart(2,'0')}m</span>`; }
+  return `<div class="bus-card" style="background:${bg};border-left:6px solid ${farbe};">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div><span class="bus-time" style="color:${farbe}">${zeit}</span><span class="bus-line" style="background:${farbe}">Linie ${linie}</span></div>
+      <div>${cd}</div>
+    </div>
+    ${istErste?`<div style="margin-top:4px;"><span style="background:${farbe};color:#fff;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;">▶ Nächste</span>${naechsterTag?' <span style="background:#888;color:#fff;font-size:.68rem;padding:2px 8px;border-radius:8px;">nächster Tag</span>':''}</div>`:''}
+    <div class="bus-exit">🚏 Ausstieg: <b>${esc(richtung)}</b></div>
+  </div>`;
+}
+function renderBus(){
+  const halte = Object.entries(FAHRPLAN).map(([key,cfg])=>`
+    <button class="btn ${state.busHalt===key?'':'secondary'}" data-halt="${key}" style="height:60px;font-size:.72rem;">${cfg.label}<br><span style="font-weight:400;">${cfg.sub}</span></button>
+  `).join("");
+
+  let content = `<p class="muted center" style="padding:30px 0;">⬆️ Bitte Haltestelle auswählen</p>`;
+  if(state.busHalt){
+    const cfg = FAHRPLAN[state.busHalt];
+    const now = new Date();
+    const wt = (now.getDay()+6)%7; // Montag=0..Sonntag=6
+    const WT = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
+    const hhmm = pad(now.getHours())+":"+pad(now.getMinutes());
+    let cards = "";
+    let warn = "";
+    if(wt>=5){
+      const tage = wt===5?2:1;
+      const nwt = new Date(now); nwt.setDate(now.getDate()+tage);
+      warn = `<div class="info-box">⚠️ Dieser Fahrplan gilt Mo–Fr. Nächste Fahrten: <b>${WT[(nwt.getDay()+6)%7]}, ${pad(nwt.getDate())}.${pad(nwt.getMonth()+1)}.</b></div>`;
+      cards = cfg.zeiten.slice(0,3).map((z,i)=>busCardHtml(z, now, i===0, true)).join("");
+    }else{
+      const {liste, uebertrag} = naechste3(cfg.zeiten, hhmm);
+      cards = liste.map((z,i)=>busCardHtml(z, now, i===0, uebertrag && z[0]<hhmm)).join("");
+    }
+    content = `
+      <p class="muted" style="font-size:.8rem;">📍 <b>${esc(cfg.label)}</b> · ${esc(cfg.richtung)} · Mo–Fr · Stand: VKP Nov. 2024</p>
+      ${warn}
+      ${cards}
+      <button class="btn secondary" id="busRefresh">🔄 Aktualisieren</button>
+    `;
+  }
+
+  return `
+  <div class="page-header">🚌 Bus-Check</div>
+  <div class="row">${halte}</div>
+  <div style="margin-top:14px;">${content}</div>
+  <div class="topbar"><button class="btn secondary" data-view="start">← Hauptmenü</button></div>
+  `;
+}
+
+/* -------------------- FERIEN -------------------- */
+function tageBisFerien(heute, ferienStart, stunde){
+  let von = new Date(heute);
+  if(stunde>=15) von.setDate(von.getDate()+1);
+  let letzter = new Date(ferienStart); letzter.setDate(letzter.getDate()-1);
+  if(ferienStart.getDay()===1){ letzter = new Date(ferienStart); letzter.setDate(letzter.getDate()-3); } // Montag → Freitag davor
+  const diff = Math.round((letzter - von)/86400000) + 1;
+  return Math.max(diff,0);
+}
+function naechsteFerien(){
+  const heute = new Date(); heute.setHours(0,0,0,0);
+  for(const f of FERIEN_LIST){ if(new Date(f.end) >= heute) return f; }
+  return null;
+}
+function renderFerien(){
+  const heute = new Date(); heute.setHours(0,0,0,0);
+  const nf = naechsteFerien();
+  let countdown = "";
+  if(nf){
+    const start = new Date(nf.start), end = new Date(nf.end);
+    if(start<=heute && heute<=end){
+      const tageNoch = Math.round((end-heute)/86400000);
+      countdown = `<div class="countdown-box">
+        <div class="cd-label">🎉 Wir haben gerade Ferien!</div>
+        <div class="cd-days">${tageNoch}</div>
+        <div class="cd-name">Tage noch frei</div>
+        <div class="cd-name" style="font-size:.95rem;margin-top:6px;">${nf.name} ${start.getFullYear()}</div>
+        <div class="cd-date">bis ${end.toLocaleDateString("de-DE")}</div>
+      </div>`;
+    }else{
+      const stunde = new Date().getHours();
+      const tageBis = tageBisFerien(heute, start, stunde);
+      const einheit = tageBis===1?"Schultag":"Schultage";
+      const label = tageBis>0 ? "⏳ Noch" : "🎉 Morgen geht's los!";
+      countdown = `<div class="countdown-box">
+        <div class="cd-label">${label}</div>
+        <div class="cd-days">${tageBis>0?tageBis:""}</div>
+        <div class="cd-name">${tageBis>0?einheit:""}</div>
+        <div class="cd-name" style="font-size:.95rem;margin-top:6px;">bis zu den ${nf.name} ${start.getFullYear()}</div>
+        <div class="cd-date">Start am ${start.toLocaleDateString("de-DE")}</div>
+      </div>`;
+    }
+  }
+
+  const list = FERIEN_LIST.map(f=>{
+    const start=new Date(f.start), end=new Date(f.end);
+    const tage = Math.round((end-start)/86400000)+1;
+    let css="", badge="";
+    if(end<heute){ css="vorbei"; badge=`<span class="fi-badge" style="background:#eee;color:#aaa;">vorbei</span>`; }
+    else if(start<=heute && heute<=end){ badge=`<span class="fi-badge" style="background:var(--red);color:#fff;">🎉 jetzt!</span>`; }
+    else{ const delta=Math.round((start-heute)/86400000); badge=`<span class="fi-badge" style="background:#fff3e0;color:#e65100;">in ${delta} Tagen</span>`; }
+    return `<div class="ferien-item ${css}">
+      <div><div class="fi-name">${f.name} ${start.getFullYear()}</div>
+      <div class="fi-date">${start.toLocaleDateString("de-DE",{day:'2-digit',month:'2-digit'})} – ${end.toLocaleDateString("de-DE")} · ${tage} Tage</div></div>
+      ${badge}
+    </div>`;
+  }).join("");
+
+  return `
+  <div class="page-header">🌴 Ferien S-H</div>
+  ${countdown}
+  <div class="card"><h3>Alle Ferien im Überblick</h3>${list}
+  <p class="muted" style="font-size:.75rem;margin-top:6px;">Alle Angaben ohne Gewähr · Schulferien Schleswig-Holstein</p></div>
+  <div class="topbar"><button class="btn secondary" data-view="start">← Hauptmenü</button></div>
+  `;
+}
+
+/* -------------------- SCHULBUDDY -------------------- */
+function renderSchulBuddy(){
+  if(!state.sbFach){
+    return `
+    <div class="topbar"><button class="btn secondary" data-view="start">← Hauptmenü</button></div>
+    <h2>🤖 KI-Tutor</h2>
+    <p class="muted">Welches Fach beschäftigt dich gerade?</p>
+    <div class="fach-grid">
+      ${Object.entries(FAECHER).map(([fach,info])=>`<button class="fach-btn" data-fach="${fach}" style="border-color:${info.color}">${info.icon}<br>${fach}</button>`).join("")}
+    </div>`;
+  }
+  if(!state.sbLevel){
+    const info = FAECHER[state.sbFach];
+    return `
+    <h2 style="color:${info.color}">${info.icon} ${state.sbFach}</h2>
+    <p class="muted">Welche Klassenstufe bist du?</p>
+    <div class="level-grid">
+      ${Object.entries(LEVELS).map(([label,val])=>`<button class="btn secondary" data-level="${esc(val)}">${label}</button>`).join("")}
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn ghost" data-fach-back="1">← Fach wechseln</button>
+      <button class="btn ghost" data-view="start">🏠 Hauptmenü</button>
+    </div>`;
+  }
+  const info = FAECHER[state.sbFach];
+  const chatHtml = state.sbHistory.map(m=>`<div class="chat-msg ${m.role==='user'?'user':'bot'}">${esc(m.content)}</div>`).join("");
+  const begruessung = !state.sbHistory.length ? `<div class="info-box">${BEGRUESSUNG[state.sbFach]||'Hey! Womit kann ich dir helfen?'}</div>` : "";
+  return `
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+    <button class="btn ghost small" data-view="start">🏠</button>
+    <button class="btn ghost small" data-fach-back="1">← Fach</button>
+    <div style="flex:1;text-align:center;font-weight:900;color:${info.color}">${info.icon} ${state.sbFach}
+      <div class="muted" style="font-size:.7rem;font-weight:600;">${state.sbLevel}</div>
+    </div>
+    <button class="btn ghost small" id="sbReset">🗑️</button>
+  </div>
+  <div class="chip-row" style="margin-bottom:10px;">
+    ${info.topics.map(t=>`<button class="chip" data-topic="${esc(t)}">${esc(t)}</button>`).join("")}
+  </div>
+  ${begruessung}
+  <div class="chat-box" id="chatBox">${chatHtml}</div>
+  <form class="chat-input-row" id="chatForm">
+    <input type="text" name="frage" placeholder="Deine Frage zu ${esc(state.sbFach)}...">
+    <button class="btn" type="submit">➤</button>
+  </form>
+  `;
+}
+async function sendSchulBuddy(frage){
+  state.sbHistory.push({role:"user", content:frage});
+  render();
+  const box = document.getElementById("chatBox"); if(box) box.scrollTop = box.scrollHeight;
+  const systemPrompt = FAECHER[state.sbFach].prompt.replace("{level}", state.sbLevel);
+  const r = await api("schulbuddy_chat", {system: systemPrompt, history: state.sbHistory});
+  if(r.answer){ state.sbHistory.push({role:"assistant", content:r.answer}); }
+  else{ state.sbHistory.push({role:"assistant", content:"⚠️ Da ist leider etwas schiefgelaufen. Versuch's gleich nochmal."}); }
+  render();
+  const box2 = document.getElementById("chatBox"); if(box2) box2.scrollTop = box2.scrollHeight;
+}
+
+/* =========================================================================
+   EVENTS
+   ========================================================================= */
+function attachViewEvents(){
+  document.querySelectorAll("[data-view]").forEach(el=>el.onclick = ()=>{
+    const v = el.dataset.view;
+    if(v==="start"){ setState({view:"start"}); loadDashboard(); loadPinnwand(); }
+    else setState({view:v});
+  });
+
+  const logoutBtn = document.getElementById("logoutBtn");
+  if(logoutBtn) logoutBtn.onclick = async ()=>{
+    await api("logout");
+    localStorage.removeItem("schulbuddy_token");
+    clearInterval(pinnwandTimer);
+    state = {...state, token:null, user:null, view:"start"};
+    render();
+  };
+
+  const pinForm = document.getElementById("pinForm");
+  if(pinForm) pinForm.onsubmit = async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(pinForm);
+    const text = fd.get("text").trim();
+    if(!text) return;
+    pinForm.reset();
+    await api("pinnwand_create", {text});
+    loadPinnwand();
+  };
+
+  if(state.view==="start"){ loadDashboard(); loadPinnwand(); }
+
+  /* ---- Klausuren ---- */
+  if(state.view==="klausuren"){
+    if(!state.klausuren.length) loadKlausuren();
+    document.getElementById("calPrev").onclick = ()=>{
+      let m=state.calMonth-1, y=state.calYear; if(m<0){m=11;y--;}
+      setState({calMonth:m, calYear:y});
+    };
+    document.getElementById("calNext").onclick = ()=>{
+      let m=state.calMonth+1, y=state.calYear; if(m>11){m=0;y++;}
+      setState({calMonth:m, calYear:y});
+    };
+    document.querySelectorAll(".cal-cell[data-date]").forEach(c=>c.onclick = ()=>{
+      setState({selectedDate:c.dataset.date, editKlausurId:null});
+    });
+    document.querySelectorAll(".klausur-list-item[data-edit]").forEach(c=>c.onclick = ()=>{
+      setState({editKlausurId:c.dataset.edit, selectedDate:null});
+    });
+    const cancelNew = document.getElementById("cancelNewKlausur");
+    if(cancelNew) cancelNew.onclick = ()=>setState({selectedDate:null});
+    const cancelEdit = document.getElementById("cancelEditKlausur");
+    if(cancelEdit) cancelEdit.onclick = ()=>setState({editKlausurId:null});
+    const newForm = document.getElementById("klausurNewForm");
+    if(newForm) newForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(newForm);
+      const child = fd.get("child");
+      const startDate = state.selectedDate;
+      await api("klausur_create", {
+        child, fach: fd.get("fach"), note: fd.get("note")||"",
+        start_date: startDate, datum: new Date(startDate).toLocaleDateString("de-DE"),
+        color: getComputedColor(child),
+      });
+      state.selectedDate = null;
+      showToast("✅ Gespeichert!");
+      loadKlausuren();
+    };
+    const editForm = document.getElementById("klausurEditForm");
+    if(editForm) editForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(editForm);
+      const child = fd.get("child");
+      const startDate = fd.get("start_date");
+      await api("klausur_update", {
+        id: state.editKlausurId, child, fach: fd.get("fach"), note: fd.get("note")||"",
+        start_date: startDate, datum: new Date(startDate).toLocaleDateString("de-DE"),
+        color: getComputedColor(child),
+      });
+      state.editKlausurId = null;
+      showToast("✅ Gespeichert!");
+      loadKlausuren();
+    };
+    const delBtn = document.getElementById("deleteKlausur");
+    if(delBtn) delBtn.onclick = async ()=>{
+      await api("klausur_delete", {id: state.editKlausurId});
+      state.editKlausurId = null;
+      loadKlausuren();
+    };
+  }
+
+  /* ---- Stundenplan ---- */
+  if(state.view==="stundenplan"){
+    document.querySelectorAll("[data-child]").forEach(b=>b.onclick = async ()=>{
+      const child = b.dataset.child;
+      state.stundenplanChild = child; editCell=null;
+      await Promise.all([loadStundenplanKlasse(child), loadStundenplan(child)]);
+      render();
+    });
+    document.querySelectorAll("[data-day]").forEach(b=>b.onclick = ()=>{
+      state.stundenplanDay = b.dataset.day; editCell=null; render();
+    });
+    const klasseBtn = document.getElementById("klasseBtn");
+    if(klasseBtn) klasseBtn.onclick = async ()=>{
+      const neu = prompt("Klasse anpassen:", stundenplanKlasse);
+      if(neu){ await api("kind_info_set", {child:state.stundenplanChild, klasse:neu}); stundenplanKlasse=neu; render(); }
+    };
+    document.querySelectorAll("tr.editable").forEach(tr=>tr.onclick = ()=>{
+      editCell = {day: state.stundenplanDay, std: Number(tr.dataset.std), id: tr.dataset.id||null, fach: tr.dataset.fach||"—"};
+      render();
+    });
+    const cancelCell = document.getElementById("cancelEditCell");
+    if(cancelCell) cancelCell.onclick = ()=>{ editCell=null; render(); };
+    const spForm = document.getElementById("stundenplanEditForm");
+    if(spForm) spForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(spForm);
+      await api("stundenplan_set", {id: editCell.id||undefined, child: state.stundenplanChild, tag: editCell.day, stunde: editCell.std, fach: fd.get("fach")});
+      editCell = null;
+      await loadStundenplan(state.stundenplanChild);
+      showToast("✅ Gespeichert!");
+      render();
+    };
+    if(state.stundenplanChild && !stundenplanData.length && !document.querySelector(".sp-table tr.editable[data-fach]:not([data-fach=''])")){
+      // initial laden falls noch nicht geschehen
+    }
+  }
+
+  /* ---- Bus ---- */
+  if(state.view==="bus"){
+    document.querySelectorAll("[data-halt]").forEach(b=>b.onclick = ()=>setState({busHalt:b.dataset.halt}));
+    const refresh = document.getElementById("busRefresh");
+    if(refresh) refresh.onclick = ()=>render();
+  }
+
+  /* ---- SchulBuddy ---- */
+  if(state.view==="schulbuddy"){
+    document.querySelectorAll("[data-fach]").forEach(b=>b.onclick = ()=>{
+      state.sbFach = b.dataset.fach; state.sbLevel=null; state.sbHistory=[]; render();
+    });
+    document.querySelectorAll("[data-level]").forEach(b=>b.onclick = ()=>{
+      state.sbLevel = b.dataset.level; render();
+    });
+    document.querySelectorAll("[data-fach-back]").forEach(b=>b.onclick = ()=>{
+      state.sbFach=null; state.sbLevel=null; state.sbHistory=[]; render();
+    });
+    const sbReset = document.getElementById("sbReset");
+    if(sbReset) sbReset.onclick = ()=>{ state.sbHistory=[]; render(); };
+    document.querySelectorAll("[data-topic]").forEach(b=>b.onclick = ()=>{
+      sendSchulBuddy(`Kannst du mir ${b.dataset.topic} erklären?`);
+    });
+    const chatForm = document.getElementById("chatForm");
+    if(chatForm) chatForm.onsubmit = (e)=>{
+      e.preventDefault();
+      const fd = new FormData(chatForm);
+      const frage = fd.get("frage").trim();
+      if(!frage) return;
+      chatForm.reset();
+      sendSchulBuddy(frage);
+    };
+    const box = document.getElementById("chatBox"); if(box) box.scrollTop = box.scrollHeight;
+  }
+}
+
+function getComputedColor(child){
+  const map = {Mila:"#FF85A1", Jojo:"#8B0000", Mikko:"#2E7D32"};
+  return map[child] || "#888";
+}
+
+/* Beim ersten Öffnen von Stundenplan/Klausuren Daten laden */
+const _origSetState = setState;
+setState = function(patch){
+  const enteringKlausuren = patch.view==="klausuren" && state.view!=="klausuren";
+  const enteringStundenplan = patch.view==="stundenplan" && state.view!=="stundenplan";
+  _origSetState(patch);
+  if(enteringKlausuren) loadKlausuren();
+  if(enteringStundenplan && state.stundenplanChild){ loadStundenplanKlasse(state.stundenplanChild).then(()=>loadStundenplan(state.stundenplanChild)).then(render); }
+};
+
+boot();
+</script>
+</body>
+</html>
