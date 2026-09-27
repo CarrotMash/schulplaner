@@ -916,10 +916,13 @@ let busDepartures = null;   // Array der aktuell geladenen Abfahrten (oder null 
 let busLoading = false;
 let busError = null;
 let busLoadedAt = null;
+let busRequestId = 0; // verhindert, dass eine langsame ältere Antwort eine neuere Haltestellen-Auswahl überschreibt
 
 async function loadBusDepartures(halt){
+  const myRequestId = ++busRequestId;
   busLoading = true; busError = null; render();
   const r = await api("bus_departures", {stopKey: halt});
+  if(myRequestId !== busRequestId) return; // inzwischen wurde eine andere Haltestelle/Abfrage gestartet -> verwerfen
   busLoading = false;
   if(r.error){ busError = r.error==="hafas_error" ? "Fahrplan-Server gerade nicht erreichbar." : "Abfahrten konnten nicht geladen werden."; busDepartures = null; }
   else { busDepartures = r.departures || []; busLoadedAt = new Date(); }
