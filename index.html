@@ -445,7 +445,7 @@ async function boot(){
   render(); // sofort Login/UI zeigen, kein Blank-Screen
   if(state.token){
     const r = await api("verify");
-    if(r.ok){ state.user = r.name; state.view="start"; render(); startPinnwandPolling(); }
+    if(r.ok){ state.user = r.name; state.view="start"; render(); startPinnwandPolling(); history.replaceState({view:"start"}, "", "#start"); }
     else { state.token=null; localStorage.removeItem("schulbuddy_token"); render(); }
   }
 }
@@ -531,6 +531,7 @@ function attachLoginEvents(){
         state.token = r.token; state.user = r.name;
         localStorage.setItem("schulbuddy_token", r.token);
         state.view = "start"; render(); startPinnwandPolling();
+        history.replaceState({view:"start"}, "", "#start");
       }else{
         document.getElementById("loginMsg").innerHTML = `<div class="error-box">❌ Name oder Passwort falsch.</div>`;
       }
@@ -897,95 +898,95 @@ async function loadStundenplan(child){
   stundenplanData = r.data || [];
 }
 
-/* -------------------- BUS-CHECK -------------------- */
-const FAHRPLAN = {
-  seefisch:{label:"Seefischmarkt", sub:"→ Schönkirchen", richtung:"Richtung Schönkirchen / Schönberg", zeiten:[
-    ["05:52","200","Linas Diek"],["06:22","201","Linas Diek"],["06:37","201","Linas Diek"],["06:52","200","Linas Diek"],
-    ["07:07","200","Linas Diek"],["07:22","201","Linas Diek"],["07:37","200","Linas Diek"],["07:52","200","Linas Diek"],
-    ["08:07","200","Linas Diek"],["08:22","201","Linas Diek"],["08:37","200","Linas Diek"],["08:52","200","Linas Diek"],
-    ["09:22","201","Linas Diek"],["09:52","200","Linas Diek"],["10:22","201","Linas Diek"],["10:52","200","Linas Diek"],
-    ["11:22","201","Linas Diek"],["11:52","200","Linas Diek"],["12:22","201","Linas Diek"],["12:52","200","Linas Diek"],
-    ["13:22","201","Linas Diek"],["13:52","200","Linas Diek"],["14:22","201","Linas Diek"],["14:52","200","Linas Diek"],
-    ["15:07","200","Linas Diek"],["15:22","201","Linas Diek"],["15:52","200","Linas Diek"],["16:07","200","Linas Diek"],
-    ["16:22","201","Linas Diek"],["16:52","200","Linas Diek"],["17:22","201","Linas Diek"],["17:52","200","Linas Diek"],
-    ["07:37","210","Amboßweg"],["09:37","210","Amboßweg"],["11:37","210","Amboßweg"],["13:37","210","Amboßweg"],
-    ["15:37","210","Amboßweg"],["17:37","210","Amboßweg"],
-  ]},
-  linas:{label:"Linas Diek", sub:"→ Seefischmarkt", richtung:"Richtung Kiel Seefischmarkt", zeiten:[
-    ["05:18","200","Seefischmarkt"],["05:31","201","Seefischmarkt"],["06:15","201","Seefischmarkt"],["06:38","200","Seefischmarkt"],
-    ["06:45","201","Seefischmarkt"],["07:30","201","Seefischmarkt"],["07:33","200","Seefischmarkt"],["08:09","201","Seefischmarkt"],
-    ["08:15","201","Seefischmarkt"],["09:30","201","Seefischmarkt"],["09:43","200","Seefischmarkt"],["10:30","201","Seefischmarkt"],
-    ["10:43","200","Seefischmarkt"],["11:30","201","Seefischmarkt"],["11:43","200","Seefischmarkt"],["12:30","201","Seefischmarkt"],
-    ["12:43","200","Seefischmarkt"],["13:30","201","Seefischmarkt"],["13:43","200","Seefischmarkt"],["14:30","201","Seefischmarkt"],
-    ["14:38","200","Seefischmarkt"],["15:30","201","Seefischmarkt"],["15:43","200","Seefischmarkt"],["16:10","201","Seefischmarkt"],
-    ["16:30","201","Seefischmarkt"],["16:43","200","Seefischmarkt"],["17:10","201","Seefischmarkt"],["17:30","201","Seefischmarkt"],
-    ["17:38","200","Seefischmarkt"],["18:30","201","Seefischmarkt"],
-  ]},
-  amboss:{label:"Amboßweg", sub:"→ Seefischmarkt", richtung:"Richtung Kiel Seefischmarkt", zeiten:[
-    ["06:07","210","Seefischmarkt"],["07:07","210","Seefischmarkt"],["08:17","210","Seefischmarkt"],
-    ["12:22","210","Seefischmarkt"],["14:22","210","Seefischmarkt"],
-  ]},
+/* -------------------- BUS-CHECK (Echtzeit via NAH.SH / HAFAS) -------------------- */
+const BUS_HALTE = {
+  seefisch:{label:"Seefischmarkt", sub:"Kiel", richtung:"Kiel Seefischmarkt"},
+  linas:{label:"Linas Diek", sub:"Schönkirchen", richtung:"Schönkirchen Linas Diek"},
+  amboss:{label:"Amboßweg", sub:"Schönkirchen", richtung:"Schönkirchen Amboßweg"},
 };
-const LINE_COLORS = {"200":"#f43f5e","201":"#38bdf8","210":"#34d399"};
-
-function naechste3(zeiten, jetztHHMM){
-  const treffer = zeiten.filter(([z])=>z>=jetztHHMM);
-  if(treffer.length>=3) return {liste:treffer.slice(0,3), uebertrag:false};
-  const rest = 3-treffer.length;
-  return {liste:[...treffer, ...zeiten.slice(0,rest)], uebertrag:true};
+// Feste Farben pro Linie wirken unruhig, sobald Echtzeitdaten beliebige Liniennummern liefern –
+// stattdessen eine kleine, stabile Palette anhand des Linien-Namens auswählen.
+const BUS_PALETTE = ["#f43f5e","#38bdf8","#34d399","#fbbf24","#a78bfa","#fb7185"];
+function busLineColor(linie){
+  let h = 0;
+  for(const ch of String(linie)) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+  return BUS_PALETTE[h % BUS_PALETTE.length];
 }
-function busCardHtml([zeit,linie,richtung], jetzt, istErste, naechsterTag){
-  const farbe = LINE_COLORS[linie]||"#888";
-  const [h,m] = zeit.split(":").map(Number);
-  let abf = new Date(jetzt); abf.setHours(h,m,0,0);
-  if(naechsterTag || abf < jetzt) abf.setDate(abf.getDate()+1);
-  const diffMin = Math.round((abf-jetzt)/60000);
+let busDepartures = null;   // Array der aktuell geladenen Abfahrten (oder null = noch nicht geladen)
+let busLoading = false;
+let busError = null;
+let busLoadedAt = null;
+
+async function loadBusDepartures(halt){
+  busLoading = true; busError = null; render();
+  const r = await api("bus_departures", {stopKey: halt});
+  busLoading = false;
+  if(r.error){ busError = r.error==="hafas_error" ? "Fahrplan-Server gerade nicht erreichbar." : "Abfahrten konnten nicht geladen werden."; busDepartures = null; }
+  else { busDepartures = r.departures || []; busLoadedAt = new Date(); }
+  render();
+}
+
+function busCardHtml(d, istErste){
+  const farbe = busLineColor(d.line);
+  const abfahrt = new Date(d.when || d.plannedWhen);
+  const jetzt = new Date();
+  const diffMin = Math.round((abfahrt - jetzt) / 60000);
+  const zeit = pad(abfahrt.getHours())+":"+pad(abfahrt.getMinutes());
+  const verspaetetMin = d.delay!=null ? Math.round(d.delay/60) : 0;
+
   let cd = "";
-  if(diffMin<=0) cd = `<span style="color:${farbe};font-weight:800;">jetzt!</span>`;
+  if(d.cancelled) cd = `<span style="color:#f87171;font-weight:800;">Fällt aus</span>`;
+  else if(diffMin<=0) cd = `<span style="color:${farbe};font-weight:800;">jetzt!</span>`;
   else if(diffMin<60) cd = `<span style="color:${farbe};font-weight:700;">in ${diffMin} Min.</span>`;
   else { const h2=Math.floor(diffMin/60), m2=diffMin%60; cd = `<span style="color:${farbe};font-weight:700;">in ${h2}h ${String(m2).padStart(2,'0')}m</span>`; }
-  return `<div class="bus-card" style="${istErste?`border-color:${farbe}66;box-shadow:0 8px 22px ${farbe}22;`:''}">
+
+  let verspaetungBadge = "";
+  if(!d.cancelled && verspaetetMin >= 2){
+    verspaetungBadge = ` <span style="background:#f59e0b33;color:#f59e0b;font-size:.66rem;font-weight:700;padding:3px 9px;border-radius:8px;">+${verspaetetMin} Min.</span>`;
+  }
+
+  return `<div class="bus-card" style="${d.cancelled?'opacity:.55;':''}${istErste&&!d.cancelled?`border-color:${farbe}66;box-shadow:0 8px 22px ${farbe}22;`:''}">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div><span class="bus-time" style="color:${farbe}">${zeit}</span><span class="bus-line" style="background:${farbe}">Linie ${linie}</span></div>
+      <div><span class="bus-time" style="color:${farbe};${d.cancelled?'text-decoration:line-through;':''}">${zeit}</span><span class="bus-line" style="background:${farbe}">${esc(d.line)}</span>${verspaetungBadge}</div>
       <div>${cd}</div>
     </div>
-    ${istErste?`<div style="margin-top:6px;"><span style="background:${farbe};color:#fff;font-size:.66rem;font-weight:800;padding:3px 9px;border-radius:8px;">▶ NÄCHSTE</span>${naechsterTag?' <span style="background:#3a3560;color:#c9c4e8;font-size:.66rem;padding:3px 9px;border-radius:8px;">nächster Tag</span>':''}</div>`:''}
-    <div class="bus-exit">🚏 Ausstieg: <b>${esc(richtung)}</b></div>
+    ${istErste&&!d.cancelled?`<div style="margin-top:6px;"><span style="background:${farbe};color:#fff;font-size:.66rem;font-weight:800;padding:3px 9px;border-radius:8px;">▶ NÄCHSTE</span></div>`:''}
+    <div class="bus-exit">🚏 Richtung: <b>${esc(d.direction||"—")}</b>${d.platform?` · Steig ${esc(d.platform)}`:""}</div>
   </div>`;
 }
+
 function renderBus(){
-  const halte = Object.entries(FAHRPLAN).map(([key,cfg])=>`
-    <button class="btn ${state.busHalt===key?'':'secondary'}" data-halt="${key}" style="height:62px;font-size:.72rem;line-height:1.3;">${cfg.label}<br><span style="font-weight:500;opacity:.8;">${cfg.sub}</span></button>
+  const halte = Object.entries(BUS_HALTE).map(([key,cfg])=>`
+    <button class="btn ${state.busHalt===key?'':'secondary'}" data-halt="${key}" style="height:62px;font-size:.72rem;line-height:1.3;">${esc(cfg.label)}<br><span style="font-weight:500;opacity:.8;">${esc(cfg.sub)}</span></button>
   `).join("");
 
   let content = `<p class="muted center" style="padding:34px 0;">⬆️ Haltestelle auswählen</p>`;
   if(state.busHalt){
-    const cfg = FAHRPLAN[state.busHalt];
-    const now = new Date();
-    const wt = (now.getDay()+6)%7;
-    const WT = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
-    const hhmm = pad(now.getHours())+":"+pad(now.getMinutes());
-    let cards = "";
-    let warn = "";
-    if(wt>=5){
-      const tage = wt===5?2:1;
-      const nwt = new Date(now); nwt.setDate(now.getDate()+tage);
-      warn = `<div class="info-box">⚠️ Fahrplan gilt Mo–Fr. Nächste Fahrten: <b>${WT[(nwt.getDay()+6)%7]}, ${pad(nwt.getDate())}.${pad(nwt.getMonth()+1)}.</b></div>`;
-      cards = cfg.zeiten.slice(0,3).map((z,i)=>busCardHtml(z, now, i===0, true)).join("");
-    }else{
-      const {liste, uebertrag} = naechste3(cfg.zeiten, hhmm);
-      cards = liste.map((z,i)=>busCardHtml(z, now, i===0, uebertrag && z[0]<hhmm)).join("");
+    const cfg = BUS_HALTE[state.busHalt];
+    let body;
+    if(busLoading && !busDepartures){
+      body = `<div class="skel skel-block" style="height:74px;"></div>
+              <div class="skel skel-block" style="height:74px;"></div>
+              <div class="skel skel-block" style="height:74px;"></div>`;
+    } else if(busError){
+      body = `<div class="info-box">⚠️ ${esc(busError)}</div>`;
+    } else if(!busDepartures || busDepartures.length===0){
+      body = `<p class="muted center" style="padding:20px 0;">🚏 Aktuell sind keine Abfahrten in den nächsten 4 Stunden bekannt.</p>`;
+    } else {
+      body = busDepartures.slice(0,6).map((d,i)=>busCardHtml(d, i===0)).join("");
     }
+    const stand = busLoadedAt ? `<p class="muted" style="font-size:.68rem;margin-top:2px;">🔄 Stand: ${pad(busLoadedAt.getHours())}:${pad(busLoadedAt.getMinutes())} Uhr</p>` : "";
     content = `
-      <p class="muted" style="font-size:.8rem;">📍 <b style="color:var(--text)">${esc(cfg.label)}</b> · ${esc(cfg.richtung)}</p>
-      ${warn}
-      ${cards}
-      <button class="btn secondary" id="busRefresh">🔄 Aktualisieren</button>
+      <p class="muted" style="font-size:.8rem;">📍 <b style="color:var(--text)">${esc(cfg.richtung)}</b></p>
+      ${stand}
+      <div style="margin-top:10px;">${body}</div>
+      <button class="btn secondary" id="busRefresh" ${busLoading?'disabled':''}>🔄 Aktualisieren</button>
     `;
   }
 
   return `
   <div class="page-header"><div class="icon-badge">🚌</div><h1>Bus-Check</h1></div>
+  <p class="muted" style="font-size:.75rem;margin-top:-8px;">Live-Abfahrten (NAH.SH)</p>
   <div class="row">${halte}</div>
   <div style="margin-top:16px;">${content}</div>
   `;
@@ -1126,9 +1127,8 @@ async function sendSchulBuddy(frage){
 /* =========================================================================
    EVENTS
    ========================================================================= */
-function goto(view){
-  state.view = view;
-  render();
+// Lädt die Daten für eine View nach (von goto() und vom Browser-Zurück/Vor via popstate geteilt).
+function loadViewData(view){
   if(view==="start"){ loadDashboard(); loadPinnwand(); }
   if(view==="klausuren" && !state.klausurenLoaded) loadKlausuren();
   if(view==="stundenplan" && state.stundenplanChild){
@@ -1136,7 +1136,25 @@ function goto(view){
     Promise.all([loadStundenplanKlasse(state.stundenplanChild), loadStundenplan(state.stundenplanChild)])
       .then(()=>{ stundenplanLoading=false; render(); });
   }
+  if(view==="bus" && state.busHalt) loadBusDepartures(state.busHalt);
 }
+
+// fromPopstate=true, wenn der Aufruf durch die Zurück/Vor-Navigation des Browsers kommt
+// (dann NICHT erneut in die History pushen, sonst wächst der Stack unkontrolliert).
+function goto(view, fromPopstate){
+  state.view = view;
+  render();
+  if(!fromPopstate) history.pushState({view}, "", "#"+view);
+  loadViewData(view);
+}
+
+// Browser-/Handy-"Zurück" (Wischgeste, Zurück-Taste) soll innerhalb der App zur vorherigen
+// Ansicht springen, statt die App komplett zu verlassen.
+window.addEventListener("popstate", (e)=>{
+  if(!state.user) return; // nicht eingeloggt: nichts zu tun, Login-Screen bleibt
+  const view = e.state?.view || "start";
+  goto(view, true);
+});
 
 function attachViewEvents(){
   document.querySelectorAll("[data-view]").forEach(el=>el.onclick = ()=>goto(el.dataset.view));
@@ -1269,9 +1287,14 @@ function attachViewEvents(){
 
   /* ---- Bus ---- */
   if(state.view==="bus"){
-    document.querySelectorAll("[data-halt]").forEach(b=>b.onclick = ()=>{ state.busHalt=b.dataset.halt; render(); });
+    document.querySelectorAll("[data-halt]").forEach(b=>b.onclick = ()=>{
+      if(state.busHalt===b.dataset.halt) return;
+      state.busHalt=b.dataset.halt; busDepartures=null; busError=null;
+      render();
+      loadBusDepartures(state.busHalt);
+    });
     const refresh = document.getElementById("busRefresh");
-    if(refresh) refresh.onclick = ()=>render();
+    if(refresh) refresh.onclick = ()=>loadBusDepartures(state.busHalt);
   }
 
   /* ---- SchulBuddy ---- */

@@ -4,12 +4,14 @@
 // ausschließlich diese Function an, nie direkt die DB oder die Anthropic API.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import createHafasClient from "npm:nahsh-hafas@5";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const hafas = createHafasClient("schulbuddy-familien-app");
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +22,13 @@ const CORS = {
 const NAMEN = ["Papa", "Mama", "Mila", "Jojo", "Mikko"];
 const CHILD_NAMES = ["Mila", "Jojo", "Mikko"];
 const SESSION_TAGE = 30;
+
+// Feste HAFAS-Stop-IDs der drei Haltestellen der Familie (via NAH.SH ermittelt).
+const BUS_STOPS = {
+  seefisch: "9049245", // Kiel Seefischmarkt
+  linas: "9083498",    // Schönkirchen Linas Diek
+  amboss: "9083492",   // Schönkirchen Amboßweg
+} as const;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -270,6 +279,30 @@ Deno.serve(async (req) => {
       const { error } = await supabase.from("nachrichten").delete().eq("id", body.id);
       if (error) return json({ error: "db_error" }, 500);
       return json({ ok: true });
+    }
+
+    if (action === "bus_departures") {
+      // Nur die drei bekannten Haltestellen der Familie sind erlaubt (kein freier Stop-Zugriff).
+      const stopKey = String(body.stopKey || "");
+      const stopId = BUS_STOPS[stopKey as keyof typeof BUS_STOPS];
+      if (!stopId) return json({ error: "unknown_stop" }, 400);
+      try {
+        const result = await hafas.departures(stopId, { duration: 240, results: 10, remarks: false });
+        const departures = (result.departures ?? result) as Array<Record<string, unknown>>;
+        // Fürs Frontend auf das Nötigste reduzieren.
+        const slim = departures.map((d) => ({
+          when: d.when,
+          plannedWhen: d.plannedWhen,
+          delay: d.delay,
+          line: (d.line as Record<string, unknown> | undefined)?.name ?? "?",
+          direction: d.direction,
+          platform: d.platform,
+          cancelled: d.cancelled ?? false,
+        }));
+        return json({ departures: slim });
+      } catch (e) {
+        return json({ error: "hafas_error", detail: String(e) }, 502);
+      }
     }
 
     if (action === "schulbuddy_chat") {
