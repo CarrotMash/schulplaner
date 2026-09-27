@@ -761,6 +761,8 @@ function isoDate(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
 
 // Fächer eines Kindes, zuletzt geschriebene zuerst – so stehen die wahrscheinlichsten
 // Fächer beim Schnell-Eintrag ganz oben, ohne durch alle 17 Fächer scrollen zu müssen.
+// "Freistunde" macht bei Stundenplan-Feldern Sinn, aber nicht als Klausur-Fach -> hier ausgeblendet.
+const KLAUSUR_SUBJECTS = SUBJECTS.filter(s=>s!=="Freistunde");
 function sortedSubjectsForChild(child){
   const used = state.klausuren
     .filter(k=>k.child===child)
@@ -768,8 +770,8 @@ function sortedSubjectsForChild(child){
     .map(k=>{ const t=k.titel||""; return t.includes("\n") ? t.split("\n").pop() : t; });
   const seen = new Set();
   const recent = [];
-  for(const f of used){ if(SUBJECT_META[f] && !seen.has(f)){ seen.add(f); recent.push(f); if(recent.length>=6) break; } }
-  return [...recent, ...SUBJECTS.filter(s=>!seen.has(s))];
+  for(const f of used){ if(SUBJECT_META[f] && f!=="Freistunde" && !seen.has(f)){ seen.add(f); recent.push(f); if(recent.length>=6) break; } }
+  return [...recent, ...KLAUSUR_SUBJECTS.filter(s=>!seen.has(s))];
 }
 // Icon-Chips statt Dropdown fürs Fach: schneller antippbar und macht mehr Spaß.
 // Auswahl landet in einem versteckten Input (per data-input verknüpft), damit das Formular
