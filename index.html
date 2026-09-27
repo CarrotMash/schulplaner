@@ -216,15 +216,43 @@ select{ -webkit-appearance:none; appearance:none;
 .klausur-list-item .badge{padding:3px 10px;border-radius:20px;color:#fff;font-size:.68rem;font-weight:800;white-space:nowrap;}
 .klausur-list-item .fach{font-weight:700;}
 .klausur-list-item .datum{margin-left:auto;color:var(--muted);font-size:.8rem;}
+/* ---------- Fach-/Kind-Chips (Klausuren-Formular) ---------- */
+.fach-chip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;}
+.fach-chip-pick{
+  display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;border-radius:12px;
+  border:1.5px solid var(--border);color:var(--text);font-size:.66rem;font-weight:700;font-family:'Space Grotesk',sans-serif;
+  transition:transform .1s ease;
+}
+.fach-chip-pick span{font-size:1.25rem;}
+.fach-chip-pick:active{transform:scale(.94);}
+.kind-chip{flex:1;padding:11px 6px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:.82rem;font-family:'Space Grotesk',sans-serif;}
+.kind-chip.selected{color:#0f0e1a;}
+.fab-add{
+  position:fixed;left:16px;right:16px;max-width:488px;margin:0 auto;
+  bottom:calc(86px + env(safe-area-inset-bottom));z-index:40;
+  box-shadow:0 10px 26px rgba(139,92,246,.5);
+}
 
-/* ---------- Stundenplan ---------- */
-.sp-table{width:100%;border-collapse:collapse;font-size:.9rem;}
-.sp-table td{padding:10px 6px;border-bottom:1px solid var(--border);}
-.sp-table td.nr{color:#655f8a;width:22px;font-size:.75rem;}
-.sp-table td.uhr{color:#655f8a;font-size:.72rem;text-align:right;white-space:nowrap;}
-.sp-table td.fach{font-weight:700;}
-.sp-table tr.editable{cursor:pointer;}
-.sp-table tr.editable:active{background:#1e1b34;}
+/* ---------- Stundenplan: Mal-Modus-Palette + Wochenraster ---------- */
+.fach-palette{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;}
+.fach-chip{
+  aspect-ratio:1;border-radius:13px;border:2.5px solid transparent;display:flex;align-items:center;justify-content:center;
+  font-size:1.25rem;background:var(--c);opacity:.5;transition:transform .12s ease,opacity .15s ease,box-shadow .15s ease;
+  padding:0;
+}
+.fach-chip:active{transform:scale(.92);}
+.fach-chip.armed{opacity:1;border-color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.4);transform:scale(1.06);}
+.fach-chip.eraser{background:#2c2850;opacity:.85;}
+.fach-armed-label{font-size:.8rem;margin:10px 0 2px;min-height:1.2em;}
+.sp-grid{display:grid;grid-template-columns:26px repeat(5,1fr);gap:4px;margin-top:8px;}
+.sp-grid .sp-dow{text-align:center;font-size:.66rem;font-weight:800;color:var(--muted);padding-bottom:2px;}
+.sp-grid .sp-nr{display:flex;align-items:center;justify-content:center;font-size:.68rem;color:#655f8a;font-weight:700;}
+.sp-cell{
+  aspect-ratio:1;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  font-size:1.15rem;background:#1a1730;border:1.5px dashed var(--border);transition:transform .1s ease;
+}
+.sp-cell:active{transform:scale(.9);}
+.sp-cell.filled{border-style:solid;background:var(--c);border-color:transparent;}
 .kid-pill{border:2px solid; background:var(--card); color:#fff; font-family:'Space Grotesk',sans-serif;}
 
 /* ---------- Bus ---------- */
@@ -287,6 +315,27 @@ const CHILDREN = {
 };
 const CHILD_NAMES = ["Mila","Jojo","Mikko"];
 const SUBJECTS = ["Englisch","Französisch","Mathematik","Deutsch","Musik","Biologie","Chemie","Kunst","Philosophie","Geschichte","Physik","Spanisch","WiPo","Geografie","Sport","Religion","Freistunde"];
+// Icon + Farbe je Fach – macht die Stundenplan-Palette und die Klausuren-Badges auf einen Blick
+// erkennbar (wichtig für den "Mal-Modus" im Stundenplan, der auf Farben/Emojis statt Text setzt).
+const SUBJECT_META = {
+  Englisch:{icon:"📘",color:"#38bdf8"},
+  Französisch:{icon:"🥖",color:"#fbbf24"},
+  Mathematik:{icon:"🧮",color:"#a78bfa"},
+  Deutsch:{icon:"📖",color:"#f472b6"},
+  Musik:{icon:"🎵",color:"#ec4899"},
+  Biologie:{icon:"🌿",color:"#4ade80"},
+  Chemie:{icon:"⚗️",color:"#fb7185"},
+  Kunst:{icon:"🎨",color:"#e879f9"},
+  Philosophie:{icon:"🤔",color:"#94a3b8"},
+  Geschichte:{icon:"📜",color:"#f59e0b"},
+  Physik:{icon:"⚡",color:"#34d399"},
+  Spanisch:{icon:"🇪🇸",color:"#fb923c"},
+  WiPo:{icon:"💼",color:"#64748b"},
+  Geografie:{icon:"🌍",color:"#22d3ee"},
+  Sport:{icon:"⚽",color:"#22c55e"},
+  Religion:{icon:"⛪",color:"#c4b5fd"},
+  Freistunde:{icon:"😌",color:"#4b5563"},
+};
 const DAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"];
 const DAY_SHORT = {Montag:"Mo",Dienstag:"Di",Mittwoch:"Mi",Donnerstag:"Do",Freitag:"Fr"};
 const TIMES = {1:"07:50–08:35",2:"08:40–09:25",3:"09:40–10:25",4:"10:30–11:15",5:"11:30–12:15",6:"12:20–13:05",7:"13:35–14:20"};
@@ -362,7 +411,6 @@ let state = {
   view: "start",
   loginTab: "login",
   stundenplanChild: null,
-  stundenplanDay: "Montag",
   busHalt: null,
   sbFach: null,
   sbLevel: null,
@@ -697,6 +745,39 @@ function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
 function pad(n){ return String(n).padStart(2,"0"); }
 function isoDate(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
 
+// Fächer eines Kindes, zuletzt geschriebene zuerst – so stehen die wahrscheinlichsten
+// Fächer beim Schnell-Eintrag ganz oben, ohne durch alle 17 Fächer scrollen zu müssen.
+function sortedSubjectsForChild(child){
+  const used = state.klausuren
+    .filter(k=>k.child===child)
+    .sort((a,b)=>b.start_date.localeCompare(a.start_date))
+    .map(k=>{ const t=k.titel||""; return t.includes("\n") ? t.split("\n").pop() : t; });
+  const seen = new Set();
+  const recent = [];
+  for(const f of used){ if(SUBJECT_META[f] && !seen.has(f)){ seen.add(f); recent.push(f); if(recent.length>=6) break; } }
+  return [...recent, ...SUBJECTS.filter(s=>!seen.has(s))];
+}
+// Icon-Chips statt Dropdown fürs Fach: schneller antippbar und macht mehr Spaß.
+// Auswahl landet in einem versteckten Input (per data-input verknüpft), damit das Formular
+// beim Absenden ganz normal per FormData ausgelesen werden kann.
+function fachChipGridHtml(child, selected, inputId){
+  const order = sortedSubjectsForChild(child);
+  const sel = selected && SUBJECT_META[selected] ? selected : order[0];
+  const chips = order.map(f=>{
+    const meta = SUBJECT_META[f];
+    const isSel = f===sel;
+    return `<button type="button" class="fach-chip-pick ${isSel?'selected':''}" data-fach="${esc(f)}" data-input="${inputId}" style="border-color:${meta.color};${isSel?`background:${meta.color};color:#0f0e1a;`:`background:${meta.color}1f;`}"><span>${meta.icon}</span>${esc(f)}</button>`;
+  }).join("");
+  return `<input type="hidden" name="fach" id="${inputId}" value="${esc(sel)}">
+  <div class="fach-chip-grid">${chips}</div>`;
+}
+// Kind-Auswahl als Chips (nur für Eltern relevant – ein Kind trägt automatisch für sich selbst ein).
+function kindChipsHtml(selected, inputId){
+  const chips = CHILD_NAMES.map(c=>`<button type="button" class="kind-chip ${c===selected?'selected':''}" data-child="${c}" data-input="${inputId}" style="border-color:${CHILDREN[c].hex};${c===selected?`background:${CHILDREN[c].hex};`:''}">${CHILDREN[c].emoji} ${c}</button>`).join("");
+  return `<input type="hidden" name="child" id="${inputId}" value="${esc(selected)}">
+  <div class="row" style="gap:8px;">${chips}</div>`;
+}
+
 function renderKlausuren(){
   const y = state.calYear, m = state.calMonth;
   const first = new Date(y,m,1);
@@ -737,21 +818,24 @@ function renderKlausuren(){
       }).join("") : `<p class="muted">Keine bevorstehenden Klausuren. 🎉</p>`)
     : `<div class="skel skel-line"></div><div class="skel skel-line" style="width:70%"></div>`;
 
+  const istKind = CHILD_NAMES.includes(state.user);
+
   let formHtml = "";
   if(state.selectedDate){
-    const datumFmt = new Date(state.selectedDate).toLocaleDateString("de-DE");
-    const kindField = CHILDREN[state.user] && CHILD_NAMES.includes(state.user)
-      ? `<input type="hidden" name="child" value="${state.user}"><p style="margin-top:12px;"><b>Kind:</b> ${esc(state.user)}</p>`
-      : `<label>Kind</label><select name="child">${CHILD_NAMES.map(c=>`<option>${c}</option>`).join("")}</select>`;
+    const kindHtml = istKind
+      ? `<input type="hidden" name="child" value="${state.user}"><p style="margin-top:2px;"><b>Kind:</b> ${esc(state.user)}</p>`
+      : `<label>Kind</label>${kindChipsHtml(state.quickAddChild || CHILD_NAMES[0], "newKindInput")}`;
     formHtml = `
     <div class="card">
-      <h3>➕ Neu am ${datumFmt}</h3>
+      <h3>➕ Neue Klausur</h3>
       <form id="klausurNewForm">
-        ${kindField}
+        ${kindHtml}
+        <label style="margin-top:12px;">Datum</label>
+        <input type="date" name="start_date" value="${state.selectedDate}">
         <label>Fach</label>
-        <select name="fach">${SUBJECTS.map(s=>`<option>${s}</option>`).join("")}</select>
+        ${fachChipGridHtml(istKind ? state.user : (state.quickAddChild || CHILD_NAMES[0]), null, "newFachInput")}
         <label>Notiz</label>
-        <input type="text" name="note">
+        <input type="text" name="note" placeholder="optional">
         <div class="row" style="margin-top:14px;">
           <button class="btn" type="submit">💾 Speichern</button>
           <button class="btn secondary" type="button" id="cancelNewKlausur">✕</button>
@@ -764,18 +848,18 @@ function renderKlausuren(){
   const editK = state.editKlausurId ? state.klausuren.find(k=>String(k.id)===String(state.editKlausurId)) : null;
   if(editK){
     const fach = editK.titel && editK.titel.includes("\n") ? editK.titel.split("\n").pop() : editK.titel;
-    const kindField = CHILD_NAMES.includes(state.user)
-      ? `<input type="hidden" name="child" value="${state.user}"><p style="margin-top:12px;"><b>Kind:</b> ${esc(state.user)}</p>`
-      : `<label>Kind</label><select name="child">${CHILD_NAMES.map(c=>`<option ${c===editK.child?'selected':''}>${c}</option>`).join("")}</select>`;
+    const kindHtml = istKind
+      ? `<input type="hidden" name="child" value="${state.user}"><p style="margin-top:2px;"><b>Kind:</b> ${esc(state.user)}</p>`
+      : `<label>Kind</label>${kindChipsHtml(editK.child, "editKindInput")}`;
     editHtml = `
     <div class="card">
       <h3>✏️ Bearbeiten</h3>
       <form id="klausurEditForm">
-        ${kindField}
-        <label>Fach</label>
-        <select name="fach">${SUBJECTS.map(s=>`<option ${s===fach?'selected':''}>${s}</option>`).join("")}</select>
-        <label>Datum</label>
+        ${kindHtml}
+        <label style="margin-top:12px;">Datum</label>
         <input type="date" name="start_date" value="${editK.start_date}">
+        <label>Fach</label>
+        ${fachChipGridHtml(editK.child, fach, "editFachInput")}
         <label>Notiz</label>
         <input type="text" name="note" value="${esc(editK.note||'')}">
         <div class="row" style="margin-top:14px;">
@@ -802,10 +886,11 @@ function renderKlausuren(){
   </div>
   ${formHtml}
   ${editHtml}
-  <div class="card">
+  <div class="card" style="margin-bottom:${(state.selectedDate||editK)?'14px':'70px'};">
     <h3>Bevorstehend</h3>
     ${upcomingHtml}
   </div>
+  ${(state.selectedDate||editK) ? "" : `<button class="btn fab-add" id="quickAddKlausur" aria-label="Neue Klausur eintragen">⚡ Schnell eintragen</button>`}
   `;
 }
 async function loadKlausuren(){
@@ -815,11 +900,12 @@ async function loadKlausuren(){
   if(state.view==="klausuren") render();
 }
 
-/* -------------------- STUNDENPLAN -------------------- */
+/* -------------------- STUNDENPLAN (Mal-Modus + Wochenraster) -------------------- */
 let stundenplanData = [];
 let stundenplanKlasse = "Klasse ?";
 let stundenplanLoading = false;
-let editCell = null;
+let stundenplanArmed = null; // aktuell "aufgemaltes" Fach (oder "—" fürs Radiergummi), null = nichts ausgewählt
+let stundenplanSaving = {};  // welche Zellen (tag_stunde) gerade gespeichert werden -> kleiner Spinner statt Doppel-Taps
 
 function renderStundenplan(){
   const cur = state.stundenplanChild;
@@ -844,37 +930,34 @@ function renderStundenplan(){
     </div>`;
   }
 
-  const dayRow = DAYS.map(d=>`<button class="btn ${state.stundenplanDay===d?'':'secondary'}" data-day="${d}">${DAY_SHORT[d]}</button>`).join("");
-
   const planByCell = {};
   stundenplanData.forEach(item=>{ planByCell[item.tag+"_"+item.stunde] = item; });
 
-  let rows = "";
-  for(let std=1; std<=7; std++){
-    const item = planByCell[state.stundenplanDay+"_"+std];
-    const fach = item ? item.fach : "—";
-    rows += `<tr class="editable" data-std="${std}" data-id="${item?item.id:''}" data-fach="${item?item.fach:''}">
-      <td class="nr">${std}.</td>
-      <td class="fach" style="color:${fach==='—'?'#544f75':CHILDREN[cur].hex}">${esc(fach)}</td>
-      <td class="uhr">${TIMES[std]}</td>
-    </tr>`;
-  }
+  // Palette: ein Chip pro Fach + Radiergummi zum Leeren. Antippen "bewaffnet" das Fach,
+  // danach färbt jeder Tap auf eine Stunde diese direkt ein (wie Ausmalen).
+  const paletteChips = SUBJECTS.map(fach=>{
+    const meta = SUBJECT_META[fach];
+    return `<button class="fach-chip ${stundenplanArmed===fach?'armed':''}" style="--c:${meta.color}" data-fach="${esc(fach)}" title="${esc(fach)}" aria-label="${esc(fach)}">${meta.icon}</button>`;
+  }).join("");
+  const eraserChip = `<button class="fach-chip eraser ${stundenplanArmed==='—'?'armed':''}" data-fach="—" title="Leeren" aria-label="Leeren">🧹</button>`;
 
-  let editHtml = "";
-  if(editCell){
-    editHtml = `
-    <div class="card">
-      <h3>📌 ${editCell.day}, ${editCell.std}. Stunde</h3>
-      <p class="muted" style="margin-top:-6px;">${TIMES[editCell.std]}</p>
-      <form id="stundenplanEditForm">
-        <label>Fach</label>
-        <select name="fach">${SUBJECTS.map(s=>`<option ${s===editCell.fach?'selected':''}>${s}</option>`).join("")}</select>
-        <div class="row" style="margin-top:14px;">
-          <button class="btn" type="submit">💾 Speichern</button>
-          <button class="btn secondary" type="button" id="cancelEditCell">✕</button>
-        </div>
-      </form>
-    </div>`;
+  const armedLabel = stundenplanArmed
+    ? (stundenplanArmed==='—' ? "🧹 Radiergummi aktiv – tippe auf eine Stunde zum Leeren" : `${SUBJECT_META[stundenplanArmed].icon} <b>${esc(stundenplanArmed)}</b> ausgewählt – tippe auf die Stunden`)
+    : "☝️ Erst ein Fach oben auswählen, dann Stunden antippen";
+
+  // Wochenraster: Zeilen = Stunden 1–7, Spalten = Mo–Fr. So sieht man die ganze Woche
+  // auf einen Blick statt sich durch einzelne Tage klicken zu müssen.
+  let gridRows = `<div></div>` + DAYS.map(d=>`<div class="sp-dow">${DAY_SHORT[d]}</div>`).join("");
+  for(let std=1; std<=7; std++){
+    gridRows += `<div class="sp-nr">${std}.</div>`;
+    for(const tag of DAYS){
+      const item = planByCell[tag+"_"+std];
+      const fach = item && item.fach && item.fach!=="—" ? item.fach : null;
+      const meta = fach ? SUBJECT_META[fach] : null;
+      const key = tag+"_"+std;
+      const busy = !!stundenplanSaving[key];
+      gridRows += `<button class="sp-cell ${meta?'filled':''}" style="${meta?`--c:${meta.color}`:''}" data-tag="${esc(tag)}" data-stunde="${std}" title="${esc(tag)}, ${std}. Stunde (${TIMES[std]})${fach?': '+esc(fach):''}" aria-label="${esc(tag)}, ${std}. Stunde${fach?': '+esc(fach):', leer'}">${busy?'<span class="spin" style="border-top-color:#fff;"></span>':(meta?meta.icon:'')}</button>`;
+    }
   }
 
   return `
@@ -882,11 +965,10 @@ function renderStundenplan(){
   <div class="row">${kidsRow}</div>
   <div class="card" style="margin-top:14px;">
     <button class="btn secondary small" id="klasseBtn" style="margin-bottom:12px;">✏️ ${esc(stundenplanKlasse)}</button>
-    <div class="row">${dayRow}</div>
-    <table class="sp-table">${rows}</table>
-    <p class="muted" style="font-size:.75rem;margin-top:6px;">↑ Stundennummer antippen zum Bearbeiten</p>
+    <div class="fach-palette">${paletteChips}${eraserChip}</div>
+    <p class="muted fach-armed-label">${armedLabel}</p>
+    <div class="sp-grid">${gridRows}</div>
   </div>
-  ${editHtml}
   `;
 }
 async function loadStundenplanKlasse(child){
@@ -896,6 +978,34 @@ async function loadStundenplanKlasse(child){
 async function loadStundenplan(child){
   const r = await api("stundenplan_get", {child});
   stundenplanData = r.data || [];
+}
+
+// "Anmalen" einer Zelle: sofort optimistisch anzeigen, im Hintergrund speichern.
+// So fühlt sich das Eintragen des ganzen Wochenplans wie ein flottes Ausmalen an,
+// statt bei jeder Stunde auf eine Serverantwort warten zu müssen.
+async function paintCell(tag, stunde){
+  const key = tag+"_"+stunde;
+  if(stundenplanSaving[key]) return; // läuft schon ein Speichervorgang für diese Zelle -> Doppel-Tap ignorieren
+  const fach = stundenplanArmed;
+  const bestehend = stundenplanData.find(it=>it.tag===tag && it.stunde===stunde);
+  if(fach==="—" && !bestehend) return; // schon leer, nichts zu tun
+  if(bestehend && bestehend.fach===fach) return; // schon genau dieses Fach -> nichts zu tun
+
+  // optimistisches Update
+  if(bestehend) bestehend.fach = fach;
+  else stundenplanData.push({id:null, child:state.stundenplanChild, tag, stunde, fach});
+  stundenplanSaving[key] = true;
+  render();
+
+  const r = await api("stundenplan_set", {id: bestehend?.id||undefined, child: state.stundenplanChild, tag, stunde, fach});
+  delete stundenplanSaving[key];
+  if(r.error){
+    showToast("⚠️ Konnte nicht gespeichert werden");
+    await loadStundenplan(state.stundenplanChild); // bei Fehler echten Stand nachladen
+  } else if(bestehend && !bestehend.id){
+    await loadStundenplan(state.stundenplanChild); // neue Zeile: echte id nachladen (fürs nächste Update nötig)
+  }
+  render();
 }
 
 /* -------------------- BUS-CHECK (Echtzeit via NAH.SH / HAFAS) -------------------- */
@@ -1204,6 +1314,37 @@ function attachViewEvents(){
     document.querySelectorAll(".klausur-list-item[data-edit]").forEach(c=>c.onclick = ()=>{
       state.editKlausurId=c.dataset.edit; state.selectedDate=null; render();
     });
+    const quickAdd = document.getElementById("quickAddKlausur");
+    if(quickAdd) quickAdd.onclick = ()=>{
+      const t = new Date();
+      state.selectedDate = isoDate(t.getFullYear(), t.getMonth(), t.getDate());
+      state.editKlausurId = null;
+      render();
+    };
+    // Fach-/Kind-Chips: Auswahl direkt im versteckten Input + Chip-Highlight setzen,
+    // ohne die ganze Seite neu zu rendern (sonst geht z. B. der Notiz-Text verloren).
+    document.querySelectorAll(".fach-chip-pick").forEach(chip=>chip.onclick = ()=>{
+      const grid = chip.closest(".fach-chip-grid");
+      const input = document.getElementById(chip.dataset.input);
+      if(input) input.value = chip.dataset.fach;
+      grid.querySelectorAll(".fach-chip-pick").forEach(c=>{
+        const meta = SUBJECT_META[c.dataset.fach];
+        const isSel = c===chip;
+        c.classList.toggle("selected", isSel);
+        c.style.background = isSel ? meta.color : meta.color+"1f";
+        c.style.color = isSel ? "#0f0e1a" : "";
+      });
+    });
+    document.querySelectorAll(".kind-chip").forEach(chip=>chip.onclick = ()=>{
+      const row = chip.closest(".row");
+      const input = document.getElementById(chip.dataset.input);
+      if(input) input.value = chip.dataset.child;
+      row.querySelectorAll(".kind-chip").forEach(c=>{
+        const isSel = c===chip;
+        c.classList.toggle("selected", isSel);
+        c.style.background = isSel ? CHILDREN[c.dataset.child].hex : "";
+      });
+    });
     const cancelNew = document.getElementById("cancelNewKlausur");
     if(cancelNew) cancelNew.onclick = ()=>{ state.selectedDate=null; render(); };
     const cancelEdit = document.getElementById("cancelEditKlausur");
@@ -1214,7 +1355,7 @@ function attachViewEvents(){
       const fd = new FormData(newForm);
       await withPending(newForm.querySelector('button[type="submit"]'), async ()=>{
         const child = fd.get("child");
-        const startDate = state.selectedDate;
+        const startDate = fd.get("start_date");
         await api("klausur_create", {
           child, fach: fd.get("fach"), note: fd.get("note")||"",
           start_date: startDate, datum: new Date(startDate).toLocaleDateString("de-DE"),
@@ -1252,40 +1393,30 @@ function attachViewEvents(){
     };
   }
 
-  /* ---- Stundenplan ---- */
+  /* ---- Stundenplan (Mal-Modus) ---- */
   if(state.view==="stundenplan"){
     document.querySelectorAll("[data-child]").forEach(b=>b.onclick = async ()=>{
-      state.stundenplanChild = b.dataset.child; editCell=null;
+      state.stundenplanChild = b.dataset.child; stundenplanArmed=null; stundenplanSaving={};
       stundenplanLoading = true; render();
       await Promise.all([loadStundenplanKlasse(state.stundenplanChild), loadStundenplan(state.stundenplanChild)]);
       stundenplanLoading = false; render();
-    });
-    document.querySelectorAll("[data-day]").forEach(b=>b.onclick = ()=>{
-      state.stundenplanDay = b.dataset.day; editCell=null; render();
     });
     const klasseBtn = document.getElementById("klasseBtn");
     if(klasseBtn) klasseBtn.onclick = async ()=>{
       const neu = prompt("Klasse anpassen:", stundenplanKlasse);
       if(neu){ await api("kind_info_set", {child:state.stundenplanChild, klasse:neu}); stundenplanKlasse=neu; render(); }
     };
-    document.querySelectorAll("tr.editable").forEach(tr=>tr.onclick = ()=>{
-      editCell = {day: state.stundenplanDay, std: Number(tr.dataset.std), id: tr.dataset.id||null, fach: tr.dataset.fach||"—"};
+    // Fach-Chip antippen = "bewaffnen" (nochmal antippen = abwählen)
+    document.querySelectorAll(".fach-chip").forEach(chip=>chip.onclick = ()=>{
+      const fach = chip.dataset.fach;
+      stundenplanArmed = stundenplanArmed===fach ? null : fach;
       render();
     });
-    const cancelCell = document.getElementById("cancelEditCell");
-    if(cancelCell) cancelCell.onclick = ()=>{ editCell=null; render(); };
-    const spForm = document.getElementById("stundenplanEditForm");
-    if(spForm) spForm.onsubmit = async (e)=>{
-      e.preventDefault();
-      const fd = new FormData(spForm);
-      await withPending(spForm.querySelector('button[type="submit"]'), async ()=>{
-        await api("stundenplan_set", {id: editCell.id||undefined, child: state.stundenplanChild, tag: editCell.day, stunde: editCell.std, fach: fd.get("fach")});
-        editCell = null;
-        await loadStundenplan(state.stundenplanChild);
-        showToast("✅ Gespeichert!");
-        render();
-      });
-    };
+    // Zelle antippen = mit dem aktuell bewaffneten Fach "anmalen"
+    document.querySelectorAll(".sp-cell").forEach(cell=>cell.onclick = ()=>{
+      if(!stundenplanArmed){ showToast("☝️ Erst oben ein Fach auswählen"); return; }
+      paintCell(cell.dataset.tag, Number(cell.dataset.stunde));
+    });
   }
 
   /* ---- Bus ---- */
